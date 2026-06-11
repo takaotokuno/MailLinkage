@@ -1,0 +1,15 @@
+# MailBatchSample Docker Compose foundation.
+#
+# Services are intentionally added in later tasks after the application projects
+# and the development IMAP-capable mail server are selected/implemented.
+name: mail-batch-sample
+
+services: {}
+
+networks:
+  mail-batch-sample:
+    name: mail-batch-sample-network
+
+volumes:
+  mail-batch-sample-data:
+    name: mail-batch-sample-data

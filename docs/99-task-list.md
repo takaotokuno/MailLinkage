@@ -2,8 +2,8 @@
 
 ## 1. プロジェクト土台
 
-- [ ] `MailBatchSample/` ディレクトリを作成する。
-- [ ] `MailBatchSample/docker-compose.yml` を作成する。
+- [x] `MailBatchSample/` ディレクトリを作成する。
+- [x] `MailBatchSample/docker-compose.yml` を作成する。
 - [x] `src/MailBatch.Console` に .NET 8 Console プロジェクトを作成する。
 - [ ] `src/MailReceiver.Api` に ASP.NET Core Web API プロジェクトを作成する。
 - [ ] `src/TestMailSender` に .NET 8 Console プロジェクトを作成する。
