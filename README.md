@@ -35,3 +35,14 @@ MailBatchSample/
   data/
     mailreceiver.db
 ```
+
+## `logs/` と `data/` の配置方針
+
+`logs/` と `data/` は、`MailBatchSample/` 直下に配置します。ソースコードや Docker Compose 定義から分離し、ローカル実行・Docker Compose 実行のどちらでも同じホスト側ディレクトリを参照できるようにします。
+
+| パス | 用途 | 配置・運用方針 |
+| --- | --- | --- |
+| `MailBatchSample/logs/` | `MailBatch.Console` のバッチログ出力先 | バッチ実行時に日次ファイル `batch-yyyyMMdd.log` を出力します。ログは実行ごとの証跡として扱い、ソース管理対象には含めません。 |
+| `MailBatchSample/data/` | `MailReceiver.Api` が利用する SQLite DB の配置先 | API 起動時または初期化時に `mailreceiver.db` を作成します。DB ファイルはローカル検証用の実行データとして扱い、ソース管理対象には含めません。 |
+
+実行前にディレクトリが存在しない場合は、アプリケーションまたは起動手順で作成します。コンテナから利用する場合は、上記ホスト側ディレクトリをコンテナ内のログ出力先・DB 配置先へボリュームマウントします。
