@@ -1,0 +1,42 @@
+{
+  "name": "MailLinkage (.NET 8)",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "workspaceFolder": "/workspace/MailLinkage",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-dotnettools.csharp",
+        "ms-dotnettools.csdevkit",
+        "ms-azuretools.vscode-docker",
+        "editorconfig.editorconfig"
+      ],
+      "settings": {
+        "dotnet.defaultSolution": "MailLinkage.sln",
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
+    }
+  },
+  "forwardPorts": [
+    5000,
+    5001,
+    8080
+  ],
+  "portsAttributes": {
+    "5000": {
+      "label": "MailReceiver.Api HTTP"
+    },
+    "5001": {
+      "label": "MailReceiver.Api HTTPS"
+    },
+    "8080": {
+      "label": "App/Test service"
+    }
+  },
+  "postCreateCommand": "dotnet restore MailLinkage.sln",
+  "remoteUser": "vscode"
+}
