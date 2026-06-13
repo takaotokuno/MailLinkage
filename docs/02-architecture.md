@@ -21,7 +21,9 @@ flowchart LR
 | mailserver | SMTP / IMAP を提供するテスト用メールサーバ | SMTP: 1025、IMAP: 1143、Web UI がある場合は 8025 |
 | mailreceiver-api | メール連携 API | HTTP: 5000 |
 
-メールサーバ製品は実装時に確定する。候補は Mailpit、GreenMail、MailHog 系の開発用メールサーバである。IMAP が必要なため、SMTP のみの製品は避ける。
+メールサーバ製品は GreenMail Standalone を採用する。採用理由は、開発・テスト用途の軽量なサンドボックスとして SMTP と IMAP を同一コンテナで提供でき、Docker Compose から固定ユーザーを初期定義できるためである。Mailpit や MailHog は SMTP 受信と Web UI の確認には便利だが、初期スコープで必須となる IMAP 取得検証を満たす構成が主目的ではないため採用しない。
+
+GreenMail は Web UI ではなく管理 API を `8080` で提供するが、初期スコープの確認経路は IMAP と `MailReceiver.Api` の GET API とするため、管理 API は Compose 内部利用に留め、ホストへは公開しない。必要になった時点で `8080:8080` の公開を追加する。
 
 ## ホスト側ディレクトリ
 
@@ -50,12 +52,29 @@ flowchart LR
 
 | アプリ | 設定 | 例 |
 | --- | --- | --- |
-| MailBatch.Console | `Imap:Host` | `localhost` または Compose サービス名 |
-| MailBatch.Console | `Imap:Port` | `1143` |
+| MailBatch.Console | `Imap:Host` | ホスト実行: `localhost` / Compose 内: `mailserver` |
+| MailBatch.Console | `Imap:Port` | ホスト実行: `1143` / Compose 内: `3143` |
 | MailBatch.Console | `Imap:UserName` | `test@example.local` |
 | MailBatch.Console | `Imap:Password` | `password` |
-| MailBatch.Console | `Api:BaseUrl` | `http://localhost:5000` |
+| MailBatch.Console | `Api:BaseUrl` | ホスト実行: `http://localhost:5000` / Compose 内: `http://mailreceiver-api:8080` |
 | MailBatch.Console | `MailFilter:SubjectContains` | `連携対象` |
 | MailReceiver.Api | `ConnectionStrings:MailReceiver` | `Data Source=../../data/mailreceiver.db` |
-| TestMailSender | `Smtp:Host` | `localhost` |
-| TestMailSender | `Smtp:Port` | `1025` |
+| TestMailSender | `Smtp:Host` | ホスト実行: `localhost` / Compose 内: `mailserver` |
+| TestMailSender | `Smtp:Port` | ホスト実行: `1025` / Compose 内: `3025` |
+
+
+## 開発用メールサーバ設定
+
+`MailBatchSample/docker-compose.yml` の `mailserver` サービスで GreenMail Standalone を起動する。SMTP と IMAP のみを有効化し、ローカル検証で衝突しにくいホスト側ポートへ公開する。
+
+| 項目 | ホスト実行時 | Compose 内実行時 |
+| --- | --- | --- |
+| SMTP ホスト | `localhost` | `mailserver` |
+| SMTP ポート | `1025` | `3025` |
+| IMAP ホスト | `localhost` | `mailserver` |
+| IMAP ポート | `1143` | `3143` |
+| ユーザー名 | `test@example.local` | `test@example.local` |
+| パスワード | `password` | `password` |
+| メールボックス | `INBOX` | `INBOX` |
+
+テスト用アカウントは GreenMail の `-Dgreenmail.users=test:password@example.local` と `-Dgreenmail.users.login=email` で定義し、IMAP/SMTP 認証ではメールアドレス形式の `test@example.local` を利用する。Compose 起動時に `MAILSERVER_USERS`、`MAILSERVER_SMTP_HOST_PORT`、`MAILSERVER_IMAP_HOST_PORT` を指定すると、ユーザー定義またはホスト側公開ポートを上書きできる。

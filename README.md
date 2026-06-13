@@ -72,3 +72,24 @@ MailBatchSample/
 | `MailBatchSample/data/` | `MailReceiver.Api` が利用する SQLite DB の配置先 | API 起動時または初期化時に `mailreceiver.db` を作成します。DB ファイルはローカル検証用の実行データとして扱い、ソース管理対象には含めません。 |
 
 実行前にディレクトリが存在しない場合は、アプリケーションまたは起動手順で作成します。コンテナから利用する場合は、上記ホスト側ディレクトリをコンテナ内のログ出力先・DB 配置先へボリュームマウントします。
+
+## 開発用メールサーバ
+
+開発用メールサーバには GreenMail Standalone を採用します。SMTP と IMAP を同一コンテナで提供できるため、`TestMailSender` からのメール投入と `MailBatch.Console` からの IMAP 取得を Docker Compose 上で検証できます。
+
+| 項目 | ホスト実行時 | Compose 内実行時 |
+| --- | --- | --- |
+| SMTP | `localhost:1025` | `mailserver:3025` |
+| IMAP | `localhost:1143` | `mailserver:3143` |
+| ユーザー名 | `test@example.local` | `test@example.local` |
+| パスワード | `password` | `password` |
+| メールボックス | `INBOX` | `INBOX` |
+
+起動は次のコマンドで行います。
+
+```bash
+cd MailBatchSample
+docker compose up -d
+```
+
+ホスト側公開ポートは `MAILSERVER_SMTP_HOST_PORT` と `MAILSERVER_IMAP_HOST_PORT`、GreenMail の初期ユーザー定義は `MAILSERVER_USERS` で上書きできます。既定値はローカル検証用の固定値であり、本番環境では利用しません。
