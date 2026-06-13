@@ -3,7 +3,7 @@
   "build": {
     "dockerfile": "Dockerfile"
   },
-  "workspaceFolder": "/workspace/MailLinkage",
+  "workspaceFolder": "/workspaces/MailLinkage",
   "features": {
     "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
   },
