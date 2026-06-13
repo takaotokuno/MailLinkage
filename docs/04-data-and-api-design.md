@@ -16,12 +16,13 @@
 
 ## 重複データの扱い
 
-初期実装では、`message_id` にユニーク制約を設定する方針とする。重複 POST 時の応答は実装時に次のいずれかへ確定する。
+初期実装では、`message_id` にユニーク制約を設定する。重複 POST 時は検証用途で挙動が分かりやすいように `409 Conflict` を返す。
 
-- `409 Conflict` を返す。
-- 既存レコードを返して冪等成功として扱う。
+## DB 初期化
 
-検証用途では挙動が分かりやすい `409 Conflict` を第一候補とする。
+`MailReceiver.Api` は起動時に `ConnectionStrings:MailReceiver` の SQLite 接続文字列を読み込み、DB ファイルの親ディレクトリを作成したうえで Entity Framework Core の `EnsureCreated` により `received_mails` テーブルと `message_id` のユニークインデックスを作成する。
+
+ローカル開発の既定値は `src/MailReceiver.Api/appsettings.json` の `Data Source=../../data/mailreceiver.db` である。Docker など実行ディレクトリが異なる環境では、環境変数 `ConnectionStrings__MailReceiver` で保存先を上書きする。
 
 ## POST API
 
@@ -43,9 +44,9 @@
 
 | 項目 | ルール |
 | --- | --- |
-| `messageId` | 必須。最大長は実装時に定義する。 |
-| `sender` | 必須。メールアドレス形式の厳密検証は初期スコープでは簡易でよい。 |
-| `subject` | 必須。 |
+| `messageId` | 必須。最大 255 文字。 |
+| `sender` | 必須。最大 320 文字。メールアドレス形式の厳密検証は初期スコープでは簡易でよい。 |
+| `subject` | 必須。最大 500 文字。 |
 | `body` | 任意。長文を許容する。 |
 | `receivedAt` | 必須。日時として解釈可能であること。 |
 

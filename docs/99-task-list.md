@@ -20,16 +20,16 @@
 
 ## 3. MailReceiver.Api
 
-- [ ] SQLite 接続設定を追加する。
-- [ ] `received_mails` テーブルまたは Entity Framework Core モデルを作成する。
-- [ ] DB 初期化またはマイグレーション手順を用意する。
-- [ ] `POST /api/received-mails` を実装する。
-- [ ] POST リクエストの入力検証を実装する。
-- [ ] `messageId` 重複時の挙動を実装する。
-- [ ] `GET /api/received-mails` を実装する。
-- [ ] `GET /api/received-mails/{id}` を実装する。
-- [ ] `/health` を実装する。
-- [ ] API の構造化ログを設定する。
+- [x] SQLite 接続設定を追加する。
+- [x] `received_mails` テーブルまたは Entity Framework Core モデルを作成する。
+- [x] DB 初期化またはマイグレーション手順を用意する。
+- [x] `POST /api/received-mails` を実装する。
+- [x] POST リクエストの入力検証を実装する。
+- [x] `messageId` 重複時の挙動を実装する。
+- [x] `GET /api/received-mails` を実装する。
+- [x] `GET /api/received-mails/{id}` を実装する。
+- [x] `/health` を実装する。
+- [x] API の構造化ログを設定する。
 
 ## 4. MailBatch.Console
 
