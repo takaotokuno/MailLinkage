@@ -2,21 +2,21 @@
 
 ## 1. プロジェクト土台
 
-- [ ] `MailBatchSample/` ディレクトリを作成する。
-- [ ] `MailBatchSample/docker-compose.yml` を作成する。
-- [ ] `src/MailBatch.Console` に .NET 8 Console プロジェクトを作成する。
-- [ ] `src/MailReceiver.Api` に ASP.NET Core Web API プロジェクトを作成する。
-- [ ] `src/TestMailSender` に .NET 8 Console プロジェクトを作成する。
-- [ ] ソリューションファイルを作成し、3 プロジェクトを追加する。
+- [x] `MailBatchSample/` ディレクトリを作成する。
+- [x] `MailBatchSample/docker-compose.yml` を作成する。
+- [x] `src/MailBatch.Console` に .NET 8 Console プロジェクトを作成する。
+- [x] `src/MailReceiver.Api` に ASP.NET Core Web API プロジェクトを作成する。
+- [x] `src/TestMailSender` に .NET 8 Console プロジェクトを作成する。
+- [x] ソリューションファイルを作成し、3 プロジェクトを追加する。
 - [x] `logs/` と `data/` の配置方針を README に反映する。
 
 ## 2. Docker / メールサーバ
 
-- [ ] IMAP 対応の開発用メールサーバ製品を選定する。
-- [ ] Docker Compose にメールサーバサービスを追加する。
-- [ ] SMTP、IMAP、必要に応じて Web UI のポートを公開する。
-- [ ] テスト用メールアカウント、メールボックス、認証情報を定義する。
-- [ ] ホスト実行とコンテナ実行で利用する接続先設定を整理する。
+- [x] IMAP 対応の開発用メールサーバ製品を選定する。
+- [x] Docker Compose にメールサーバサービスを追加する。
+- [x] SMTP、IMAP、必要に応じて Web UI のポートを公開する。
+- [x] テスト用メールアカウント、メールボックス、認証情報を定義する。
+- [x] ホスト実行とコンテナ実行で利用する接続先設定を整理する。
 
 ## 3. MailReceiver.Api
 

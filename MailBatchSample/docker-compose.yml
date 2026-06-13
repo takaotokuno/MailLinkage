@@ -1,0 +1,35 @@
+# MailBatchSample Docker Compose foundation.
+#
+# Development mail server:
+# - GreenMail standalone is selected because it provides SMTP and IMAP in one
+#   lightweight sandbox container for local verification.
+# - Host execution uses published localhost ports.
+# - Container execution uses the service name `mailserver` and container ports.
+name: mail-batch-sample
+
+services:
+  mailserver:
+    image: greenmail/standalone:2.1.8
+    container_name: mail-batch-sample-mailserver
+    restart: unless-stopped
+    environment:
+      GREENMAIL_OPTS: >-
+        -Dgreenmail.setup.test.smtp
+        -Dgreenmail.setup.test.imap
+        -Dgreenmail.hostname=0.0.0.0
+        -Dgreenmail.users.login=email
+        -Dgreenmail.users=${MAILSERVER_USERS:-test:password@example.local}
+    ports:
+      # Host-side ports are intentionally non-privileged and stable for local tools.
+      - "${MAILSERVER_SMTP_HOST_PORT:-1025}:3025"
+      - "${MAILSERVER_IMAP_HOST_PORT:-1143}:3143"
+    networks:
+      - mail-batch-sample
+
+networks:
+  mail-batch-sample:
+    name: mail-batch-sample-network
+
+volumes:
+  mail-batch-sample-data:
+    name: mail-batch-sample-data

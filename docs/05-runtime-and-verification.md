@@ -15,10 +15,20 @@ docker compose up -d --build
 
 起動後に確認する項目は次の通り。
 
-1. メールサーバの SMTP ポートへ接続できる。
-2. メールサーバの IMAP ポートへ接続できる。
-3. API の `/health` が成功する。
-4. `data/mailreceiver.db` が作成される、または API 起動時に作成可能である。
+1. GreenMail の SMTP ポートへ `localhost:1025` で接続できる。
+2. GreenMail の IMAP ポートへ `localhost:1143` で接続できる。
+3. テスト用アカウント `test@example.local` / `password` で認証できる。
+4. API の `/health` が成功する。
+5. `data/mailreceiver.db` が作成される、または API 起動時に作成可能である。
+
+SMTP と IMAP の疎通確認例は次の通り。
+
+```bash
+nc -vz localhost 1025
+nc -vz localhost 1143
+```
+
+ホスト実行のアプリケーションは `localhost:1025` と `localhost:1143` を利用する。Docker Compose 内でアプリケーションをコンテナ実行する場合は、同一 Compose ネットワーク上の `mailserver:3025` と `mailserver:3143` を利用する。
 
 ## 検証シナリオ
 
@@ -89,3 +99,15 @@ curl http://localhost:5000/api/received-mails
 - メール本文は長文になり得るため、ログへ全文を出力しない。
 - IMAP 取得後に既読化・削除するかどうかは、検証シナリオに合わせて実装時に明示する。
 - Docker Compose からの接続先とホスト実行時の接続先が異なるため、設定で切り替えられるようにする。
+
+
+## メールサーバ設定
+
+開発用メールサーバは GreenMail Standalone を利用する。Docker Compose では SMTP と IMAP を有効にし、初期アカウントとして `test@example.local` / `password` を作成する。メール投入先および IMAP 取得対象の既定メールボックスは `INBOX` とする。
+
+| 実行場所 | SMTP 接続先 | IMAP 接続先 | 認証情報 |
+| --- | --- | --- | --- |
+| ホスト OS | `localhost:1025` | `localhost:1143` | `test@example.local` / `password` |
+| Compose 内コンテナ | `mailserver:3025` | `mailserver:3143` | `test@example.local` / `password` |
+
+ホスト側公開ポートを変更したい場合は、Compose 起動時に `MAILSERVER_SMTP_HOST_PORT` または `MAILSERVER_IMAP_HOST_PORT` を指定する。ユーザー定義を変更したい場合は、GreenMail のユーザー定義形式で `MAILSERVER_USERS` を指定する。例: `MAILSERVER_USERS=another:secret@example.local`。
