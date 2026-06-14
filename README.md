@@ -73,6 +73,25 @@ MailBatchSample/
 
 実行前にディレクトリが存在しない場合は、アプリケーションまたは起動手順で作成します。コンテナから利用する場合は、上記ホスト側ディレクトリをコンテナ内のログ出力先・DB 配置先へボリュームマウントします。
 
+
+## TestMailSender の使い方
+
+`TestMailSender` は `MailBatchSample/src/TestMailSender/appsettings.json` の SMTP 接続設定とメール既定値を読み込み、`TESTMAILSENDER_` プレフィックスの環境変数またはコマンドライン引数で上書きできます。
+
+```bash
+dotnet run --project MailBatchSample/src/TestMailSender/TestMailSender.csproj -- Mail:Mode=target
+dotnet run --project MailBatchSample/src/TestMailSender/TestMailSender.csproj -- Mail:Mode=nontarget
+dotnet run --project MailBatchSample/src/TestMailSender/TestMailSender.csproj -- Mail:Mode=duplicate
+dotnet run --project MailBatchSample/src/TestMailSender/TestMailSender.csproj -- Mail:Mode=custom Mail:Subject=任意件名 Mail:Body=任意本文 Mail:From=sender@example.local Mail:To=test@example.local
+```
+
+| モード | 用途 | 件名 / Message-Id |
+| --- | --- | --- |
+| `target` | バッチの対象条件に一致するメールを投入する | `Mail:TargetSubject` / 自動生成 |
+| `nontarget` または `non-target` | バッチの対象条件に一致しないメールを投入する | `Mail:NonTargetSubject` / 自動生成 |
+| `duplicate` | 重複検証用に同一 Message-Id の対象メールを投入する | `Mail:TargetSubject` / `Mail:DuplicateMessageId` |
+| `custom` | 件名などを引数で指定してメールを投入する | `Mail:Subject` / 自動生成 |
+
 ## 開発用メールサーバ
 
 開発用メールサーバには GreenMail Standalone を採用します。SMTP と IMAP を同一コンテナで提供できるため、`TestMailSender` からのメール投入と `MailBatch.Console` からの IMAP 取得を Docker Compose 上で検証できます。
