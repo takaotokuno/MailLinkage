@@ -1,4 +1,5 @@
 using MimeKit;
+using MimeKit.Utils;
 using TestMailSender.Options;
 
 namespace TestMailSender.Mail;
