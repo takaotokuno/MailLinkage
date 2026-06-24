@@ -33,6 +33,28 @@ public sealed class MailMessageFactoryTests
         Assert.Equal("duplicate-message-id@example.com", message.MessageId);
     }
 
+    [Fact]
+    public void Create_UsesCustomSubjectWhenModeIsCustom()
+    {
+        var options = CreateOptions("custom");
+
+        var message = MailMessageFactory.Create(options);
+
+        Assert.Equal("Custom subject", message.Subject);
+        Assert.EndsWith("@example.local", message.MessageId);
+    }
+
+    [Fact]
+    public void Create_ThrowsWhenCustomModeDoesNotConfigureSubject()
+    {
+        var options = CreateOptions("custom");
+        options.Mail.Subject = null;
+
+        var exception = Assert.Throws<InvalidOperationException>(() => MailMessageFactory.Create(options));
+
+        Assert.Equal("Mail:Subject is required when Mail:Mode is custom.", exception.Message);
+    }
+
     private static AppOptions CreateOptions(string mode) => new()
     {
         Mail = new MailOptions
