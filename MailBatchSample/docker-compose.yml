@@ -1,10 +1,12 @@
 # MailBatchSample Docker Compose foundation.
 #
-# Development mail server:
-# - GreenMail standalone is selected because it provides SMTP and IMAP in one
-#   lightweight sandbox container for local verification.
-# - Host execution uses published localhost ports.
-# - Container execution uses the service name `mailserver` and container ports.
+# Services:
+# - mailserver: GreenMail standalone provides SMTP and IMAP in one lightweight
+#   sandbox container for local verification.
+# - mailreceiver-api: ASP.NET Core Web API receives extracted mail data over HTTP.
+#
+# Host execution uses published localhost ports. Container execution uses service
+# names (`mailserver`, `mailreceiver-api`) and container ports.
 name: mail-batch-sample
 
 services:
@@ -23,6 +25,22 @@ services:
       # Host-side ports are intentionally non-privileged and stable for local tools.
       - "${MAILSERVER_SMTP_HOST_PORT:-1025}:3025"
       - "${MAILSERVER_IMAP_HOST_PORT:-1143}:3143"
+    networks:
+      - mail-batch-sample
+
+  mailreceiver-api:
+    build:
+      context: ..
+      dockerfile: MailBatchSample/src/MailReceiver.Api/Dockerfile
+    container_name: mail-batch-sample-mailreceiver-api
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__MailReceiver: Data Source=/app/data/mailreceiver.db
+    ports:
+      - "${MAILRECEIVER_API_HOST_PORT:-5000}:8080"
+    volumes:
+      - mail-batch-sample-data:/app/data
     networks:
       - mail-batch-sample
 
