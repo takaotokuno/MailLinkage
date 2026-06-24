@@ -14,7 +14,7 @@ try
 
     if (!string.IsNullOrWhiteSpace(options.Smtp.UserName))
     {
-        await smtpClient.AuthenticateAsync(options.Smtp.UserName, options.Smtp.Password);
+        await smtpClient.AuthenticateAsync(options.Smtp.UserName, options.Smtp.Password!);
     }
 
     await smtpClient.SendAsync(message);

@@ -17,7 +17,8 @@
       ],
       "settings": {
         "dotnet.defaultSolution": "MailLinkage.sln",
-        "terminal.integrated.defaultProfile.linux": "bash"
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "editor.codeLens": true
       }
     }
   },

@@ -101,10 +101,13 @@ static async Task<Ok<List<ReceivedMailResponse>>> ListReceivedMailsAsync(
     var mails = await dbContext.ReceivedMails
         .AsNoTracking()
         .OrderBy(mail => mail.Id)
-        .Select(mail => ToResponse(mail))
         .ToListAsync(cancellationToken);
 
-    return TypedResults.Ok(mails);
+    var responses = mails
+        .Select(ToResponse)
+        .ToList();
+
+    return TypedResults.Ok(responses);
 }
 
 static async Task<Results<Ok<ReceivedMailResponse>, NotFound<ProblemDetails>>> GetReceivedMailByIdAsync(
