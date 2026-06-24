@@ -1,3 +1,4 @@
+using Xunit;
 using MailBatch.Console.Mail;
 using MimeKit;
 

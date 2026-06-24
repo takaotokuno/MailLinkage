@@ -1,3 +1,4 @@
+using Xunit;
 using TestMailSender.Mail;
 using TestMailSender.Options;
 
