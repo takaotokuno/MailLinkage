@@ -10,7 +10,6 @@ RUN dotnet restore MailBatchSample/src/MailReceiver.Api/MailReceiver.Api.csproj
 COPY MailBatchSample/src/MailReceiver.Api/ MailBatchSample/src/MailReceiver.Api/
 RUN dotnet publish MailBatchSample/src/MailReceiver.Api/MailReceiver.Api.csproj \
     --configuration Release \
-    --no-restore \
     --output /app/publish
 
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
