@@ -1,0 +1,19 @@
+# Build outputs and NuGet restore artifacts must be generated inside the
+# container. Copying host obj/bin directories can overwrite the container's
+# restore results and make `dotnet publish --no-restore` fail with NETSDK1064.
+**/bin/
+**/obj/
+
+# Local/editor metadata that is not needed for Docker builds.
+.git/
+.gitignore
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+
+# Runtime data and logs.
+**/*.db
+**/*.db-*
+**/logs/
