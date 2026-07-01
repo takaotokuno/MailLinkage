@@ -32,4 +32,4 @@ jobs:
         run: dotnet build MailLinkage.sln --configuration Release --no-restore
 
       - name: Test
-        run: dotnet test MailLinkage.sln --configuration Release --no-build --verbosity normal
+        run: dotnet test MailLinkage.sln --configuration Debug --no-restore --verbosity normal
