@@ -111,3 +111,46 @@ curl http://localhost:5000/api/received-mails
 | Compose 内コンテナ | `mailserver:3025` | `mailserver:3143` | `test@example.local` / `password` |
 
 ホスト側公開ポートを変更したい場合は、Compose 起動時に `MAILSERVER_SMTP_HOST_PORT` または `MAILSERVER_IMAP_HOST_PORT` を指定する。ユーザー定義を変更したい場合は、GreenMail のユーザー定義形式で `MAILSERVER_USERS` を指定する。例: `MAILSERVER_USERS=another:secret@example.local`。
+
+
+## トラブルシュート
+
+### Docker Compose の起動に失敗する
+
+- `docker compose -f MailBatchSample/docker-compose.yml config` で Compose 定義を検証する。
+- ホスト側の `1025`、`1143`、`5000` が使用中の場合は、`MAILSERVER_SMTP_HOST_PORT`、`MAILSERVER_IMAP_HOST_PORT`、`MAILRECEIVER_API_HOST_PORT` で公開ポートを変更する。
+- ポートを変更した場合は、ホストから実行する `TestMailSender`、`MailBatch.Console`、確認用コマンドの接続先も変更後の値へ合わせる。
+
+### API の起動確認に失敗する
+
+- `docker compose -f MailBatchSample/docker-compose.yml ps` で API コンテナの状態を確認する。
+- `docker compose -f MailBatchSample/docker-compose.yml logs mailreceiver-api` で起動時例外や SQLite の作成エラーを確認する。
+- `MailBatchSample/data/` が作成できない場合は、ホスト側ディレクトリの作成権限を確認する。
+
+### SMTP / IMAP に接続できない
+
+- SMTP は `nc -vz localhost 1025`、IMAP は `nc -vz localhost 1143` で疎通を確認する。
+- GreenMail の初期ユーザーを変更している場合は、`MAILSERVER_USERS`、SMTP 送信設定、IMAP 取得設定のユーザー名とパスワードが一致していることを確認する。
+- Compose 内コンテナから接続する場合は、`localhost` ではなく `mailserver:3025` と `mailserver:3143` を利用する。
+
+### バッチの取得件数が 0 件になる
+
+- `curl --url "imap://localhost:1143/INBOX" --user "test@example.local:password"` で対象メールが `INBOX` に存在することを確認する。
+- 件名に検索条件の既定値 `連携対象` が含まれることを確認する。
+- 検索条件や既読・フラグの扱いを変更している場合は、設定値とメールの状態が一致していることを確認する。
+
+### API 連携に失敗する
+
+- `curl http://localhost:5000/health` で API が起動していることを確認する。
+- バッチログ `MailBatchSample/logs/batch-yyyyMMdd.log` の HTTP ステータスコードとエラー内容を確認する。
+- 同一 `Message-Id` の再処理で `409 Conflict` が返る場合は、重複登録防止として想定された挙動である。
+
+### 検証データを初期化する
+
+```bash
+docker compose -f MailBatchSample/docker-compose.yml down
+rm -rf MailBatchSample/data MailBatchSample/logs
+docker compose -f MailBatchSample/docker-compose.yml up -d --build
+```
+
+`data/` と `logs/` はローカル検証用の実行データのため、初期化すると保存済みメールとバッチログは削除される。

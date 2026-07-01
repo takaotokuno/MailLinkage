@@ -37,7 +37,6 @@ docker compose -f MailBatchSample/docker-compose.yml config
 - [アプリケーション設計](docs/03-application-design.md)
 - [データ・API 設計](docs/04-data-and-api-design.md)
 - [実行・検証設計](docs/05-runtime-and-verification.md)
-- [タスクリスト](docs/99-task-list.md)
 
 ## 想定ディレクトリ構成
 
@@ -245,6 +244,55 @@ dotnet run --project MailBatchSample/src/MailBatch.Console/MailBatch.Console.csp
 # 6. 連携先 API に保存されたことを確認する
 curl http://localhost:5000/api/received-mails
 ```
+
+## トラブルシュート
+
+### Docker Compose の起動に失敗する
+
+- `docker compose -f MailBatchSample/docker-compose.yml config` で Compose 定義が解釈できることを確認してください。
+- SMTP、IMAP、API のホスト側ポートが既に利用されている場合は、次のように公開ポートを変更して起動してください。
+
+```bash
+MAILSERVER_SMTP_HOST_PORT=2025 MAILSERVER_IMAP_HOST_PORT=2143 MAILRECEIVER_API_HOST_PORT=5500 docker compose -f MailBatchSample/docker-compose.yml up -d --build
+```
+
+ポートを変更した場合は、`TestMailSender`、`MailBatch.Console`、確認用 `curl` の接続先も同じ値に合わせてください。
+
+### API の `/health` が成功しない
+
+- `docker compose -f MailBatchSample/docker-compose.yml ps` で `mailreceiver-api` が起動していることを確認してください。
+- `docker compose -f MailBatchSample/docker-compose.yml logs mailreceiver-api` で起動エラーを確認してください。
+- `MailBatchSample/data/` に DB ファイルを作成できない場合は、ディレクトリの権限を確認し、必要に応じて `mkdir -p MailBatchSample/data` を実行してください。
+
+### テストメールを送信できない
+
+- `nc -vz localhost 1025` で SMTP ポートへ接続できることを確認してください。
+- ホスト側 SMTP ポートを変更している場合は、`TESTMAILSENDER_Smtp__Port` またはコマンドライン引数 `Smtp:Port` で `TestMailSender` の接続先を上書きしてください。
+- 送信先ユーザーを変更している場合は、`MAILSERVER_USERS` と `Mail:To` の設定が一致していることを確認してください。
+
+### バッチでメールを取得できない
+
+- `curl --url "imap://localhost:1143/INBOX" --user "test@example.local:password"` でメールボックスにメールが存在することを確認してください。
+- 件名が既定の対象条件 `連携対象` を含むことを確認してください。対象外メールを投入した場合、バッチの取得件数は 0 件になります。
+- ホスト側 IMAP ポートを変更している場合は、`MAILBATCH_Imap__Port` またはコマンドライン引数 `Imap:Port` で `MailBatch.Console` の接続先を上書きしてください。
+
+### API 連携または保存結果を確認できない
+
+- `curl http://localhost:5000/api/received-mails` で API 側に保存済みデータがあるか確認してください。
+- `MailBatchSample/logs/batch-$(date +%Y%m%d).log` に API のステータスコードやエラー内容が出力されているか確認してください。
+- 同一 `Message-Id` のメールを再処理した場合は、重複として `409 Conflict` が記録されることがあります。これは重複登録を防ぐための想定挙動です。
+
+### 検証データを初期化したい
+
+検証を最初からやり直す場合は、Compose を停止してから実行データを削除します。
+
+```bash
+docker compose -f MailBatchSample/docker-compose.yml down
+rm -rf MailBatchSample/data MailBatchSample/logs
+docker compose -f MailBatchSample/docker-compose.yml up -d --build
+```
+
+`data/` と `logs/` はローカル検証用の実行データであり、ソース管理対象には含めません。
 
 ## main ブランチ統合時の自動テスト
 
