@@ -13,11 +13,18 @@ internal static class ReceivedMailMapper
             ?? (message.Date != DateTimeOffset.MinValue ? message.Date.ToUniversalTime() : DateTimeOffset.UtcNow);
 
         return new ReceivedMailRequest(
-            MessageId: string.IsNullOrWhiteSpace(message.MessageId) ? $"<missing-{Guid.NewGuid():N}>" : message.MessageId,
+            MessageId: GetMessageId(message),
             Sender: message.From.Mailboxes.FirstOrDefault()?.Address ?? message.From.ToString(),
             Subject: message.Subject ?? string.Empty,
             Body: ExtractBody(message),
             ReceivedAt: receivedAt);
+    }
+
+    private static string GetMessageId(MimeMessage message)
+    {
+        var messageId = message.Headers[HeaderId.MessageId];
+
+        return string.IsNullOrWhiteSpace(messageId) ? $"<missing-{Guid.NewGuid():N}>" : messageId;
     }
 
     private static string? ExtractBody(MimeMessage message)
