@@ -2,7 +2,7 @@
 
 ## ローカル実行の前提
 
-この手順は Dev Container 内で実行することを既定とする。Dev Container 内の `localhost` は Dev Container 自身を指すため、`scripts/dev-compose-up.sh` で Dev Container を Compose ネットワークへ接続し、`mailserver` と `mailreceiver-api` のサービス名を利用する。ホスト OS のターミナルで実行する場合のみ、Compose が公開した `localhost` のポートを利用する。
+この手順は Dev Container 内で実行することを既定とする。Dev Container は Docker Compose サービスとして検証用サービスと同じ Compose ネットワークに参加しているため、`mailserver` と `mailreceiver-api` のサービス名を利用する。Dev Container 内の `localhost` は Dev Container 自身を指すため、ホスト OS のターミナルで実行する場合のみ、Compose が公開した `localhost` のポートを利用する。
 
 - .NET 8 SDK がインストールされていること。
 - Docker と Docker Compose が利用できること。
@@ -11,7 +11,7 @@
 ## 起動手順案
 
 ```bash
-./scripts/dev-compose-up.sh
+docker compose -f MailBatchSample/docker-compose.yml up -d --build mailserver mailreceiver-api
 ```
 
 起動後に確認する項目は次の通り。
@@ -149,9 +149,10 @@ curl http://mailreceiver-api:8080/api/received-mails
 ### 検証データを初期化する
 
 ```bash
-./scripts/dev-compose-down.sh
+docker compose -f MailBatchSample/docker-compose.yml stop mailserver mailreceiver-api
+docker compose -f MailBatchSample/docker-compose.yml rm -f mailserver mailreceiver-api
 rm -rf MailBatchSample/data MailBatchSample/logs
-./scripts/dev-compose-up.sh
+docker compose -f MailBatchSample/docker-compose.yml up -d --build mailserver mailreceiver-api
 ```
 
 `data/` と `logs/` はローカル検証用の実行データのため、初期化すると保存済みメールとバッチログは削除される。

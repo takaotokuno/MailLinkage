@@ -1,0 +1,21 @@
+# Dev Container service definition.
+#
+# This file is combined with ../MailBatchSample/docker-compose.yml by
+# .devcontainer/devcontainer.json so the editor container starts on the same
+# Compose network as the local verification services. That lets tools running
+# inside the Dev Container reach services by Docker DNS names such as
+# mailserver:3025 and mailreceiver-api:8080 without docker network connect.
+services:
+  devcontainer:
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+    command: sleep infinity
+    init: true
+    volumes:
+      - ..:/workspaces/MailLinkage:cached
+      - /var/run/docker.sock:/var/run/docker-host.sock
+    environment:
+      DOCKER_HOST: unix:///var/run/docker-host.sock
+    networks:
+      - mail-batch-sample
