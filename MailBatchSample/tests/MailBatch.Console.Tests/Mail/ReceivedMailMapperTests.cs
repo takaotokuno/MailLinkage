@@ -6,6 +6,7 @@ namespace MailBatch.Console.Tests.Mail;
 
 public sealed class ReceivedMailMapperTests
 {
+    // IMAP の内部日時とプレーンテキスト本文がある場合に、それらを API リクエストへ反映することを確認する。
     [Fact]
     public void ToRequest_UsesInternalDateAndPlainTextBodyWhenAvailable()
     {
@@ -25,6 +26,7 @@ public sealed class ReceivedMailMapperTests
         Assert.Equal(internalDate.ToUniversalTime(), request.ReceivedAt);
     }
 
+    // プレーンテキスト本文がない場合に HTML 本文を読みやすいテキストへ変換することを確認する。
     [Fact]
     public void ToRequest_ConvertsHtmlBodyToReadableTextWhenPlainTextBodyIsMissing()
     {
@@ -39,6 +41,7 @@ public sealed class ReceivedMailMapperTests
         Assert.Equal("Hello  world", request.Body);
     }
 
+    // IMAP の内部日時がない場合にメールヘッダーの日付を受信日時として使うことを確認する。
     [Fact]
     public void ToRequest_UsesMessageDateWhenInternalDateIsMissing()
     {
@@ -54,6 +57,7 @@ public sealed class ReceivedMailMapperTests
         Assert.Equal(message.Date.ToUniversalTime(), request.ReceivedAt);
     }
 
+    // MessageId や本文などの元データが不足している場合に代替 MessageId を生成し、本文 null を許容することを確認する。
     [Fact]
     public void ToRequest_GeneratesMessageIdAndAllowsNullBodyWhenSourceFieldsAreMissing()
     {

@@ -43,6 +43,7 @@ public sealed class ReceivedMailsApiTests : IAsyncLifetime
         }
     }
 
+    // ヘルスチェックエンドポイントが正常応答し、状態として Healthy を返すことを確認する。
     [Fact]
     public async Task Health_ReturnsHealthyStatus()
     {
@@ -55,6 +56,7 @@ public sealed class ReceivedMailsApiTests : IAsyncLifetime
         Assert.Equal("Healthy", content?["status"]);
     }
 
+    // 受信メール作成 API がメールを保存し、同じ MessageId の重複登録を拒否することを確認する。
     [Fact]
     public async Task CreateReceivedMail_PersistsMailAndRejectsDuplicateMessageId()
     {
@@ -79,6 +81,7 @@ public sealed class ReceivedMailsApiTests : IAsyncLifetime
         Assert.Equal(request.Body, mail.Body);
     }
 
+    // 受信メール作成 API が入力値の前後空白を除去し、作成したリソースを ID で取得できることを確認する。
     [Fact]
     public async Task CreateReceivedMail_TrimsValuesAndReturnsCreatedResourceById()
     {
@@ -105,6 +108,7 @@ public sealed class ReceivedMailsApiTests : IAsyncLifetime
         Assert.Equal(new DateTimeOffset(2026, 6, 24, 12, 0, 0, TimeSpan.FromHours(9)), fetchedMail?.ReceivedAt);
     }
 
+    // 存在しない受信メール ID を取得しようとした場合に NotFound を返すことを確認する。
     [Fact]
     public async Task GetReceivedMailById_ReturnsNotFoundForUnknownId()
     {
@@ -115,6 +119,7 @@ public sealed class ReceivedMailsApiTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    // 不正な受信メール作成リクエストに対して検証エラーの詳細を返すことを確認する。
     [Fact]
     public async Task CreateReceivedMail_ReturnsValidationProblemForInvalidRequest()
     {

@@ -8,6 +8,7 @@ namespace MailBatch.Console.Tests.Mail;
 
 public sealed class MailSearchQueryFactoryTests
 {
+    // 検索条件が設定されていない場合に全件検索クエリを返すことを確認する。
     [Fact]
     public void Create_ReturnsAllQueryWhenNoFiltersAreConfigured()
     {
@@ -16,6 +17,7 @@ public sealed class MailSearchQueryFactoryTests
         Assert.Equal(SearchQuery.All, query);
     }
 
+    // 未読、件名、指定日数以降の各条件が設定された場合に検索クエリへ含まれることを確認する。
     [Fact]
     public void Create_IncludesUnreadSubjectAndSinceFiltersWhenConfigured()
     {
@@ -37,6 +39,7 @@ public sealed class MailSearchQueryFactoryTests
         Assert.Contains(expectedDate.ToString(CultureInfo.InvariantCulture), GetSearchValues(query));
     }
 
+    // SinceDays が 0 以下の場合に日付フィルターを無視して全件検索クエリを返すことを確認する。
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]
