@@ -31,6 +31,69 @@ nc -vz mailserver 3143
 
 Dev Container 内で実行するアプリケーションは、同一 Compose ネットワーク上の `mailserver:3025` と `mailserver:3143` を利用する。ホスト OS で直接実行する場合は `localhost:1025` と `localhost:1143` へ上書きする。
 
+
+## テストメール送信
+
+Docker Compose 起動後、リポジトリルートから `TestMailSender` を実行して検証用メールを投入する。`TestMailSender` は `MailBatchSample/src/TestMailSender/appsettings.json` の SMTP 接続設定とメール既定値を読み込み、`TESTMAILSENDER_` プレフィックスの環境変数またはコマンドライン引数で上書きできる。
+
+```bash
+# バッチ対象条件に一致するメールを送信する
+dotnet run --project MailBatchSample/src/TestMailSender/TestMailSender.csproj -- Mail:Mode=target
+
+# バッチ対象条件に一致しないメールを送信する
+dotnet run --project MailBatchSample/src/TestMailSender/TestMailSender.csproj -- Mail:Mode=nontarget
+
+# 重複検証用に同一 Message-Id の対象メールを送信する
+dotnet run --project MailBatchSample/src/TestMailSender/TestMailSender.csproj -- Mail:Mode=duplicate
+
+# 件名などを引数で指定してメールを送信する
+dotnet run --project MailBatchSample/src/TestMailSender/TestMailSender.csproj -- Mail:Mode=custom Mail:Subject=任意件名 Mail:Body=任意本文 Mail:From=sender@example.local Mail:To=test@example.local
+```
+
+| モード | 用途 | 件名 / Message-Id |
+| --- | --- | --- |
+| `target` | バッチの対象条件に一致するメールを投入する | `Mail:TargetSubject` / 自動生成 |
+| `nontarget` または `non-target` | バッチの対象条件に一致しないメールを投入する | `Mail:NonTargetSubject` / 自動生成 |
+| `duplicate` | 重複検証用に同一 Message-Id の対象メールを投入する | `Mail:TargetSubject` / `Mail:DuplicateMessageId` |
+| `custom` | 件名などを引数で指定してメールを投入する | `Mail:Subject` / 自動生成 |
+
+## メールボックス確認
+
+メールボックスの一覧は IMAP 経由で確認する。`curl` が IMAP に対応している環境では、次のコマンドで `INBOX` のメッセージ一覧を確認できる。
+
+```bash
+curl --url "imap://mailserver:3143/INBOX" --user "test@example.local:password"
+```
+
+特定メールの内容を確認する場合は、一覧で確認したメッセージ番号を指定する。
+
+```bash
+curl --url "imap://mailserver:3143/INBOX;MAILINDEX=1" --user "test@example.local:password"
+```
+
+## バッチ起動と結果確認
+
+`MailBatch.Console` は、IMAP で `INBOX` から対象メールを検索し、抽出したメール情報を `MailReceiver.Api` へ POST する。Docker Compose 起動後、リポジトリルートから次のように実行する。
+
+```bash
+dotnet run --project MailBatchSample/src/MailBatch.Console/MailBatch.Console.csproj
+```
+
+既定では次の接続先を利用する。
+
+| 用途 | 既定値 |
+| --- | --- |
+| IMAP | `mailserver:3143` |
+| API | `http://mailreceiver-api:8080/api/received-mails` |
+| 対象件名 | `連携対象` |
+| ログ出力先 | `MailBatchSample/logs/` |
+
+バッチ実行後、ログは日次ファイルとして `MailBatchSample/logs/batch-yyyyMMdd.log` に出力される。
+
+```bash
+cat MailBatchSample/logs/batch-$(date +%Y%m%d).log
+```
+
 ## 検証シナリオ
 
 ### 正常系
@@ -156,3 +219,9 @@ docker compose -f MailBatchSample/docker-compose.yml up -d --build mailserver ma
 ```
 
 `data/` と `logs/` はローカル検証用の実行データのため、初期化すると保存済みメールとバッチログは削除される。
+
+## main ブランチ統合時の自動テスト
+
+GitHub Actions の `CI` ワークフローで、`main` ブランチ向け Pull Request 作成・更新時と `main` ブランチへの push 時に `dotnet restore`、`dotnet build`、`dotnet test` を自動実行する。
+
+Pull Request のテスト失敗時にマージできないようにするには、GitHub リポジトリ側で `main` ブランチに対する Branch protection rule または Ruleset を設定し、必須ステータスチェックとして `Build and test` を指定する。これにより、`CI / Build and test` が成功するまで Pull Request のマージをブロックできる。
