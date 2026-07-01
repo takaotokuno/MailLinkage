@@ -5,6 +5,9 @@ namespace TestMailSender.Configuration;
 
 internal static class AppConfiguration
 {
+    /// <summary>
+    /// アプリケーション設定ファイル、環境変数、コマンドライン引数から設定を読み込み、検証済みのオプションを返します。
+    /// </summary>
     public static AppOptions Load(string[] args)
     {
         var configuration = new ConfigurationBuilder()

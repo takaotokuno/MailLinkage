@@ -5,6 +5,9 @@ internal sealed class AppOptions
     public SmtpOptions Smtp { get; init; } = new();
     public MailOptions Mail { get; init; } = new();
 
+    /// <summary>
+    /// SMTP 設定とメール設定が送信に必要な条件を満たしているか検証します。
+    /// </summary>
     public void Validate()
     {
         Require(Smtp.Host, "Smtp:Host");
@@ -42,6 +45,9 @@ internal sealed class AppOptions
         }
     }
 
+    /// <summary>
+    /// 指定された設定値が空でないことを確認し、未設定の場合は例外をスローします。
+    /// </summary>
     private static void Require(string? value, string key)
     {
         if (string.IsNullOrWhiteSpace(value))

@@ -6,6 +6,9 @@ namespace TestMailSender.Mail;
 
 internal static class MailMessageFactory
 {
+    /// <summary>
+    /// 指定されたメール送信オプションに基づいて、検証用メールメッセージを作成します。
+    /// </summary>
     public static MimeMessage Create(AppOptions options)
     {
         var mode = options.Mail.Mode.Trim().ToLowerInvariant();
