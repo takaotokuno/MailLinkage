@@ -59,6 +59,7 @@ public sealed class ReceivedMailMapperTests
     {
         var message = new MimeMessage();
         message.From.Add(MailboxAddress.Parse("sender@example.com"));
+        message.Headers.Remove(HeaderId.MessageId);
 
         var request = ReceivedMailMapper.ToRequest(message, DateTimeOffset.UnixEpoch);
 

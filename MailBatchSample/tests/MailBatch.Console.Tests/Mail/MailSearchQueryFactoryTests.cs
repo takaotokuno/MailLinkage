@@ -11,7 +11,7 @@ public sealed class MailSearchQueryFactoryTests
     [Fact]
     public void Create_ReturnsAllQueryWhenNoFiltersAreConfigured()
     {
-        var query = MailSearchQueryFactory.Create(new MailSearchOptions());
+        var query = MailSearchQueryFactory.Create(new MailSearchOptions { UnreadOnly = false, SinceDays = null });
 
         Assert.Equal(SearchQuery.All, query);
     }
@@ -42,7 +42,7 @@ public sealed class MailSearchQueryFactoryTests
     [InlineData(-1)]
     public void Create_IgnoresNonPositiveSinceDays(int sinceDays)
     {
-        var query = MailSearchQueryFactory.Create(new MailSearchOptions { SinceDays = sinceDays });
+        var query = MailSearchQueryFactory.Create(new MailSearchOptions { UnreadOnly = false, SinceDays = sinceDays });
 
         Assert.Equal(SearchQuery.All, query);
     }
