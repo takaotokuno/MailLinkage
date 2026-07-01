@@ -7,6 +7,9 @@ public sealed class MailReceiverDbContext(DbContextOptions<MailReceiverDbContext
 {
     public DbSet<ReceivedMail> ReceivedMails => Set<ReceivedMail>();
 
+    /// <summary>
+    /// 受信メールエンティティのテーブル、列、制約を構成します。
+    /// </summary>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         var receivedMail = modelBuilder.Entity<ReceivedMail>();

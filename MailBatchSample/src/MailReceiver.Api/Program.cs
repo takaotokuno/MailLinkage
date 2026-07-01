@@ -23,18 +23,27 @@ MapEndpoints(app);
 
 app.Run();
 
+/// <summary>
+/// アプリケーションのログ出力プロバイダーを構成します。
+/// </summary>
 static void ConfigureLogging(ILoggingBuilder logging)
 {
     logging.ClearProviders();
     logging.AddJsonConsole();
 }
 
+/// <summary>
+/// アプリケーションで使用するサービスをDIコンテナーに登録します。
+/// </summary>
 static void ConfigureServices(IServiceCollection services, IConfiguration configuration)
 {
     services.AddProblemDetails();
     services.AddDbContext<MailReceiverDbContext>(options => ConfigureSqlite(options, configuration));
 }
 
+/// <summary>
+/// MailReceiver用のSQLite接続をEntity Framework Coreに設定します。
+/// </summary>
 static void ConfigureSqlite(DbContextOptionsBuilder options, IConfiguration configuration)
 {
     var connectionString = configuration.GetConnectionString("MailReceiver")
@@ -43,23 +52,35 @@ static void ConfigureSqlite(DbContextOptionsBuilder options, IConfiguration conf
     options.UseSqlite(connectionString);
 }
 
+/// <summary>
+/// HTTPリクエスト処理パイプラインのミドルウェアを構成します。
+/// </summary>
 static void ConfigureMiddleware(WebApplication app)
 {
     app.UseExceptionHandler();
 }
 
+/// <summary>
+/// MailReceiver APIで公開するエンドポイントを登録します。
+/// </summary>
 static void MapEndpoints(WebApplication app)
 {
     MapHealthCheckEndpoint(app);
     MapReceivedMailEndpoints(app);
 }
 
+/// <summary>
+/// アプリケーションの稼働状態を返すヘルスチェックエンドポイントを登録します。
+/// </summary>
 static void MapHealthCheckEndpoint(WebApplication app)
 {
     app.MapGet("/health", () => Results.Ok(new { status = "Healthy" }))
         .WithName("HealthCheck");
 }
 
+/// <summary>
+/// 受信メールリソースに関するエンドポイントグループを登録します。
+/// </summary>
 static void MapReceivedMailEndpoints(WebApplication app)
 {
     var receivedMails = app.MapGroup("/api/received-mails")
@@ -70,6 +91,9 @@ static void MapReceivedMailEndpoints(WebApplication app)
     MapGetReceivedMailByIdEndpoint(receivedMails);
 }
 
+/// <summary>
+/// 受信メールを新規登録するエンドポイントを登録します。
+/// </summary>
 static void MapCreateReceivedMailEndpoint(RouteGroupBuilder receivedMails)
 {
     receivedMails.MapPost(string.Empty, CreateReceivedMailAsync)
@@ -79,6 +103,9 @@ static void MapCreateReceivedMailEndpoint(RouteGroupBuilder receivedMails)
         .ProducesProblem(StatusCodes.Status409Conflict);
 }
 
+/// <summary>
+/// 登録済みの受信メール一覧を取得するエンドポイントを登録します。
+/// </summary>
 static void MapListReceivedMailsEndpoint(RouteGroupBuilder receivedMails)
 {
     receivedMails.MapGet(string.Empty, ListReceivedMailsAsync)
@@ -86,6 +113,9 @@ static void MapListReceivedMailsEndpoint(RouteGroupBuilder receivedMails)
         .Produces<IReadOnlyList<ReceivedMailResponse>>();
 }
 
+/// <summary>
+/// 指定されたIDの受信メールを取得するエンドポイントを登録します。
+/// </summary>
 static void MapGetReceivedMailByIdEndpoint(RouteGroupBuilder receivedMails)
 {
     receivedMails.MapGet("/{id:long}", GetReceivedMailByIdAsync)
@@ -94,6 +124,9 @@ static void MapGetReceivedMailByIdEndpoint(RouteGroupBuilder receivedMails)
         .ProducesProblem(StatusCodes.Status404NotFound);
 }
 
+/// <summary>
+/// 登録済みの受信メールをID昇順で取得します。
+/// </summary>
 static async Task<Ok<List<ReceivedMailResponse>>> ListReceivedMailsAsync(
     MailReceiverDbContext dbContext,
     CancellationToken cancellationToken)
@@ -110,6 +143,9 @@ static async Task<Ok<List<ReceivedMailResponse>>> ListReceivedMailsAsync(
     return TypedResults.Ok(responses);
 }
 
+/// <summary>
+/// 指定されたIDに一致する受信メールを取得します。
+/// </summary>
 static async Task<Results<Ok<ReceivedMailResponse>, NotFound<ProblemDetails>>> GetReceivedMailByIdAsync(
     long id,
     MailReceiverDbContext dbContext,
@@ -132,6 +168,9 @@ static async Task<Results<Ok<ReceivedMailResponse>, NotFound<ProblemDetails>>> G
     return TypedResults.Ok(ToResponse(mail));
 }
 
+/// <summary>
+/// 受信メール登録リクエストを検証し、重複がなければデータベースへ保存します。
+/// </summary>
 static async Task<Results<CreatedAtRoute<ReceivedMailResponse>, ValidationProblem, Conflict<ProblemDetails>>> CreateReceivedMailAsync(
     CreateReceivedMailRequest request,
     MailReceiverDbContext dbContext,
@@ -189,6 +228,9 @@ static async Task<Results<CreatedAtRoute<ReceivedMailResponse>, ValidationProble
         new { id = receivedMail.Id });
 }
 
+/// <summary>
+/// 受信メール登録リクエストの入力値を検証し、保存用に正規化します。
+/// </summary>
 static Dictionary<string, string[]> Validate(
     CreateReceivedMailRequest request,
     out NormalizedCreateReceivedMailRequest normalizedRequest,
@@ -228,6 +270,9 @@ static Dictionary<string, string[]> Validate(
     return errors;
 }
 
+/// <summary>
+/// 必須入力と最大文字数に関する検証エラーを追加します。
+/// </summary>
 static void AddRequiredAndLengthErrors(
     Dictionary<string, string[]> errors,
     string fieldName,
@@ -246,15 +291,24 @@ static void AddRequiredAndLengthErrors(
     }
 }
 
+/// <summary>
+/// 指定された文字列がメールアドレスらしい形式かどうかを判定します。
+/// </summary>
 static bool IsPlausibleEmailAddress(string value)
 {
     var atSignIndex = value.IndexOf('@');
     return atSignIndex > 0 && atSignIndex < value.Length - 1;
 }
 
+/// <summary>
+/// データベース更新例外がSQLiteの一意制約違反かどうかを判定します。
+/// </summary>
 static bool IsUniqueConstraintViolation(DbUpdateException exception) =>
     exception.InnerException is SqliteException { SqliteErrorCode: 19 };
 
+/// <summary>
+/// messageId重複時に返すProblemDetailsを作成します。
+/// </summary>
 static ProblemDetails CreateDuplicateProblemDetails(string messageId) => new()
 {
     Title = "Received mail already exists.",
@@ -262,6 +316,9 @@ static ProblemDetails CreateDuplicateProblemDetails(string messageId) => new()
     Status = StatusCodes.Status409Conflict
 };
 
+/// <summary>
+/// 受信メールエンティティをAPIレスポンスに変換します。
+/// </summary>
 static ReceivedMailResponse ToResponse(ReceivedMail mail) => new(
     mail.Id,
     mail.MessageId,
@@ -271,6 +328,9 @@ static ReceivedMailResponse ToResponse(ReceivedMail mail) => new(
     mail.ReceivedAt,
     mail.CreatedAt);
 
+/// <summary>
+/// アプリケーション起動時にMailReceiverデータベースを初期化します。
+/// </summary>
 static async Task InitializeDatabaseAsync(WebApplication app)
 {
     using var scope = app.Services.CreateScope();
@@ -286,6 +346,9 @@ static async Task InitializeDatabaseAsync(WebApplication app)
     logger.LogInformation("MailReceiver database was initialized.");
 }
 
+/// <summary>
+/// SQLiteデータベースファイルの配置先ディレクトリが存在しない場合に作成します。
+/// </summary>
 static void EnsureSqliteDirectoryExists(string connectionString, ILogger logger)
 {
     var builder = new SqliteConnectionStringBuilder(connectionString);
