@@ -200,6 +200,8 @@ dotnet run --project MailBatchSample/src/MailBatch.Console/MailBatch.Console.csp
 cat MailBatchSample/logs/batch-$(date +%Y%m%d).log
 ```
 
+ホスト側公開ポートは `MAILSERVER_SMTP_HOST_PORT` と `MAILSERVER_IMAP_HOST_PORT`、GreenMail の初期ユーザー定義は `MAILSERVER_USERS` で上書きできます。既定値はローカル検証用の固定値であり、本番環境では利用しません。
+
 ## 連携先サーバ確認方法
 
 `MailReceiver.Api` の起動確認は `/health` で行います。
@@ -243,3 +245,9 @@ dotnet run --project MailBatchSample/src/MailBatch.Console/MailBatch.Console.csp
 # 6. 連携先 API に保存されたことを確認する
 curl http://localhost:5000/api/received-mails
 ```
+
+## main ブランチ統合時の自動テスト
+
+GitHub Actions の `CI` ワークフローで、`main` ブランチ向け Pull Request 作成・更新時と `main` ブランチへの push 時に `dotnet restore`、`dotnet build`、`dotnet test` を自動実行します。
+
+Pull Request のテスト失敗時にマージできないようにするには、GitHub リポジトリ側で `main` ブランチに対する Branch protection rule または Ruleset を設定し、必須ステータスチェックとして `Build and test` を指定してください。これにより、`CI / Build and test` が成功するまで Pull Request のマージをブロックできます。
