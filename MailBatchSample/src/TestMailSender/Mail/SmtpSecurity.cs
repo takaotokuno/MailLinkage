@@ -4,6 +4,9 @@ namespace TestMailSender.Mail;
 
 internal static class SmtpSecurity
 {
+    /// <summary>
+    /// SSL 利用設定を MailKit の SMTP 接続用セキュリティオプションへ変換します。
+    /// </summary>
     public static SecureSocketOptions ToSecureSocketOptions(bool useSsl)
     {
         // SecureSocketOptions : MailKitのSMTP接続時の暗号化方式を指定するenum
