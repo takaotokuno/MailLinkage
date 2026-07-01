@@ -2,6 +2,8 @@
 
 ## ローカル実行の前提
 
+この手順は Dev Container 内で実行することを既定とする。Dev Container 内の `localhost` は Dev Container 自身を指すため、Docker Compose がホスト側に公開した SMTP / IMAP / HTTP ポートへ接続するときは `host.docker.internal` を利用する。ホスト OS のターミナルで実行する場合のみ、`host.docker.internal` を `localhost` に読み替える。
+
 - .NET 8 SDK がインストールされていること。
 - Docker と Docker Compose が利用できること。
 - リポジトリ配下に `logs/` と `data/` を作成できること。
@@ -15,8 +17,8 @@ docker compose up -d --build
 
 起動後に確認する項目は次の通り。
 
-1. GreenMail の SMTP ポートへ `localhost:1025` で接続できる。
-2. GreenMail の IMAP ポートへ `localhost:1143` で接続できる。
+1. GreenMail の SMTP ポートへ `host.docker.internal:1025` で接続できる。
+2. GreenMail の IMAP ポートへ `host.docker.internal:1143` で接続できる。
 3. テスト用アカウント `test@example.local` / `password` で認証できる。
 4. API の `/health` が成功する。
 5. `data/mailreceiver.db` が作成される、または API 起動時に作成可能である。
@@ -24,11 +26,11 @@ docker compose up -d --build
 SMTP と IMAP の疎通確認例は次の通り。
 
 ```bash
-nc -vz localhost 1025
-nc -vz localhost 1143
+nc -vz host.docker.internal 1025
+nc -vz host.docker.internal 1143
 ```
 
-ホスト実行のアプリケーションは `localhost:1025` と `localhost:1143` を利用する。Docker Compose 内でアプリケーションをコンテナ実行する場合は、同一 Compose ネットワーク上の `mailserver:3025` と `mailserver:3143` を利用する。
+Dev Container 内で実行するアプリケーションは `host.docker.internal:1025` と `host.docker.internal:1143` を利用する。ホスト OS で直接実行する場合は `localhost:1025` と `localhost:1143` へ上書きする。Docker Compose 内でアプリケーションをコンテナ実行する場合は、同一 Compose ネットワーク上の `mailserver:3025` と `mailserver:3143` を利用する。
 
 ## 検証シナリオ
 
@@ -89,7 +91,7 @@ sqlite3 data/mailreceiver.db "select id, message_id, sender, subject, received_a
 GET API で確認する場合は次のように確認する。
 
 ```bash
-curl http://localhost:5000/api/received-mails
+curl http://host.docker.internal:5000/api/received-mails
 ```
 
 ## 実装時の注意点
@@ -107,6 +109,7 @@ curl http://localhost:5000/api/received-mails
 
 | 実行場所 | SMTP 接続先 | IMAP 接続先 | 認証情報 |
 | --- | --- | --- | --- |
+| Dev Container | `host.docker.internal:1025` | `host.docker.internal:1143` | `test@example.local` / `password` |
 | ホスト OS | `localhost:1025` | `localhost:1143` | `test@example.local` / `password` |
 | Compose 内コンテナ | `mailserver:3025` | `mailserver:3143` | `test@example.local` / `password` |
 
@@ -129,19 +132,19 @@ curl http://localhost:5000/api/received-mails
 
 ### SMTP / IMAP に接続できない
 
-- SMTP は `nc -vz localhost 1025`、IMAP は `nc -vz localhost 1143` で疎通を確認する。
+- SMTP は `nc -vz host.docker.internal 1025`、IMAP は `nc -vz host.docker.internal 1143` で疎通を確認する。
 - GreenMail の初期ユーザーを変更している場合は、`MAILSERVER_USERS`、SMTP 送信設定、IMAP 取得設定のユーザー名とパスワードが一致していることを確認する。
-- Compose 内コンテナから接続する場合は、`localhost` ではなく `mailserver:3025` と `mailserver:3143` を利用する。
+- Dev Container 内から接続する場合は `localhost` ではなく `host.docker.internal:1025` と `host.docker.internal:1143` を利用する。Compose 内コンテナから接続する場合は `mailserver:3025` と `mailserver:3143` を利用する。
 
 ### バッチの取得件数が 0 件になる
 
-- `curl --url "imap://localhost:1143/INBOX" --user "test@example.local:password"` で対象メールが `INBOX` に存在することを確認する。
+- `curl --url "imap://host.docker.internal:1143/INBOX" --user "test@example.local:password"` で対象メールが `INBOX` に存在することを確認する。
 - 件名に検索条件の既定値 `連携対象` が含まれることを確認する。
 - 検索条件や既読・フラグの扱いを変更している場合は、設定値とメールの状態が一致していることを確認する。
 
 ### API 連携に失敗する
 
-- `curl http://localhost:5000/health` で API が起動していることを確認する。
+- `curl http://host.docker.internal:5000/health` で API が起動していることを確認する。
 - バッチログ `MailBatchSample/logs/batch-yyyyMMdd.log` の HTTP ステータスコードとエラー内容を確認する。
 - 同一 `Message-Id` の再処理で `409 Conflict` が返る場合は、重複登録防止として想定された挙動である。
 

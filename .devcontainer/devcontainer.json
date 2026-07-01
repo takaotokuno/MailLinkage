@@ -23,11 +23,19 @@
     }
   },
   "forwardPorts": [
+    1025,
+    1143,
     5000,
     5001,
     8080
   ],
   "portsAttributes": {
+    "1025": {
+      "label": "GreenMail SMTP"
+    },
+    "1143": {
+      "label": "GreenMail IMAP"
+    },
     "5000": {
       "label": "MailReceiver.Api HTTP"
     },
