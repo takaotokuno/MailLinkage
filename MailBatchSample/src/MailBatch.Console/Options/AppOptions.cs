@@ -8,6 +8,9 @@ internal sealed class AppOptions
     public ApiOptions Api { get; init; } = new();
     public ProcessingOptions Processing { get; init; } = new();
 
+    /// <summary>
+    /// アプリケーション設定の必須項目と値の範囲を検証します。
+    /// </summary>
     public void Validate()
     {
         Require(Batch.LogDirectory, "Batch:LogDirectory");
@@ -37,6 +40,9 @@ internal sealed class AppOptions
         }
     }
 
+    /// <summary>
+    /// 指定された設定値が空でないことを確認します。
+    /// </summary>
     private static void Require(string? value, string key)
     {
         if (string.IsNullOrWhiteSpace(value))

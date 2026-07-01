@@ -5,6 +5,9 @@ namespace MailBatch.Console.Configuration;
 
 internal static class AppConfiguration
 {
+    /// <summary>
+    /// コマンドライン引数、環境変数、設定ファイルからアプリケーション設定を読み込み、検証します。
+    /// </summary>
     public static AppOptions Load(string[] args)
     {
         var configuration = new ConfigurationBuilder()
