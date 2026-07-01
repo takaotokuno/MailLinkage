@@ -54,20 +54,20 @@
 
 ## 6. 検証とテスト
 
-- [ ] Docker Compose 起動確認手順を作成する。
-- [ ] API の health check を確認する。
-- [ ] TestMailSender からメール投入できることを確認する。
-- [ ] MailBatch.Console から IMAP 取得できることを確認する。
-- [ ] API へ POST され SQLite に保存されることを確認する。
-- [ ] `GET /api/received-mails` で証跡確認できることを確認する。
-- [ ] `logs/batch-yyyyMMdd.log` に必要なログが出力されることを確認する。
-- [ ] API 停止時のエラーログを確認する。
-- [ ] 重複 Message-Id の挙動を確認する。
+- [x] Docker Compose 起動確認手順を作成する。
+- [x] API の health check を確認する。
+- [x] TestMailSender からメール投入できることを確認する。
+- [x] MailBatch.Console から IMAP 取得できることを確認する。
+- [x] API へ POST され SQLite に保存されることを確認する。
+- [x] `GET /api/received-mails` で証跡確認できることを確認する。
+- [x] `logs/batch-yyyyMMdd.log` に必要なログが出力されることを確認する。
+- [x] API 停止時のエラーログを確認する。
+- [x] 重複 Message-Id の挙動を確認する。
 
 ## 7. ドキュメント
 
-- [ ] README に概要、起動手順、検証手順を追記する。
-- [ ] 設定項目一覧を整理する。
-- [ ] API 仕様を実装内容に合わせて更新する。
-- [ ] DB スキーマを実装内容に合わせて更新する。
+- [x] README に概要、起動手順、検証手順を追記する。
+- [x] 設定項目一覧を整理する。
+- [x] API 仕様を実装内容に合わせて更新する。
+- [x] DB スキーマを実装内容に合わせて更新する。
 - [ ] トラブルシュートを追加する。
