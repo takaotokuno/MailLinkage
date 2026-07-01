@@ -47,15 +47,14 @@ public sealed class MailMessageFactoryTests
     [Fact]
     public void Create_ThrowsWhenCustomModeDoesNotConfigureSubject()
     {
-        var options = CreateOptions("custom");
-        options.Mail.Subject = null;
+        var options = CreateOptions("custom", subject: null);
 
         var exception = Assert.Throws<InvalidOperationException>(() => MailMessageFactory.Create(options));
 
         Assert.Equal("Mail:Subject is required when Mail:Mode is custom.", exception.Message);
     }
 
-    private static AppOptions CreateOptions(string mode) => new()
+    private static AppOptions CreateOptions(string mode, string? subject = "Custom subject") => new()
     {
         Mail = new MailOptions
         {
@@ -64,7 +63,7 @@ public sealed class MailMessageFactoryTests
             Mode = mode,
             TargetSubject = "Target subject",
             NonTargetSubject = "Non-target subject",
-            Subject = "Custom subject",
+            Subject = subject,
             Body = "mail body",
             DuplicateMessageId = "duplicate-message-id@example.com"
         }
