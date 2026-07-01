@@ -1,6 +1,8 @@
+using System.Globalization;
 using Xunit;
 using MailBatch.Console.Mail;
 using MailBatch.Console.Options;
+using MailKit.Search;
 
 namespace MailBatch.Console.Tests.Mail;
 
@@ -11,7 +13,7 @@ public sealed class MailSearchQueryFactoryTests
     {
         var query = MailSearchQueryFactory.Create(new MailSearchOptions());
 
-        Assert.Equal("ALL", query.ToString());
+        Assert.Equal(SearchQuery.All, query);
     }
 
     [Fact]
@@ -23,14 +25,16 @@ public sealed class MailSearchQueryFactoryTests
             SubjectContains = "Target",
             SinceDays = 3
         };
-        var expectedDate = DateTime.UtcNow.Date.AddDays(-3).ToString("dd-MMM-yyyy", System.Globalization.CultureInfo.InvariantCulture);
+        var expectedDate = DateTime.UtcNow.Date.AddDays(-3);
 
         var query = MailSearchQueryFactory.Create(options);
-        var queryText = query.ToString();
+        var terms = GetSearchTerms(query);
 
-        Assert.Contains("NOT SEEN", queryText);
-        Assert.Contains("SUBJECT Target", queryText);
-        Assert.Contains($"SINCE {expectedDate}", queryText);
+        Assert.Contains("NotSeen", terms);
+        Assert.Contains("SubjectContains", terms);
+        Assert.Contains("DeliveredAfter", terms);
+        Assert.Contains("Target", GetSearchValues(query));
+        Assert.Contains(expectedDate.ToString(CultureInfo.InvariantCulture), GetSearchValues(query));
     }
 
     [Theory]
@@ -40,6 +44,56 @@ public sealed class MailSearchQueryFactoryTests
     {
         var query = MailSearchQueryFactory.Create(new MailSearchOptions { SinceDays = sinceDays });
 
-        Assert.Equal("ALL", query.ToString());
+        Assert.Equal(SearchQuery.All, query);
+    }
+
+    private static IReadOnlyCollection<string> GetSearchTerms(SearchQuery query)
+    {
+        var terms = new List<string>();
+        Visit(query, q =>
+        {
+            var term = q.GetType().GetProperty("Term")?.GetValue(q)?.ToString();
+            if (!string.IsNullOrWhiteSpace(term))
+            {
+                terms.Add(term);
+            }
+        });
+
+        return terms;
+    }
+
+    private static IReadOnlyCollection<string> GetSearchValues(SearchQuery query)
+    {
+        var values = new List<string>();
+        Visit(query, q =>
+        {
+            foreach (var property in q.GetType().GetProperties())
+            {
+                var value = property.GetValue(q);
+                if (value is string text)
+                {
+                    values.Add(text);
+                }
+                else if (value is DateTime dateTime)
+                {
+                    values.Add(dateTime.ToString(CultureInfo.InvariantCulture));
+                }
+            }
+        });
+
+        return values;
+    }
+
+    private static void Visit(SearchQuery query, Action<SearchQuery> visitor)
+    {
+        visitor(query);
+
+        foreach (var propertyName in new[] { "Left", "Right", "Operand" })
+        {
+            if (query.GetType().GetProperty(propertyName)?.GetValue(query) is SearchQuery child)
+            {
+                Visit(child, visitor);
+            }
+        }
     }
 }
