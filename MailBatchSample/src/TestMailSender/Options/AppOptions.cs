@@ -15,7 +15,7 @@ internal sealed class AppOptions
         {
             throw new InvalidOperationException("Smtp:Port must be between 1 and 65535.");
         }
-        
+
         if (!string.IsNullOrWhiteSpace(Smtp.UserName))
         {
             Require(Smtp.Password, "Smtp:Password");
