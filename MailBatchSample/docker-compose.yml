@@ -5,9 +5,9 @@
 #   sandbox container for local verification.
 # - mailreceiver-api: ASP.NET Core Web API receives extracted mail data over HTTP.
 #
-# Dev Container execution uses published host ports via host.docker.internal.
-# Host OS execution uses published localhost ports. Container execution uses
-# service names (`mailserver`, `mailreceiver-api`) and container ports.
+# Dev Container and container execution use service names (`mailserver`,
+# `mailreceiver-api`) and container ports on the shared Compose network.
+# Host OS execution uses published localhost ports.
 name: mail-batch-sample
 
 services:

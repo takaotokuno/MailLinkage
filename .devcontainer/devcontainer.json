@@ -1,8 +1,5 @@
 {
   "name": "MailLinkage (.NET 8)",
-  "build": {
-    "dockerfile": "Dockerfile"
-  },
   "workspaceFolder": "/workspaces/MailLinkage",
   "features": {
     "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
@@ -47,5 +44,14 @@
     }
   },
   "postCreateCommand": "dotnet restore MailLinkage.sln",
-  "remoteUser": "vscode"
+  "remoteUser": "vscode",
+  "dockerComposeFile": [
+    "../MailBatchSample/docker-compose.yml",
+    "docker-compose.yml"
+  ],
+  "service": "devcontainer",
+  "runServices": [
+    "devcontainer"
+  ],
+  "shutdownAction": "stopCompose"
 }
