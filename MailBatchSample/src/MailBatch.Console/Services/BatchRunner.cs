@@ -1,6 +1,7 @@
 using System.Threading.Channels;
 using MailBatch.Console.Mail;
 using MailBatch.Console.Notifications;
+using MailBatch.Console.Models;
 using MailBatch.Console.Options;
 using MailKit;
 using MailKit.Net.Imap;
@@ -174,7 +175,7 @@ internal sealed class BatchRunner(
         // 非同期キューを作成する。
         // UnboundedChannel: 上限なしのキュー
         // SingleReader/SingleWriter を True に設定すると、読み手・書き手が1つである前提で.NETが処理を最適化する
-        Channel<ApiQueueItem> queue = Channel.CreateUnbounded<ApiQueueItem>(new UnboundedChannelOptions
+        Channel<ReceivedMailRequest> queue = Channel.CreateUnbounded<ReceivedMailRequest>(new UnboundedChannelOptions
         {
             SingleReader = true,
             SingleWriter = true
@@ -188,6 +189,7 @@ internal sealed class BatchRunner(
             folder,
             queue.Writer,
             imapLock,
+            mailNotifier,
             loggerFactory.CreateLogger<MailFetchQueueProducer>());
 
         ApiQueueConsumer consumer = new(

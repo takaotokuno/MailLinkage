@@ -1,6 +1,7 @@
 using System.Threading.Channels;
 using MailBatch.Console.Mail;
 using MailBatch.Console.Models;
+using MailBatch.Console.Notifications;
 using MailKit;
 using Microsoft.Extensions.Logging;
 
@@ -8,8 +9,9 @@ namespace MailBatch.Console.Services;
 
 internal sealed class MailFetchQueueProducer(
     IMailFolder folder,
-    ChannelWriter<ApiQueueItem> writer,
+    ChannelWriter<ReceivedMailRequest> writer,
     SemaphoreSlim imapLock,
+    IMailNotifier mailNotifier,
     ILogger<MailFetchQueueProducer> logger)
 {
     /// <summary>
@@ -26,7 +28,19 @@ internal sealed class MailFetchQueueProducer(
                 try
                 {
                     ReceivedMailRequest request = await CreateRequestAsync(uid);
-                    await writer.WriteAsync(new ApiQueueItem(uid, request));
+                    IReadOnlyList<string> validationErrors = request.Validate();
+                    if (validationErrors.Count > 0)
+                    {
+                        await NotifyValidationErrorAsync(request, validationErrors);
+                        result.IncrementFailure();
+                        logger.LogWarning(
+                            "Validation failed for received mail request. MessageId={MessageId}, Errors={ValidationErrors}",
+                            request.MessageId,
+                            string.Join("; ", validationErrors));
+                        continue;
+                    }
+
+                    await writer.WriteAsync(request);
                     result.IncrementSuccess();
                     logger.LogInformation(
                         "Queued API request. MessageId={MessageId}, QueueCount={QueueCount}, BodyLength={BodyLength}",
@@ -37,7 +51,7 @@ internal sealed class MailFetchQueueProducer(
                 catch (Exception ex)
                 {
                     result.IncrementFailure();
-                    logger.LogError(ex, "Failed to fetch, transform, or queue message. Uid={Uid}", uid);
+                    logger.LogError(ex, "Failed to fetch, transform, validate, or queue message. Uid={Uid}", uid);
                 }
             }
         }
@@ -60,11 +74,43 @@ internal sealed class MailFetchQueueProducer(
         {
             MimeKit.MimeMessage message = await folder.GetMessageAsync(uid);
             IList<IMessageSummary> summary = await folder.FetchAsync(new[] { uid }, MessageSummaryItems.InternalDate);
-            return ReceivedMailMapper.ToRequest(message, summary.FirstOrDefault()?.InternalDate);
+            return ReceivedMailMapper.ToRequest(message, summary.FirstOrDefault()?.InternalDate) with { Uid = uid };
         }
         finally
         {
             imapLock.Release();
         }
+    }
+
+    /// <summary>
+    /// バリデーションエラーの内容をメール送信元へ通知します。
+    /// </summary>
+    private async Task NotifyValidationErrorAsync(ReceivedMailRequest request, IReadOnlyList<string> validationErrors)
+    {
+        if (string.IsNullOrWhiteSpace(request.Sender))
+        {
+            logger.LogWarning("Cannot send validation error notification because sender is empty. MessageId={MessageId}", request.MessageId);
+            return;
+        }
+
+        string body = string.Join(Environment.NewLine, new[]
+        {
+            "The received mail could not be accepted because it failed validation.",
+            $"MessageId: {request.MessageId}",
+            $"Subject: {CreatePreview(request.Subject)}",
+            "Validation errors:",
+            string.Join(Environment.NewLine, validationErrors.Select(error => $"- {error}"))
+        });
+
+        await mailNotifier.SendAsync(new MailNotification(
+            request.Sender,
+            "Received mail validation failed",
+            body));
+    }
+
+    private static string CreatePreview(string value)
+    {
+        const int maxPreviewLength = 200;
+        return value.Length <= maxPreviewLength ? value : $"{value[..maxPreviewLength]}...";
     }
 }
