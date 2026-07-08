@@ -4,12 +4,12 @@ using MailBatch.Console.Options;
 
 namespace MailBatch.Console.Infrastructure;
 
-internal interface IReceivedMailApiClient
+internal interface IApiClient
 {
     Task<HttpResponseMessage> PostReceivedMailAsync(ReceivedMailRequest request, CancellationToken cancellationToken = default);
 }
 
-internal sealed class ReceivedMailApiClient(HttpClient httpClient, AppOptions options) : IReceivedMailApiClient
+internal sealed class ReceivedMailApiClient(HttpClient httpClient, AppOptions options) : IApiClient
 {
     public Task<HttpResponseMessage> PostReceivedMailAsync(ReceivedMailRequest request, CancellationToken cancellationToken = default)
     {
