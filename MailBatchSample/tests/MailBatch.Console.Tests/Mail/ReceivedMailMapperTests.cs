@@ -1,5 +1,6 @@
 using Xunit;
 using MailBatch.Console.Mail;
+using MailBatch.Console.Models;
 using MimeKit;
 
 namespace MailBatch.Console.Tests.Mail;
@@ -17,7 +18,7 @@ public sealed class ReceivedMailMapperTests
         message.Body = new TextPart("plain") { Text = "plain body" };
         DateTimeOffset internalDate = new(2026, 6, 24, 12, 30, 0, TimeSpan.FromHours(9));
 
-        Models.ReceivedMailRequest request = ReceivedMailMapper.ToRequest(message, internalDate);
+        ReceivedMailRequest request = ReceivedMailMapper.ToRequest(message, internalDate);
 
         Assert.Equal("<message-1@example.com>", request.MessageId);
         Assert.Equal("sender@example.com", request.Sender);
@@ -36,7 +37,7 @@ public sealed class ReceivedMailMapperTests
         message.Subject = "HTML";
         message.Body = new TextPart("html") { Text = "<p>Hello&nbsp;<strong>world</strong></p>" };
 
-        Models.ReceivedMailRequest request = ReceivedMailMapper.ToRequest(message, DateTimeOffset.UnixEpoch);
+        ReceivedMailRequest request = ReceivedMailMapper.ToRequest(message, DateTimeOffset.UnixEpoch);
 
         Assert.Equal("Hello  world", request.Body);
     }
@@ -52,7 +53,7 @@ public sealed class ReceivedMailMapperTests
         message.Body = new TextPart("plain") { Text = "body" };
         message.Date = new DateTimeOffset(2026, 6, 24, 10, 0, 0, TimeSpan.FromHours(9));
 
-        Models.ReceivedMailRequest request = ReceivedMailMapper.ToRequest(message, internalDate: null);
+        ReceivedMailRequest request = ReceivedMailMapper.ToRequest(message, internalDate: null);
 
         Assert.Equal(message.Date.ToUniversalTime(), request.ReceivedAt);
     }
@@ -65,7 +66,7 @@ public sealed class ReceivedMailMapperTests
         message.From.Add(MailboxAddress.Parse("sender@example.com"));
         message.Headers.Remove(HeaderId.MessageId);
 
-        Models.ReceivedMailRequest request = ReceivedMailMapper.ToRequest(message, DateTimeOffset.UnixEpoch);
+        ReceivedMailRequest request = ReceivedMailMapper.ToRequest(message, DateTimeOffset.UnixEpoch);
 
         Assert.StartsWith("<missing-", request.MessageId);
         Assert.Equal("sender@example.com", request.Sender);
