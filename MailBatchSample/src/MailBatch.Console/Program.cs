@@ -1,5 +1,4 @@
 using MailBatch.Console.Configuration;
-using MailBatch.Console.Logging;
 using MailBatch.Console.Options;
 using MailBatch.Console.Services;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,12 +12,20 @@ try
 {
     AppConfiguration.LoadedConfiguration loadedConfiguration = AppConfiguration.Load(args);
     AppOptions options = loadedConfiguration.Options;
-    Log.Logger = BatchLogger.Create(loadedConfiguration.Configuration, runId);
+
+    Log.Logger = new LoggerConfiguration()
+        .ReadFrom.Configuration(loadedConfiguration.Configuration)
+        .Enrich.WithProperty("RunId", runId)
+        .CreateLogger();
 
     await using ServiceProvider serviceProvider = new ServiceCollection()
         .AddSingleton(options)
         .AddSingleton(new BatchRunContext(runId))
-        .AddLogging(builder => builder.AddSerilog(Log.Logger, dispose: false))
+        .AddLogging(builder =>
+        {
+            builder.ClearProviders();
+            builder.AddSerilog(Log.Logger, dispose: false);
+        })
         .AddTransient<BatchRunner>()
         .BuildServiceProvider();
 
@@ -28,12 +35,11 @@ try
 catch (Exception ex)
 {
     exitCode = 1;
-    if (Log.Logger.GetType().Name == "SilentLogger")
-    {
-        Log.Logger = new LoggerConfiguration().WriteTo.Console().CreateLogger();
-    }
 
-    Log.Fatal(ex, "Mail batch failed with an unhandled exception. RunId={RunId}", runId);
+    Log.Fatal(
+        ex,
+        "Mail batch failed with an unhandled exception. RunId={RunId}",
+        runId);
 }
 finally
 {
