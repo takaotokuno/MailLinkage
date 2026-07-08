@@ -33,8 +33,17 @@ try
         })
         .AddTransient<IMailNotifier, SmtpMailNotifier>()
         .AddTransient<MailNotificationFactory>()
+        .AddTransient<IMailSearchService, MailSearchService>()
+        .AddTransient<IReceivedMailPipeline, ReceivedMailPipeline>()
+        .AddTransient<IExitCodePolicy, ExitCodePolicy>()
+        .AddTransient<IRunStatusNotifier, RunStatusNotifier>()
+        .AddTransient(typeof(IQueueFactory<>), typeof(UnboundedQueueFactory<>))
+        .AddTransient<MailFetchQueueProducer>()
+        .AddTransient<ApiQueueConsumer>()
+        .AddTransient<MailFetchQueueProducerFactory>(sp => writer => ActivatorUtilities.CreateInstance<MailFetchQueueProducer>(sp, writer))
+        .AddTransient<ApiQueueConsumerFactory>(sp => reader => ActivatorUtilities.CreateInstance<ApiQueueConsumer>(sp, reader))
         .AddScoped<IReceivedMailFolderService, ReceivedMailFolderService>()
-        .AddHttpClient<IReceivedMailApiClient, ReceivedMailApiClient>(client =>
+        .AddHttpClient<IApiClient, ReceivedMailApiClient>(client =>
         {
             client.BaseAddress = options.Api.BaseUrl;
             client.Timeout = TimeSpan.FromSeconds(options.Api.TimeoutSeconds);

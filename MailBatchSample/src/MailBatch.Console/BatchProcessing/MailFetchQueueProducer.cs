@@ -7,12 +7,17 @@ using Microsoft.Extensions.Logging;
 
 namespace MailBatch.Console.BatchProcessing;
 
+internal interface IMailFetchQueueProducer
+{
+    Task<ProcessResult> ProduceAsync(IReadOnlyList<UniqueId> targetUids);
+}
+
 internal sealed class MailFetchQueueProducer(
     IReceivedMailFolderService receivedMailFolderService,
     ChannelWriter<ReceivedMailRequest> writer,
     IMailNotifier mailNotifier,
     MailNotificationFactory mailNotificationFactory,
-    ILogger<MailFetchQueueProducer> logger)
+    ILogger<MailFetchQueueProducer> logger) : IMailFetchQueueProducer
 {
     /// <summary>
     /// メールを取得し、API送信用データへ加工したうえで内部キューへ追加します。

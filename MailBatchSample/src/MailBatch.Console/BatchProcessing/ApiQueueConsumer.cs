@@ -8,12 +8,17 @@ using Microsoft.Extensions.Logging;
 
 namespace MailBatch.Console.BatchProcessing;
 
+internal interface IApiQueueConsumer
+{
+    Task<ProcessResult> ConsumeAsync();
+}
+
 internal sealed class ApiQueueConsumer(
     AppOptions options,
     IReceivedMailFolderService receivedMailFolderService,
-    IReceivedMailApiClient receivedMailApiClient,
+    IApiClient apiClient,
     ChannelReader<ReceivedMailRequest> reader,
-    ILogger<ApiQueueConsumer> logger)
+    ILogger<ApiQueueConsumer> logger) : IApiQueueConsumer
 {
     /// <summary>
     /// 内部キューからAPI送信用データを順次取り出し、APIへPOSTします。
@@ -73,7 +78,7 @@ internal sealed class ApiQueueConsumer(
             request.MessageId,
             request.Subject);
 
-        using HttpResponseMessage response = await receivedMailApiClient.PostReceivedMailAsync(request);
+        using HttpResponseMessage response = await apiClient.PostReceivedMailAsync(request);
         string responseBody = await response.Content.ReadAsStringAsync();
 
         if (!response.IsSuccessStatusCode)
