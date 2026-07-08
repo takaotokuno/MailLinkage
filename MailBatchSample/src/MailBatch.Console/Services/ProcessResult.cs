@@ -1,20 +1,33 @@
 namespace MailBatch.Console.Services;
 
-internal sealed record ProcessResult(int Total, int Succeeded = 0, int Failed = 0)
+/// <summary>
+/// 確定した処理結果を表します。
+/// </summary>
+internal sealed record ProcessResult(int Total, int Succeeded = 0, int Failed = 0);
+
+/// <summary>
+/// 処理途中の集計値を保持します。
+/// </summary>
+internal sealed class ProcessResultAccumulator(int total = 0)
 {
-    /// <summary>
-    /// 成功件数を1件加算した新しい処理結果を返します。
-    /// </summary>
-    public ProcessResult AddSuccess()
+    public int Total { get; private set; } = total;
+
+    public int Succeeded { get; private set; }
+
+    public int Failed { get; private set; }
+
+    public void IncrementSuccess()
     {
-        return this with { Succeeded = Succeeded + 1 };
+        Succeeded++;
     }
 
-    /// <summary>
-    /// 失敗件数を1件加算した新しい処理結果を返します。
-    /// </summary>
-    public ProcessResult AddFailure()
+    public void IncrementFailure()
     {
-        return this with { Failed = Failed + 1 };
+        Failed++;
+    }
+
+    public ProcessResult ToResult()
+    {
+        return new ProcessResult(Total, Succeeded, Failed);
     }
 }
