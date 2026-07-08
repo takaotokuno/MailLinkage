@@ -13,6 +13,7 @@ internal sealed record ReceivedMailRequest(
     public const int MaxSubjectLength = 8_192;
     public const int MaxBodyLength = 10_000_000;
 
+    // API に送るリクエスト本文には含めない、内部管理用の値
     [JsonIgnore]
     public UniqueId Uid { get; init; }
 

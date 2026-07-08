@@ -32,15 +32,17 @@ internal sealed class BatchRunner(
         // 処理対象メールを取得する
         IReadOnlyList<UniqueId> targetUids = await SearchTargetMessagesAsync(folder);
 
+        // メールを連携
         using HttpClient httpClient = CreateHttpClient();
         ProcessResult result = await ProcessMessagesAsync(folder, targetUids, httpClient);
 
         await DisconnectImapAsync(imapClient);
 
-        LogFinish(result);
-
+        // 終了処理
         int exitCode = ToExitCode(result);
+
         await mailNotifier.SendAsync(mailNotificationFactory.CreateRunStatusNotification(result, exitCode));
+        LogFinish(result);
 
         return exitCode;
     }

@@ -22,18 +22,16 @@ internal sealed class MailFetchQueueProducer(
     {
         ProcessResultAccumulator result = new();
 
-        try
+        foreach (UniqueId uid in targetUids)
         {
-            foreach (UniqueId uid in targetUids)
-            {
-                await ProduceSingleAsync(uid, result);
-            }
+            await ProduceSingleAsync(uid, result);
         }
-        finally
-        {
-            writer.Complete();
-            logger.LogInformation("Producer completed queue additions. Enqueued={Enqueued}, Failed={Failed}", result.Succeeded, result.Failed);
-        }
+
+        writer.Complete();
+        logger.LogInformation(
+            "Producer completed queue additions. Enqueued={Enqueued}, Failed={Failed}",
+            result.Succeeded,
+            result.Failed);
 
         return result.ToResult();
     }
@@ -46,9 +44,12 @@ internal sealed class MailFetchQueueProducer(
         try
         {
             ReceivedMailRequest request = await CreateRequestAsync(uid);
+
             await ValidateRequestAsync(request);
             await QueueRequestAsync(request);
+
             result.IncrementSuccess();
+
             logger.LogInformation(
                 "Queued API request. MessageId={MessageId}, QueueCount={QueueCount}, BodyLength={BodyLength}",
                 request.MessageId,
@@ -58,7 +59,10 @@ internal sealed class MailFetchQueueProducer(
         catch (Exception ex)
         {
             result.IncrementFailure();
-            logger.LogError(ex, "Failed to fetch, transform, validate, or queue message. Uid={Uid}", uid);
+            logger.LogError(
+                ex,
+                "Failed to fetch, transform, validate, or queue message. Uid={Uid}",
+                uid);
         }
     }
 
@@ -72,7 +76,12 @@ internal sealed class MailFetchQueueProducer(
         {
             MimeKit.MimeMessage message = await folder.GetMessageAsync(uid);
             IList<IMessageSummary> summary = await folder.FetchAsync(new[] { uid }, MessageSummaryItems.InternalDate);
-            return ReceivedMailMapper.ToRequest(message, summary.FirstOrDefault()?.InternalDate) with { Uid = uid };
+
+            ReceivedMailRequest request = ReceivedMailMapper.ToRequest(
+                message,
+                summary.FirstOrDefault()?.InternalDate);
+
+            return request with { Uid = uid };
         }
         finally
         {
@@ -92,10 +101,12 @@ internal sealed class MailFetchQueueProducer(
         catch (ReceivedMailRequestValidationException ex)
         {
             await NotifyValidationErrorAsync(request, ex.Errors);
+
             logger.LogWarning(
                 "Validation failed for received mail request. MessageId={MessageId}, Errors={ValidationErrors}",
                 request.MessageId,
                 string.Join("; ", ex.Errors));
+
             throw;
         }
     }
@@ -115,10 +126,14 @@ internal sealed class MailFetchQueueProducer(
     {
         if (string.IsNullOrWhiteSpace(request.Sender))
         {
-            logger.LogWarning("Cannot send validation error notification because sender is empty. MessageId={MessageId}", request.MessageId);
+            logger.LogWarning(
+                "Cannot send validation error notification because sender is empty. MessageId={MessageId}",
+                request.MessageId);
             return;
         }
 
-        await mailNotifier.SendAsync(mailNotificationFactory.CreateValidationErrorNotification(request, validationErrors));
+        MailNotification notification = mailNotificationFactory.CreateValidationErrorNotification(request, validationErrors);
+
+        await mailNotifier.SendAsync(notification);
     }
 }

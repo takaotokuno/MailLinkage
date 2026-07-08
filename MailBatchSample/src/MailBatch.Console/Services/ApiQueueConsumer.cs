@@ -39,7 +39,11 @@ internal sealed class ApiQueueConsumer(
             }
         }
 
-        logger.LogInformation("Consumer confirmed no remaining queued data. ApiSucceeded={Succeeded}, ApiFailed={Failed}", result.Succeeded, result.Failed);
+        logger.LogInformation(
+            "Consumer confirmed no remaining queued data. ApiSucceeded={Succeeded}, ApiFailed={Failed}",
+            result.Succeeded,
+            result.Failed);
+
         return result.ToResult();
     }
 
@@ -64,7 +68,11 @@ internal sealed class ApiQueueConsumer(
     /// </summary>
     private async Task<bool> PostMessageAsync(ReceivedMailRequest request)
     {
-        logger.LogInformation("Posting queued API request. MessageId={MessageId}, Subject={Subject}", request.MessageId, request.Subject);
+        logger.LogInformation(
+            "Posting queued API request. MessageId={MessageId}, Subject={Subject}",
+            request.MessageId,
+            request.Subject);
+
         using HttpResponseMessage response = await httpClient.PostAsJsonAsync(options.Api.Endpoint, request);
         string responseBody = await response.Content.ReadAsStringAsync();
 
