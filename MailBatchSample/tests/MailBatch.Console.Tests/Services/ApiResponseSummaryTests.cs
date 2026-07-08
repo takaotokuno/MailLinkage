@@ -1,4 +1,5 @@
 using MailBatch.Console.Services;
+using Xunit;
 
 namespace MailBatch.Console.Tests.Services;
 

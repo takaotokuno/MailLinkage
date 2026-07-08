@@ -1,4 +1,5 @@
 using MailBatch.Console.Options;
+using Xunit;
 
 namespace MailBatch.Console.Tests.Options;
 
