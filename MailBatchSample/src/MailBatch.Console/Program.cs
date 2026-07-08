@@ -12,6 +12,13 @@ using Serilog;
 
 int exitCode = 0;
 string runId = Guid.NewGuid().ToString();
+using CancellationTokenSource cancellationTokenSource = new();
+
+Console.CancelKeyPress += (_, eventArgs) =>
+{
+    eventArgs.Cancel = true;
+    cancellationTokenSource.Cancel();
+};
 
 try
 {
@@ -45,7 +52,15 @@ try
         .BuildServiceProvider();
 
     BatchRunner runner = serviceProvider.GetRequiredService<BatchRunner>();
-    exitCode = await runner.RunAsync();
+    exitCode = await runner.RunAsync(cancellationTokenSource.Token);
+}
+catch (OperationCanceledException) when (cancellationTokenSource.IsCancellationRequested)
+{
+    exitCode = 130;
+
+    Log.Warning(
+        "Mail batch canceled. RunId={RunId}",
+        runId);
 }
 catch (Exception ex)
 {

@@ -18,16 +18,16 @@ internal sealed class ApiQueueConsumer(
     /// <summary>
     /// 内部キューからAPI送信用データを順次取り出し、APIへPOSTします。
     /// </summary>
-    public async Task<ProcessResult> ConsumeAsync()
+    public async Task<ProcessResult> ConsumeAsync(CancellationToken cancellationToken = default)
     {
         ProcessResultAccumulator result = new();
         logger.LogInformation("API consumer started. Endpoint={Endpoint}", options.Api.Endpoint);
 
-        await foreach (ReceivedMailRequest request in reader.ReadAllAsync())
+        await foreach (ReceivedMailRequest request in reader.ReadAllAsync(cancellationToken))
         {
             using (logger.BeginScope(new Dictionary<string, object> { ["MessageId"] = request.MessageId }))
             {
-                bool succeeded = await PostAndHandleResultAsync(request);
+                bool succeeded = await PostAndHandleResultAsync(request, cancellationToken);
                 if (succeeded)
                 {
                     result.IncrementSuccess();
@@ -50,11 +50,15 @@ internal sealed class ApiQueueConsumer(
     /// <summary>
     /// メール送信処理を実行し、予期しない例外をログに記録して失敗として扱います。
     /// </summary>
-    private async Task<bool> PostAndHandleResultAsync(ReceivedMailRequest request)
+    private async Task<bool> PostAndHandleResultAsync(ReceivedMailRequest request, CancellationToken cancellationToken)
     {
         try
         {
-            return await PostMessageAsync(request);
+            return await PostMessageAsync(request, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -66,15 +70,15 @@ internal sealed class ApiQueueConsumer(
     /// <summary>
     /// 受信メールリクエストをAPIへ送信し、レスポンスに応じた後続処理を行います。
     /// </summary>
-    private async Task<bool> PostMessageAsync(ReceivedMailRequest request)
+    private async Task<bool> PostMessageAsync(ReceivedMailRequest request, CancellationToken cancellationToken)
     {
         logger.LogInformation(
             "Posting queued API request. MessageId={MessageId}, Subject={Subject}",
             request.MessageId,
             request.Subject);
 
-        using HttpResponseMessage response = await receivedMailApiClient.PostReceivedMailAsync(request);
-        string responseBody = await response.Content.ReadAsStringAsync();
+        using HttpResponseMessage response = await receivedMailApiClient.PostReceivedMailAsync(request, cancellationToken);
+        string responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
 
         if (!response.IsSuccessStatusCode)
         {
@@ -82,17 +86,17 @@ internal sealed class ApiQueueConsumer(
             return false;
         }
 
-        await HandleSuccessfulPostAsync(request.Uid, request, (int)response.StatusCode, responseBody);
+        await HandleSuccessfulPostAsync(request.Uid, request, (int)response.StatusCode, responseBody, cancellationToken);
         return true;
     }
 
     /// <summary>
     /// API送信成功時のログ出力と処理済みメールボックスへの移動を行います。
     /// </summary>
-    private async Task HandleSuccessfulPostAsync(UniqueId uid, ReceivedMailRequest request, int statusCode, string responseBody)
+    private async Task HandleSuccessfulPostAsync(UniqueId uid, ReceivedMailRequest request, int statusCode, string responseBody, CancellationToken cancellationToken)
     {
         LogApiSuccess(request.MessageId, statusCode, responseBody);
-        await MoveToProcessedMailboxAsync(uid, request.MessageId);
+        await MoveToProcessedMailboxAsync(uid, request.MessageId, cancellationToken);
     }
 
     /// <summary>
@@ -122,8 +126,8 @@ internal sealed class ApiQueueConsumer(
     /// <summary>
     /// 処理済みメールを設定されたメールボックスへ移動します。
     /// </summary>
-    private async Task MoveToProcessedMailboxAsync(UniqueId uid, string messageId)
+    private async Task MoveToProcessedMailboxAsync(UniqueId uid, string messageId, CancellationToken cancellationToken)
     {
-        await receivedMailFolderService.MoveToProcessedMailboxAsync(uid, messageId);
+        await receivedMailFolderService.MoveToProcessedMailboxAsync(uid, messageId, cancellationToken);
     }
 }

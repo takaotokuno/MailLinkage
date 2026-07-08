@@ -17,13 +17,13 @@ internal sealed class MailFetchQueueProducer(
     /// <summary>
     /// メールを取得し、API送信用データへ加工したうえで内部キューへ追加します。
     /// </summary>
-    public async Task<ProcessResult> ProduceAsync(IReadOnlyList<UniqueId> targetUids)
+    public async Task<ProcessResult> ProduceAsync(IReadOnlyList<UniqueId> targetUids, CancellationToken cancellationToken = default)
     {
         ProcessResultAccumulator result = new();
 
         foreach (UniqueId uid in targetUids)
         {
-            await ProduceSingleAsync(uid, result);
+            await ProduceSingleAsync(uid, result, cancellationToken);
         }
 
         writer.Complete();
@@ -38,14 +38,14 @@ internal sealed class MailFetchQueueProducer(
     /// <summary>
     /// 指定されたUIDのメールを1件処理し、処理結果を集計します。
     /// </summary>
-    private async Task ProduceSingleAsync(UniqueId uid, ProcessResultAccumulator result)
+    private async Task ProduceSingleAsync(UniqueId uid, ProcessResultAccumulator result, CancellationToken cancellationToken)
     {
         try
         {
-            ReceivedMailRequest request = await CreateRequestAsync(uid);
+            ReceivedMailRequest request = await CreateRequestAsync(uid, cancellationToken);
 
-            await ValidateRequestAsync(request);
-            await QueueRequestAsync(request);
+            await ValidateRequestAsync(request, cancellationToken);
+            await QueueRequestAsync(request, cancellationToken);
 
             result.IncrementSuccess();
 
@@ -54,6 +54,10 @@ internal sealed class MailFetchQueueProducer(
                 request.MessageId,
                 result.Succeeded,
                 request.Body?.Length ?? 0);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -68,15 +72,15 @@ internal sealed class MailFetchQueueProducer(
     /// <summary>
     /// 指定されたUIDのメール本文と内部受信日時を取得し、受信メールリクエストを作成します。
     /// </summary>
-    private async Task<ReceivedMailRequest> CreateRequestAsync(UniqueId uid)
+    private async Task<ReceivedMailRequest> CreateRequestAsync(UniqueId uid, CancellationToken cancellationToken)
     {
-        return await receivedMailFolderService.CreateRequestAsync(uid);
+        return await receivedMailFolderService.CreateRequestAsync(uid, cancellationToken);
     }
 
     /// <summary>
     /// 受信メールリクエストを検証し、エラーがある場合は通知を行います。
     /// </summary>
-    private async Task ValidateRequestAsync(ReceivedMailRequest request)
+    private async Task ValidateRequestAsync(ReceivedMailRequest request, CancellationToken cancellationToken)
     {
         try
         {
@@ -84,7 +88,7 @@ internal sealed class MailFetchQueueProducer(
         }
         catch (ReceivedMailRequestValidationException ex)
         {
-            await NotifyValidationErrorAsync(request, ex.Errors);
+            await NotifyValidationErrorAsync(request, ex.Errors, cancellationToken);
 
             logger.LogWarning(
                 "Validation failed for received mail request. MessageId={MessageId}, Errors={ValidationErrors}",
@@ -98,15 +102,15 @@ internal sealed class MailFetchQueueProducer(
     /// <summary>
     /// 検証済みの受信メールリクエストを内部キューへ追加します。
     /// </summary>
-    private async Task QueueRequestAsync(ReceivedMailRequest request)
+    private async Task QueueRequestAsync(ReceivedMailRequest request, CancellationToken cancellationToken)
     {
-        await writer.WriteAsync(request);
+        await writer.WriteAsync(request, cancellationToken);
     }
 
     /// <summary>
     /// バリデーションエラーの内容をメール送信元へ通知します。
     /// </summary>
-    private async Task NotifyValidationErrorAsync(ReceivedMailRequest request, IReadOnlyList<string> validationErrors)
+    private async Task NotifyValidationErrorAsync(ReceivedMailRequest request, IReadOnlyList<string> validationErrors, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.Sender))
         {
@@ -118,6 +122,6 @@ internal sealed class MailFetchQueueProducer(
 
         MailNotification notification = mailNotificationFactory.CreateValidationErrorNotification(request, validationErrors);
 
-        await mailNotifier.SendAsync(notification);
+        await mailNotifier.SendAsync(notification, cancellationToken);
     }
 }
