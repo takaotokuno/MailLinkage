@@ -15,7 +15,7 @@ internal sealed class BatchRunner(
     ILoggerFactory loggerFactory,
     IMailNotifier mailNotifier,
     MailNotificationFactory mailNotificationFactory,
-    ReceivedMailFolderService receivedMailFolderService)
+    IReceivedMailFolderService receivedMailFolderService)
 {
     /// <summary>
     /// メール取得からAPI送信までのバッチ処理全体を実行し、終了コードを返します。

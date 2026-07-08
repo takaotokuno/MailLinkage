@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 namespace MailBatch.Console.Services;
 
 internal sealed class MailFetchQueueProducer(
-    ReceivedMailFolderService receivedMailFolderService,
+    IReceivedMailFolderService receivedMailFolderService,
     ChannelWriter<ReceivedMailRequest> writer,
     IMailNotifier mailNotifier,
     MailNotificationFactory mailNotificationFactory,

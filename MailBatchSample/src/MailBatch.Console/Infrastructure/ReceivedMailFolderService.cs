@@ -1,20 +1,21 @@
 using MailBatch.Console.Mail;
 using MailBatch.Console.Models;
 using MailBatch.Console.Options;
+using MailBatch.Console.Services;
 using MailKit;
 using MailKit.Net.Imap;
 using MailKit.Search;
 using Microsoft.Extensions.Logging;
 using MimeKit;
 
-namespace MailBatch.Console.Services;
+namespace MailBatch.Console.Infrastructure;
 
 /// <summary>
 /// 受信メールフォルダに対するIMAP操作を一元管理します。
 /// </summary>
 internal sealed class ReceivedMailFolderService(
     AppOptions options,
-    ILogger<ReceivedMailFolderService> logger) : IAsyncDisposable
+    ILogger<ReceivedMailFolderService> logger) : IReceivedMailFolderService
 {
     private readonly SemaphoreSlim imapLock = new(1, 1);
     private ImapClient? imapClient;

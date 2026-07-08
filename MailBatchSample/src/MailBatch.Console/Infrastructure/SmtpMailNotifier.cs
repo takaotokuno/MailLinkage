@@ -1,10 +1,12 @@
+using MailBatch.Console.Notifications;
 using MailBatch.Console.Options;
+using MailBatch.Console.Services;
 using MailKit.Net.Smtp;
 using MailKit.Security;
 using Microsoft.Extensions.Logging;
 using MimeKit;
 
-namespace MailBatch.Console.Notifications;
+namespace MailBatch.Console.Infrastructure;
 
 internal sealed class SmtpMailNotifier(
     AppOptions options,

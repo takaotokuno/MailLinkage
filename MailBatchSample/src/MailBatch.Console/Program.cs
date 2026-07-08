@@ -1,4 +1,5 @@
 using MailBatch.Console.Configuration;
+using MailBatch.Console.Infrastructure;
 using MailBatch.Console.Notifications;
 using MailBatch.Console.Options;
 using MailBatch.Console.Services;
@@ -29,7 +30,7 @@ try
         })
         .AddTransient<IMailNotifier, SmtpMailNotifier>()
         .AddTransient<MailNotificationFactory>()
-        .AddScoped<ReceivedMailFolderService>()
+        .AddScoped<IReceivedMailFolderService, ReceivedMailFolderService>()
         .AddTransient<BatchRunner>()
         .BuildServiceProvider();
 
