@@ -4,7 +4,6 @@ using MailBatch.Console.Notifications;
 using MailBatch.Console.Models;
 using MailBatch.Console.Options;
 using MailKit;
-using MailKit.Net.Imap;
 using Microsoft.Extensions.Logging;
 
 namespace MailBatch.Console.Services;
@@ -15,7 +14,8 @@ internal sealed class BatchRunner(
     ILogger<BatchRunner> logger,
     ILoggerFactory loggerFactory,
     IMailNotifier mailNotifier,
-    MailNotificationFactory mailNotificationFactory)
+    MailNotificationFactory mailNotificationFactory,
+    ReceivedMailFolderService receivedMailFolderService)
 {
     /// <summary>
     /// メール取得からAPI送信までのバッチ処理全体を実行し、終了コードを返します。
@@ -24,19 +24,24 @@ internal sealed class BatchRunner(
     {
         LogStart();
 
-        // メールサーバに接続する
-        using ImapClient imapClient = new();
-        await ConnectImapAsync(imapClient);
-        IMailFolder folder = await OpenMailboxAsync(imapClient);
+        ProcessResult result;
 
-        // 処理対象メールを取得する
-        IReadOnlyList<UniqueId> targetUids = await SearchTargetMessagesAsync(folder);
+        try
+        {
+            // メールサーバに接続し、必要なフォルダを準備する
+            await receivedMailFolderService.ConnectAsync();
 
-        // メールを連携
-        using HttpClient httpClient = CreateHttpClient();
-        ProcessResult result = await ProcessMessagesAsync(folder, targetUids, httpClient);
+            // 処理対象メールを取得する
+            IReadOnlyList<UniqueId> targetUids = await SearchTargetMessagesAsync();
 
-        await DisconnectImapAsync(imapClient);
+            // メールを連携
+            using HttpClient httpClient = CreateHttpClient();
+            result = await ProcessMessagesAsync(targetUids, httpClient);
+        }
+        finally
+        {
+            await receivedMailFolderService.DisconnectAsync();
+        }
 
         // 終了処理
         int exitCode = ToExitCode(result);
@@ -64,52 +69,12 @@ internal sealed class BatchRunner(
     }
 
     /// <summary>
-    /// 設定値を使用してIMAPサーバーに接続し、認証します。
-    /// </summary>
-    private async Task ConnectImapAsync(ImapClient imapClient)
-    {
-        logger.LogInformation(
-            "Connecting to IMAP server. Host={Host}, Port={Port}, SecureSocketOption={SecureSocketOption}",
-            options.Imap.Host, options.Imap.Port,
-            options.Imap.SecureSocketOption);
-
-        await imapClient.ConnectAsync(
-            options.Imap.Host,
-            options.Imap.Port,
-            options.Imap.GetSecureSocketOptions());
-        await imapClient.AuthenticateAsync(options.Imap.UserName, options.Imap.Password);
-
-        logger.LogInformation(
-            "Connected and authenticated to IMAP server. Host={Host}, UserName={UserName}",
-            options.Imap.Host,
-            options.Imap.UserName);
-    }
-
-    /// <summary>
-    /// 設定されたメールボックスを読み書き可能な状態で開きます。
-    /// </summary>
-    private async Task<IMailFolder> OpenMailboxAsync(ImapClient imapClient)
-    {
-        IMailFolder folder = await imapClient.GetFolderAsync(options.Imap.Mailbox);
-        await folder.OpenAsync(FolderAccess.ReadWrite);
-        return folder;
-    }
-
-    /// <summary>
     /// 検索条件に一致する処理対象メールのUID一覧を取得します。
     /// </summary>
-    private async Task<IReadOnlyList<UniqueId>> SearchTargetMessagesAsync(IMailFolder folder)
+    private async Task<IReadOnlyList<UniqueId>> SearchTargetMessagesAsync()
     {
         MailKit.Search.SearchQuery query = MailSearchQueryFactory.Create(options.MailSearch);
-        IList<UniqueId> uids = await folder.SearchAsync(query);
-        List<UniqueId> targetUids = uids.Take(options.MailSearch.MaxMessages).ToList();
-
-        logger.LogInformation(
-            "Found {MessageCount} target messages. Mailbox={Mailbox}",
-            targetUids.Count,
-            options.Imap.Mailbox);
-
-        return targetUids;
+        return await receivedMailFolderService.SearchTargetMessagesAsync(query, options.MailSearch.MaxMessages);
     }
 
     /// <summary>
@@ -128,7 +93,6 @@ internal sealed class BatchRunner(
     /// 対象メールを取得・加工するProducerと、API送信するConsumerを並行実行します。
     /// </summary>
     private async Task<ProcessResult> ProcessMessagesAsync(
-        IMailFolder folder,
         IReadOnlyList<UniqueId> targetUids,
         HttpClient httpClient)
     {
@@ -146,24 +110,18 @@ internal sealed class BatchRunner(
             SingleWriter = true
         });
 
-        // IMAPフォルダ操作を同時に実行しないためロック
-        // Producerはメール取得、Consumerはメール移動でIMAPフォルダを触るため、同じLockを共有する。
-        using SemaphoreSlim imapLock = new(1, 1);
-
         MailFetchQueueProducer producer = new(
-            folder,
+            receivedMailFolderService,
             queue.Writer,
-            imapLock,
             mailNotifier,
             mailNotificationFactory,
             loggerFactory.CreateLogger<MailFetchQueueProducer>());
 
         ApiQueueConsumer consumer = new(
             options,
-            folder,
+            receivedMailFolderService,
             httpClient,
             queue.Reader,
-            imapLock,
             loggerFactory.CreateLogger<ApiQueueConsumer>());
 
         // Producer と Consumer を並行して実行し完了まで待機する。
@@ -184,15 +142,6 @@ internal sealed class BatchRunner(
             Total: targetUids.Count,
             Succeeded: consumerResult.Succeeded,
             Failed: producerResult.Failed + consumerResult.Failed);
-    }
-
-    /// <summary>
-    /// IMAPサーバーから正常に切断します。
-    /// </summary>
-    private async Task DisconnectImapAsync(ImapClient imapClient)
-    {
-        await imapClient.DisconnectAsync(true);
-        logger.LogInformation("Disconnecting from IMAP server.");
     }
 
     /// <summary>

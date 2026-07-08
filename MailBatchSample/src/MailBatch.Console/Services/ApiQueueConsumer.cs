@@ -9,10 +9,9 @@ namespace MailBatch.Console.Services;
 
 internal sealed class ApiQueueConsumer(
     AppOptions options,
-    IMailFolder folder,
+    ReceivedMailFolderService receivedMailFolderService,
     HttpClient httpClient,
     ChannelReader<ReceivedMailRequest> reader,
-    SemaphoreSlim imapLock,
     ILogger<ApiQueueConsumer> logger)
 {
     /// <summary>
@@ -124,35 +123,6 @@ internal sealed class ApiQueueConsumer(
     /// </summary>
     private async Task MoveToProcessedMailboxAsync(UniqueId uid, string messageId)
     {
-        await imapLock.WaitAsync();
-        try
-        {
-            IMailFolder destinationFolder = await GetOrCreateProcessedMailboxAsync();
-            await folder.MoveToAsync(uid, destinationFolder);
-        }
-        finally
-        {
-            imapLock.Release();
-        }
-
-        logger.LogInformation(
-            "Moved processed message. MessageId={MessageId}, DestinationMailbox={DestinationMailbox}",
-            messageId,
-            options.Processing.ProcessedMailbox);
-    }
-
-    /// <summary>
-    /// 処理済みメールボックスを取得し、存在しない場合は作成します。
-    /// </summary>
-    private async Task<IMailFolder> GetOrCreateProcessedMailboxAsync()
-    {
-        try
-        {
-            return await folder.GetSubfolderAsync(options.Processing.ProcessedMailbox);
-        }
-        catch (FolderNotFoundException)
-        {
-            return await folder.CreateAsync(options.Processing.ProcessedMailbox, true);
-        }
+        await receivedMailFolderService.MoveToProcessedMailboxAsync(uid, messageId);
     }
 }
