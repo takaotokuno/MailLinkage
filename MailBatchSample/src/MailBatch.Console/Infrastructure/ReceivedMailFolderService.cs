@@ -1,7 +1,6 @@
-using MailBatch.Console.Mail;
-using MailBatch.Console.Models;
+using MailBatch.Console.ReceivedMails;
 using MailBatch.Console.Options;
-using MailBatch.Console.Services;
+using MailBatch.Console.BatchProcessing;
 using MailKit;
 using MailKit.Net.Imap;
 using MailKit.Search;

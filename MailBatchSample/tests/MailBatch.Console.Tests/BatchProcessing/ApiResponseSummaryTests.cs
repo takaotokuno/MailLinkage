@@ -1,7 +1,7 @@
-using MailBatch.Console.Services;
+using MailBatch.Console.BatchProcessing;
 using Xunit;
 
-namespace MailBatch.Console.Tests.Services;
+namespace MailBatch.Console.Tests.BatchProcessing;
 
 public sealed class ApiResponseSummaryTests
 {

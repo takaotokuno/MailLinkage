@@ -1,10 +1,10 @@
 using System.Threading.Channels;
-using MailBatch.Console.Models;
-using MailBatch.Console.Notifications;
+using MailBatch.Console.ReceivedMails;
+using MailBatch.Console.NotificationMails;
 using MailKit;
 using Microsoft.Extensions.Logging;
 
-namespace MailBatch.Console.Services;
+namespace MailBatch.Console.BatchProcessing;
 
 internal sealed class MailFetchQueueProducer(
     IReceivedMailFolderService receivedMailFolderService,

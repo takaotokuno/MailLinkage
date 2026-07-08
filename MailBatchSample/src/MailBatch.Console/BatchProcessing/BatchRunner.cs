@@ -1,12 +1,11 @@
 using System.Threading.Channels;
-using MailBatch.Console.Mail;
-using MailBatch.Console.Notifications;
-using MailBatch.Console.Models;
+using MailBatch.Console.ReceivedMails;
+using MailBatch.Console.NotificationMails;
 using MailBatch.Console.Options;
 using MailKit;
 using Microsoft.Extensions.Logging;
 
-namespace MailBatch.Console.Services;
+namespace MailBatch.Console.BatchProcessing;
 
 internal sealed class BatchRunner(
     AppOptions options,

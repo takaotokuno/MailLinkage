@@ -1,9 +1,9 @@
 using System.Text.Json;
-using MailBatch.Console.Models;
+using MailBatch.Console.ReceivedMails;
 using MailKit;
 using Xunit;
 
-namespace MailBatch.Console.Tests.Models;
+namespace MailBatch.Console.Tests.ReceivedMails;
 
 public sealed class ReceivedMailRequestTests
 {

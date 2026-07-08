@@ -1,11 +1,11 @@
 using System.Net.Http.Json;
 using System.Threading.Channels;
-using MailBatch.Console.Models;
+using MailBatch.Console.ReceivedMails;
 using MailBatch.Console.Options;
 using MailKit;
 using Microsoft.Extensions.Logging;
 
-namespace MailBatch.Console.Services;
+namespace MailBatch.Console.BatchProcessing;
 
 internal sealed class ApiQueueConsumer(
     AppOptions options,

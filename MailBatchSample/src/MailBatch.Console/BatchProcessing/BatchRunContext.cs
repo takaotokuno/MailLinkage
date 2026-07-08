@@ -1,3 +1,3 @@
-namespace MailBatch.Console.Services;
+namespace MailBatch.Console.BatchProcessing;
 
 internal sealed record BatchRunContext(string RunId);

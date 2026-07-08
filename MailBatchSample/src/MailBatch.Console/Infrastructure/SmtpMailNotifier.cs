@@ -1,6 +1,6 @@
-using MailBatch.Console.Notifications;
+using MailBatch.Console.NotificationMails;
 using MailBatch.Console.Options;
-using MailBatch.Console.Services;
+using MailBatch.Console.BatchProcessing;
 using MailKit.Net.Smtp;
 using MailKit.Security;
 using Microsoft.Extensions.Logging;

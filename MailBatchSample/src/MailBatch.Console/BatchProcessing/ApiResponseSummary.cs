@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace MailBatch.Console.Services;
+namespace MailBatch.Console.BatchProcessing;
 
 internal static class ApiResponseSummary
 {

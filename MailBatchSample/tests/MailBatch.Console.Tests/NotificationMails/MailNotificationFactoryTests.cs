@@ -1,10 +1,10 @@
-using MailBatch.Console.Models;
-using MailBatch.Console.Notifications;
+using MailBatch.Console.ReceivedMails;
+using MailBatch.Console.NotificationMails;
 using MailBatch.Console.Options;
-using MailBatch.Console.Services;
+using MailBatch.Console.BatchProcessing;
 using Xunit;
 
-namespace MailBatch.Console.Tests.Notifications;
+namespace MailBatch.Console.Tests.NotificationMails;
 
 public sealed class MailNotificationFactoryTests
 {

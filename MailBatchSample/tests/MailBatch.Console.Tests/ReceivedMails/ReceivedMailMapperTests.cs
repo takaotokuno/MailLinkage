@@ -1,9 +1,8 @@
 using Xunit;
-using MailBatch.Console.Mail;
-using MailBatch.Console.Models;
+using MailBatch.Console.ReceivedMails;
 using MimeKit;
 
-namespace MailBatch.Console.Tests.Mail;
+namespace MailBatch.Console.Tests.ReceivedMails;
 
 public sealed class ReceivedMailMapperTests
 {

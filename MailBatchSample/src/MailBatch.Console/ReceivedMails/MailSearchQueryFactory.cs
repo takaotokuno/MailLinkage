@@ -1,7 +1,7 @@
 using MailBatch.Console.Options;
 using MailKit.Search;
 
-namespace MailBatch.Console.Mail;
+namespace MailBatch.Console.ReceivedMails;
 
 internal static class MailSearchQueryFactory
 {
