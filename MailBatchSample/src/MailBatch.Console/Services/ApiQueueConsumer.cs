@@ -11,7 +11,7 @@ internal sealed class ApiQueueConsumer(
     AppOptions options,
     IMailFolder folder,
     HttpClient httpClient,
-    ChannelReader<ApiQueueItem> reader,
+    ChannelReader<ReceivedMailRequest> reader,
     SemaphoreSlim imapLock,
     ILogger<ApiQueueConsumer> logger)
 {
@@ -23,11 +23,11 @@ internal sealed class ApiQueueConsumer(
         ProcessResultAccumulator result = new();
         logger.LogInformation("API consumer started. Endpoint={Endpoint}", options.Api.Endpoint);
 
-        await foreach (ApiQueueItem item in reader.ReadAllAsync())
+        await foreach (ReceivedMailRequest request in reader.ReadAllAsync())
         {
-            using (logger.BeginScope(new Dictionary<string, object> { ["MessageId"] = item.Request.MessageId }))
+            using (logger.BeginScope(new Dictionary<string, object> { ["MessageId"] = request.MessageId }))
             {
-                bool succeeded = await PostAndHandleResultAsync(item);
+                bool succeeded = await PostAndHandleResultAsync(request);
                 if (succeeded)
                 {
                     result.IncrementSuccess();
@@ -46,15 +46,15 @@ internal sealed class ApiQueueConsumer(
     /// <summary>
     /// メール送信処理を実行し、予期しない例外をログに記録して失敗として扱います。
     /// </summary>
-    private async Task<bool> PostAndHandleResultAsync(ApiQueueItem item)
+    private async Task<bool> PostAndHandleResultAsync(ReceivedMailRequest request)
     {
         try
         {
-            return await PostMessageAsync(item);
+            return await PostMessageAsync(request);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Unexpected error while processing queued API request. MessageId={MessageId}", item.Request.MessageId);
+            logger.LogError(ex, "Unexpected error while processing queued API request. MessageId={MessageId}", request.MessageId);
             return false;
         }
     }
@@ -62,9 +62,8 @@ internal sealed class ApiQueueConsumer(
     /// <summary>
     /// 受信メールリクエストをAPIへ送信し、レスポンスに応じた後続処理を行います。
     /// </summary>
-    private async Task<bool> PostMessageAsync(ApiQueueItem item)
+    private async Task<bool> PostMessageAsync(ReceivedMailRequest request)
     {
-        ReceivedMailRequest request = item.Request;
         logger.LogInformation("Posting queued API request. MessageId={MessageId}, Subject={Subject}", request.MessageId, request.Subject);
         using HttpResponseMessage response = await httpClient.PostAsJsonAsync(options.Api.Endpoint, request);
         string responseBody = await response.Content.ReadAsStringAsync();
@@ -75,7 +74,7 @@ internal sealed class ApiQueueConsumer(
             return false;
         }
 
-        await HandleSuccessfulPostAsync(item.Uid, request, (int)response.StatusCode, responseBody);
+        await HandleSuccessfulPostAsync(request.Uid, request, (int)response.StatusCode, responseBody);
         return true;
     }
 
