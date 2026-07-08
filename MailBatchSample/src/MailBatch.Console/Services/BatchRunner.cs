@@ -3,11 +3,11 @@ using MailBatch.Console.Mail;
 using MailBatch.Console.Options;
 using MailKit;
 using MailKit.Net.Imap;
-using Serilog;
+using Microsoft.Extensions.Logging;
 
 namespace MailBatch.Console.Services;
 
-internal sealed class BatchRunner(AppOptions options, string runId)
+internal sealed class BatchRunner(AppOptions options, BatchRunContext runContext, ILogger<BatchRunner> logger, ILoggerFactory loggerFactory)
 {
     /// <summary>
     /// メール取得からAPI送信までのバッチ処理全体を実行し、終了コードを返します。
@@ -31,8 +31,8 @@ internal sealed class BatchRunner(AppOptions options, string runId)
     /// </summary>
     private void LogStart()
     {
-        Log.Information("Mail batch started. RunId={RunId}", runId);
-        Log.Information(
+        logger.LogInformation("Mail batch started. RunId={RunId}", runContext.RunId);
+        logger.LogInformation(
             "Configuration loaded. IMAP={ImapHost}:{ImapPort}, Mailbox={Mailbox}, ApiBaseUrl={ApiBaseUrl}, ApiEndpoint={ApiEndpoint}, LogDirectory={LogDirectory}",
             options.Imap.Host,
             options.Imap.Port,
@@ -57,10 +57,10 @@ internal sealed class BatchRunner(AppOptions options, string runId)
     /// </summary>
     private async Task ConnectImapAsync(ImapClient imapClient)
     {
-        Log.Information("Connecting to IMAP server. Host={Host}, Port={Port}, UseSsl={UseSsl}", options.Imap.Host, options.Imap.Port, options.Imap.UseSsl);
+        logger.LogInformation("Connecting to IMAP server. Host={Host}, Port={Port}, UseSsl={UseSsl}", options.Imap.Host, options.Imap.Port, options.Imap.UseSsl);
         await imapClient.ConnectAsync(options.Imap.Host, options.Imap.Port, ImapSecurity.ToSecureSocketOptions(options.Imap.UseSsl));
         await imapClient.AuthenticateAsync(options.Imap.UserName, options.Imap.Password);
-        Log.Information("Connected and authenticated to IMAP server. Host={Host}, UserName={UserName}", options.Imap.Host, options.Imap.UserName);
+        logger.LogInformation("Connected and authenticated to IMAP server. Host={Host}, UserName={UserName}", options.Imap.Host, options.Imap.UserName);
     }
 
     /// <summary>
@@ -81,7 +81,7 @@ internal sealed class BatchRunner(AppOptions options, string runId)
         MailKit.Search.SearchQuery query = MailSearchQueryFactory.Create(options.MailSearch);
         IList<UniqueId> uids = await folder.SearchAsync(query);
         List<UniqueId> targetUids = uids.Take(options.MailSearch.MaxMessages).ToList();
-        Log.Information("Found {MessageCount} target messages. Mailbox={Mailbox}", targetUids.Count, options.Imap.Mailbox);
+        logger.LogInformation("Found {MessageCount} target messages. Mailbox={Mailbox}", targetUids.Count, options.Imap.Mailbox);
         return targetUids;
     }
 
@@ -114,8 +114,8 @@ internal sealed class BatchRunner(AppOptions options, string runId)
         });
         using SemaphoreSlim imapLock = new SemaphoreSlim(1, 1);
 
-        MailFetchQueueProducer producer = new MailFetchQueueProducer(folder, queue.Writer, imapLock);
-        ApiQueueConsumer consumer = new ApiQueueConsumer(options, folder, httpClient, queue.Reader, imapLock);
+        MailFetchQueueProducer producer = new MailFetchQueueProducer(folder, queue.Writer, imapLock, loggerFactory.CreateLogger<MailFetchQueueProducer>());
+        ApiQueueConsumer consumer = new ApiQueueConsumer(options, folder, httpClient, queue.Reader, imapLock, loggerFactory.CreateLogger<ApiQueueConsumer>());
 
         Task<ProcessResult> producerTask = producer.ProduceAsync(targetUids);
         Task<ProcessResult> consumerTask = consumer.ConsumeAsync();
@@ -123,7 +123,7 @@ internal sealed class BatchRunner(AppOptions options, string runId)
         ProcessResult producerResult = await producerTask;
         ProcessResult consumerResult = await consumerTask;
 
-        Log.Information(
+        logger.LogInformation(
             "Queue processing completed. Enqueued={Enqueued}, QueueFailures={QueueFailures}, ApiSucceeded={ApiSucceeded}, ApiFailed={ApiFailed}",
             producerResult.Succeeded,
             producerResult.Failed,
@@ -147,9 +147,9 @@ internal sealed class BatchRunner(AppOptions options, string runId)
     /// <summary>
     /// バッチ終了時の処理結果をログに出力します。
     /// </summary>
-    private static void LogFinish(ProcessResult result)
+    private void LogFinish(ProcessResult result)
     {
-        Log.Information("Mail batch finished. Succeeded={Succeeded}, Failed={Failed}, Total={Total}", result.Succeeded, result.Failed, result.Total);
+        logger.LogInformation("Mail batch finished. Succeeded={Succeeded}, Failed={Failed}, Total={Total}", result.Succeeded, result.Failed, result.Total);
     }
 
     /// <summary>

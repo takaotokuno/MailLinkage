@@ -2,11 +2,11 @@ using System.Threading.Channels;
 using MailBatch.Console.Mail;
 using MailBatch.Console.Models;
 using MailKit;
-using Serilog;
+using Microsoft.Extensions.Logging;
 
 namespace MailBatch.Console.Services;
 
-internal sealed class MailFetchQueueProducer(IMailFolder folder, ChannelWriter<ApiQueueItem> writer, SemaphoreSlim imapLock)
+internal sealed class MailFetchQueueProducer(IMailFolder folder, ChannelWriter<ApiQueueItem> writer, SemaphoreSlim imapLock, ILogger<MailFetchQueueProducer> logger)
 {
     /// <summary>
     /// メールを取得し、API送信用データへ加工したうえで内部キューへ追加します。
@@ -24,7 +24,7 @@ internal sealed class MailFetchQueueProducer(IMailFolder folder, ChannelWriter<A
                     ReceivedMailRequest request = await CreateRequestAsync(uid);
                     await writer.WriteAsync(new ApiQueueItem(uid, request));
                     result = result.AddSuccess();
-                    Log.Information(
+                    logger.LogInformation(
                         "Queued API request. MessageId={MessageId}, QueueCount={QueueCount}, BodyLength={BodyLength}",
                         request.MessageId,
                         result.Succeeded,
@@ -33,14 +33,14 @@ internal sealed class MailFetchQueueProducer(IMailFolder folder, ChannelWriter<A
                 catch (Exception ex)
                 {
                     result = result.AddFailure();
-                    Log.Error(ex, "Failed to fetch, transform, or queue message. Uid={Uid}", uid);
+                    logger.LogError(ex, "Failed to fetch, transform, or queue message. Uid={Uid}", uid);
                 }
             }
         }
         finally
         {
             writer.Complete();
-            Log.Information("Producer completed queue additions. Enqueued={Enqueued}, Failed={Failed}", result.Succeeded, result.Failed);
+            logger.LogInformation("Producer completed queue additions. Enqueued={Enqueued}, Failed={Failed}", result.Succeeded, result.Failed);
         }
 
         return result;
