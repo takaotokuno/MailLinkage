@@ -2,18 +2,17 @@ using System.Threading.Channels;
 using MailBatch.Console.Mail;
 using MailBatch.Console.Models;
 using MailBatch.Console.Notifications;
-using MailBatch.Console.Options;
 using MailKit;
 using Microsoft.Extensions.Logging;
 
 namespace MailBatch.Console.Services;
 
 internal sealed class MailFetchQueueProducer(
-    AppOptions options,
     IMailFolder folder,
     ChannelWriter<ReceivedMailRequest> writer,
     SemaphoreSlim imapLock,
     IMailNotifier mailNotifier,
+    MailNotificationFactory mailNotificationFactory,
     ILogger<MailFetchQueueProducer> logger)
 {
     /// <summary>
@@ -120,35 +119,6 @@ internal sealed class MailFetchQueueProducer(
             return;
         }
 
-        MailNotificationTemplateOptions template = options.Notification.GetTemplate(MailNotificationOptions.ValidationErrorTemplateName);
-        string validationErrorsText = string.Join(Environment.NewLine, validationErrors.Select(error => $"- {error}"));
-
-        await mailNotifier.SendAsync(new MailNotification(
-            request.Sender,
-            ApplyValidationErrorNotificationTemplate(template.Subject, request, validationErrorsText),
-            ApplyValidationErrorNotificationTemplate(template.Body, request, validationErrorsText)));
-    }
-
-    /// <summary>
-    /// バリデーションエラー通知テンプレートのプレースホルダーを置換します。
-    /// </summary>
-    private static string ApplyValidationErrorNotificationTemplate(
-        string template,
-        ReceivedMailRequest request,
-        string validationErrors)
-    {
-        return template
-            .Replace("{MessageId}", request.MessageId, StringComparison.Ordinal)
-            .Replace("{Subject}", CreatePreview(request.Subject), StringComparison.Ordinal)
-            .Replace("{ValidationErrors}", validationErrors, StringComparison.Ordinal);
-    }
-
-    /// <summary>
-    /// 通知に埋め込む文字列を指定文字数以内に短縮します。
-    /// </summary>
-    private static string CreatePreview(string value)
-    {
-        const int maxPreviewLength = 200;
-        return value.Length <= maxPreviewLength ? value : $"{value[..maxPreviewLength]}...";
+        await mailNotifier.SendAsync(mailNotificationFactory.CreateValidationErrorNotification(request, validationErrors));
     }
 }
