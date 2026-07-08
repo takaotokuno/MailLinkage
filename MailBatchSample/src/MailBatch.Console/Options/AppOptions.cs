@@ -9,45 +9,13 @@ internal sealed class AppOptions
     public ProcessingOptions Processing { get; init; } = new();
 
     /// <summary>
-    /// アプリケーション設定の必須項目と値の範囲を検証します。
+    /// 各種アプリケーション設定の必須項目と値の範囲を検証します。
     /// </summary>
     public void Validate()
     {
-        Require(Batch.LogDirectory, "Batch:LogDirectory");
-        Require(Imap.Host, "Imap:Host");
-        Require(Imap.UserName, "Imap:UserName");
-        Require(Imap.Password, "Imap:Password");
-        Require(Imap.Mailbox, "Imap:Mailbox");
-        if (Imap.Port is <= 0 or > 65535)
-        {
-            throw new InvalidOperationException("Imap:Port must be between 1 and 65535.");
-        }
-
-        if (Api.BaseUrl is null || !Api.BaseUrl.IsAbsoluteUri)
-        {
-            throw new InvalidOperationException("Api:BaseUrl must be an absolute URI.");
-        }
-
-        Require(Api.Endpoint, "Api:Endpoint");
-        if (Api.TimeoutSeconds <= 0)
-        {
-            throw new InvalidOperationException("Api:TimeoutSeconds must be greater than 0.");
-        }
-
-        if (MailSearch.MaxMessages <= 0)
-        {
-            throw new InvalidOperationException("MailSearch:MaxMessages must be greater than 0.");
-        }
-    }
-
-    /// <summary>
-    /// 指定された設定値が空でないことを確認します。
-    /// </summary>
-    private static void Require(string? value, string key)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            throw new InvalidOperationException($"{key} is required.");
-        }
+        Batch.Validate();
+        Imap.Validate();
+        Api.Validate();
+        MailSearch.Validate();
     }
 }
