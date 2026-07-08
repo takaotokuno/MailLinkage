@@ -7,6 +7,7 @@ internal sealed class AppOptions
     public MailSearchOptions MailSearch { get; init; } = new();
     public ApiOptions Api { get; init; } = new();
     public ProcessingOptions Processing { get; init; } = new();
+    public MailNotificationOptions Notification { get; init; } = new();
 
     /// <summary>
     /// 各種アプリケーション設定の必須項目と値の範囲を検証します。
@@ -17,5 +18,6 @@ internal sealed class AppOptions
         Imap.Validate();
         Api.Validate();
         MailSearch.Validate();
+        Notification.Validate();
     }
 }

@@ -21,7 +21,7 @@ services:
         -Dgreenmail.setup.test.imap
         -Dgreenmail.hostname=0.0.0.0
         -Dgreenmail.users.login=email
-        -Dgreenmail.users=${MAILSERVER_USERS:-test:password@example.local}
+        -Dgreenmail.users=${MAILSERVER_USERS:-test:password@example.local,admin:password@example.local}
     ports:
       # Host-side ports are intentionally non-privileged and stable for local tools.
       - "${MAILSERVER_SMTP_HOST_PORT:-1025}:3025"
