@@ -9,7 +9,7 @@ namespace MailBatch.Console.Services;
 
 internal sealed class ApiQueueConsumer(
     AppOptions options,
-    ReceivedMailFolderService receivedMailFolderService,
+    IReceivedMailFolderService receivedMailFolderService,
     HttpClient httpClient,
     ChannelReader<ReceivedMailRequest> reader,
     ILogger<ApiQueueConsumer> logger)

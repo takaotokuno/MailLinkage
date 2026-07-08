@@ -1,4 +1,6 @@
-namespace MailBatch.Console.Notifications;
+using MailBatch.Console.Notifications;
+
+namespace MailBatch.Console.Services;
 
 internal interface IMailNotifier
 {

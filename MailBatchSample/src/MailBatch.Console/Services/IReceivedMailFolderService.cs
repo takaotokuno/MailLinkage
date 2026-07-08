@@ -1,0 +1,36 @@
+using MailBatch.Console.Models;
+using MailKit;
+using MailKit.Search;
+
+namespace MailBatch.Console.Services;
+
+/// <summary>
+/// 受信メールフォルダに対する操作を提供します。
+/// </summary>
+internal interface IReceivedMailFolderService : IAsyncDisposable
+{
+    /// <summary>
+    /// メールサーバーへ接続し、受信メールフォルダと処理済みフォルダを利用可能な状態にします。
+    /// </summary>
+    Task ConnectAsync();
+
+    /// <summary>
+    /// メールサーバーから正常に切断します。
+    /// </summary>
+    Task DisconnectAsync();
+
+    /// <summary>
+    /// 検索条件に一致する処理対象メールのUID一覧を取得します。
+    /// </summary>
+    Task<IReadOnlyList<UniqueId>> SearchTargetMessagesAsync(SearchQuery query, int maxMessages);
+
+    /// <summary>
+    /// 指定されたUIDのメール本文と内部受信日時を取得し、受信メールリクエストを作成します。
+    /// </summary>
+    Task<ReceivedMailRequest> CreateRequestAsync(UniqueId uid);
+
+    /// <summary>
+    /// 処理済みメールを設定されたメールボックスへ移動します。
+    /// </summary>
+    Task MoveToProcessedMailboxAsync(UniqueId uid, string messageId);
+}
