@@ -2,12 +2,14 @@ using System.Threading.Channels;
 using MailBatch.Console.Mail;
 using MailBatch.Console.Models;
 using MailBatch.Console.Notifications;
+using MailBatch.Console.Options;
 using MailKit;
 using Microsoft.Extensions.Logging;
 
 namespace MailBatch.Console.Services;
 
 internal sealed class MailFetchQueueProducer(
+    AppOptions options,
     IMailFolder folder,
     ChannelWriter<ReceivedMailRequest> writer,
     SemaphoreSlim imapLock,
@@ -93,19 +95,24 @@ internal sealed class MailFetchQueueProducer(
             return;
         }
 
-        string body = string.Join(Environment.NewLine, new[]
-        {
-            "The received mail could not be accepted because it failed validation.",
-            $"MessageId: {request.MessageId}",
-            $"Subject: {CreatePreview(request.Subject)}",
-            "Validation errors:",
-            string.Join(Environment.NewLine, validationErrors.Select(error => $"- {error}"))
-        });
+        MailNotificationTemplateOptions template = options.Notification.GetTemplate(MailNotificationOptions.ValidationErrorTemplateName);
+        string validationErrorsText = string.Join(Environment.NewLine, validationErrors.Select(error => $"- {error}"));
 
         await mailNotifier.SendAsync(new MailNotification(
             request.Sender,
-            "Received mail validation failed",
-            body));
+            ApplyValidationErrorNotificationTemplate(template.Subject, request, validationErrorsText),
+            ApplyValidationErrorNotificationTemplate(template.Body, request, validationErrorsText)));
+    }
+
+    private static string ApplyValidationErrorNotificationTemplate(
+        string template,
+        ReceivedMailRequest request,
+        string validationErrors)
+    {
+        return template
+            .Replace("{MessageId}", request.MessageId, StringComparison.Ordinal)
+            .Replace("{Subject}", CreatePreview(request.Subject), StringComparison.Ordinal)
+            .Replace("{ValidationErrors}", validationErrors, StringComparison.Ordinal);
     }
 
     private static string CreatePreview(string value)

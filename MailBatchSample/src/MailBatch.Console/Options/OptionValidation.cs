@@ -10,6 +10,14 @@ internal static class OptionValidation
         }
     }
 
+    public static void RequireNotEmpty<T>(IReadOnlyCollection<T> values, string key)
+    {
+        if (values.Count == 0)
+        {
+            throw new InvalidOperationException($"{key} is required.");
+        }
+    }
+
     public static void RequireRange(int value, int min, int max, string key)
     {
         if (value < min || value > max)
