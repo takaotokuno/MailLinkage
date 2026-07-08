@@ -17,7 +17,7 @@ internal sealed class MailFetchQueueProducer(
     ChannelWriter<ReceivedMailRequest> writer,
     IMailNotifier mailNotifier,
     MailNotificationFactory mailNotificationFactory,
-    ILogger<MailFetchQueueProducer> logger)
+    ILogger<MailFetchQueueProducer> logger) : IMailFetchQueueProducer
 {
     /// <summary>
     /// メールを取得し、API送信用データへ加工したうえで内部キューへ追加します。

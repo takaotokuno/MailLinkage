@@ -18,7 +18,7 @@ internal sealed class ApiQueueConsumer(
     IReceivedMailFolderService receivedMailFolderService,
     IApiClient receivedMailApiClient,
     ChannelReader<ReceivedMailRequest> reader,
-    ILogger<ApiQueueConsumer> logger)
+    ILogger<ApiQueueConsumer> logger) : IApiQueueConsumer
 {
     /// <summary>
     /// 内部キューからAPI送信用データを順次取り出し、APIへPOSTします。
