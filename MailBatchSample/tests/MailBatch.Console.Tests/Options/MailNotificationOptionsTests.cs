@@ -12,7 +12,9 @@ public sealed class MailNotificationOptionsTests
             SmtpHost = "mailserver",
             SmtpPort = 3025,
             From = "mailbatch@example.local",
-            AdminAddress = "admin@example.local"
+            AdminAddress = "admin@example.local",
+            SubjectTemplate = "Mail batch {Status}: RunId={RunId}",
+            BodyTemplate = "RunId: {RunId}"
         };
 
         Exception? exception = Record.Exception(options.Validate);
@@ -27,7 +29,9 @@ public sealed class MailNotificationOptionsTests
         {
             SmtpHost = "mailserver",
             SmtpPort = 3025,
-            From = "mailbatch@example.local"
+            From = "mailbatch@example.local",
+            SubjectTemplate = "Mail batch {Status}: RunId={RunId}",
+            BodyTemplate = "RunId: {RunId}"
         };
 
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(options.Validate);

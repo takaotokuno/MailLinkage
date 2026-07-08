@@ -65,7 +65,7 @@ internal sealed class SmtpMailNotifier(
         message.To.Add(MailboxAddress.Parse(notification.To));
         message.Subject = notification.Subject;
         message.Body = new TextPart("plain") { Text = notification.Body };
-        message.Date = notification.SentAt;
+        message.Date = DateTimeOffset.UtcNow;
 
         return message;
     }
