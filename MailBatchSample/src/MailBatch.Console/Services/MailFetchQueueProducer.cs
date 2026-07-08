@@ -1,5 +1,4 @@
 using System.Threading.Channels;
-using MailBatch.Console.Mail;
 using MailBatch.Console.Models;
 using MailBatch.Console.Notifications;
 using MailKit;
@@ -8,9 +7,8 @@ using Microsoft.Extensions.Logging;
 namespace MailBatch.Console.Services;
 
 internal sealed class MailFetchQueueProducer(
-    IMailFolder folder,
+    ReceivedMailFolderService receivedMailFolderService,
     ChannelWriter<ReceivedMailRequest> writer,
-    SemaphoreSlim imapLock,
     IMailNotifier mailNotifier,
     MailNotificationFactory mailNotificationFactory,
     ILogger<MailFetchQueueProducer> logger)
@@ -71,22 +69,7 @@ internal sealed class MailFetchQueueProducer(
     /// </summary>
     private async Task<ReceivedMailRequest> CreateRequestAsync(UniqueId uid)
     {
-        await imapLock.WaitAsync();
-        try
-        {
-            MimeKit.MimeMessage message = await folder.GetMessageAsync(uid);
-            IList<IMessageSummary> summary = await folder.FetchAsync(new[] { uid }, MessageSummaryItems.InternalDate);
-
-            ReceivedMailRequest request = ReceivedMailMapper.ToRequest(
-                message,
-                summary.FirstOrDefault()?.InternalDate);
-
-            return request with { Uid = uid };
-        }
-        finally
-        {
-            imapLock.Release();
-        }
+        return await receivedMailFolderService.CreateRequestAsync(uid);
     }
 
     /// <summary>

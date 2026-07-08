@@ -29,6 +29,7 @@ try
         })
         .AddTransient<IMailNotifier, SmtpMailNotifier>()
         .AddTransient<MailNotificationFactory>()
+        .AddScoped<ReceivedMailFolderService>()
         .AddTransient<BatchRunner>()
         .BuildServiceProvider();
 
