@@ -9,21 +9,20 @@ namespace MailBatch.Console.BatchProcessing;
 
 internal sealed class MailFetchQueueProducer(
     IReceivedMailFolderService receivedMailFolderService,
-    ChannelWriter<ReceivedMailRequest> writer,
     IMailNotifier mailNotifier,
     MailNotificationFactory mailNotificationFactory,
-    ILogger<MailFetchQueueProducer> logger)
+    ILogger<MailFetchQueueProducer> logger) : IMailFetchQueueProducer
 {
     /// <summary>
     /// メールを取得し、API送信用データへ加工したうえで内部キューへ追加します。
     /// </summary>
-    public async Task<ProcessResult> ProduceAsync(IReadOnlyList<UniqueId> targetUids)
+    public async Task<ProcessResult> ProduceAsync(IReadOnlyList<UniqueId> targetUids, ChannelWriter<ReceivedMailRequest> writer)
     {
         ProcessResultAccumulator result = new();
 
         foreach (UniqueId uid in targetUids)
         {
-            await ProduceSingleAsync(uid, result);
+            await ProduceSingleAsync(uid, writer, result);
         }
 
         writer.Complete();
@@ -38,14 +37,14 @@ internal sealed class MailFetchQueueProducer(
     /// <summary>
     /// 指定されたUIDのメールを1件処理し、処理結果を集計します。
     /// </summary>
-    private async Task ProduceSingleAsync(UniqueId uid, ProcessResultAccumulator result)
+    private async Task ProduceSingleAsync(UniqueId uid, ChannelWriter<ReceivedMailRequest> writer, ProcessResultAccumulator result)
     {
         try
         {
             ReceivedMailRequest request = await CreateRequestAsync(uid);
 
             await ValidateRequestAsync(request);
-            await QueueRequestAsync(request);
+            await QueueRequestAsync(request, writer);
 
             result.IncrementSuccess();
 
@@ -98,7 +97,7 @@ internal sealed class MailFetchQueueProducer(
     /// <summary>
     /// 検証済みの受信メールリクエストを内部キューへ追加します。
     /// </summary>
-    private async Task QueueRequestAsync(ReceivedMailRequest request)
+    private static async Task QueueRequestAsync(ReceivedMailRequest request, ChannelWriter<ReceivedMailRequest> writer)
     {
         await writer.WriteAsync(request);
     }

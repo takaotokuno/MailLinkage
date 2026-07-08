@@ -32,6 +32,20 @@ try
         .AddTransient<IMailNotifier, SmtpMailNotifier>()
         .AddTransient<MailNotificationFactory>()
         .AddScoped<IReceivedMailFolderService, ReceivedMailFolderService>()
+        .AddHttpClient("ReceivedMailApi", client =>
+        {
+            client.BaseAddress = options.Api.BaseUrl;
+            client.Timeout = TimeSpan.FromSeconds(options.Api.TimeoutSeconds);
+        })
+        .Services
+        .AddTransient<IMailSearchService, MailSearchService>()
+        .AddTransient<IReceivedMailQueueFactory, ReceivedMailQueueFactory>()
+        .AddTransient<IMailFetchQueueProducer, MailFetchQueueProducer>()
+        .AddTransient<IApiQueueConsumer, ApiQueueConsumer>()
+        .AddTransient<IReceivedMailPipeline, ReceivedMailPipeline>()
+        .AddTransient<IApiClient, ApiClient>()
+        .AddTransient<IExitCodePolicy, ExitCodePolicy>()
+        .AddTransient<IRunStatusNotifier, RunStatusNotifier>()
         .AddTransient<BatchRunner>()
         .BuildServiceProvider();
 

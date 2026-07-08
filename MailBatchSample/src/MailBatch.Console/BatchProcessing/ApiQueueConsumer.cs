@@ -1,4 +1,3 @@
-using System.Net.Http.Json;
 using System.Threading.Channels;
 using MailBatch.Console.ReceivedMails;
 using MailBatch.Console.Options;
@@ -11,14 +10,13 @@ namespace MailBatch.Console.BatchProcessing;
 internal sealed class ApiQueueConsumer(
     AppOptions options,
     IReceivedMailFolderService receivedMailFolderService,
-    HttpClient httpClient,
-    ChannelReader<ReceivedMailRequest> reader,
-    ILogger<ApiQueueConsumer> logger)
+    IApiClient apiClient,
+    ILogger<ApiQueueConsumer> logger) : IApiQueueConsumer
 {
     /// <summary>
     /// 内部キューからAPI送信用データを順次取り出し、APIへPOSTします。
     /// </summary>
-    public async Task<ProcessResult> ConsumeAsync()
+    public async Task<ProcessResult> ConsumeAsync(ChannelReader<ReceivedMailRequest> reader)
     {
         ProcessResultAccumulator result = new();
         logger.LogInformation("API consumer started. Endpoint={Endpoint}", options.Api.Endpoint);
@@ -73,7 +71,7 @@ internal sealed class ApiQueueConsumer(
             request.MessageId,
             request.Subject);
 
-        using HttpResponseMessage response = await httpClient.PostAsJsonAsync(options.Api.Endpoint, request);
+        using HttpResponseMessage response = await apiClient.PostReceivedMailAsync(request);
         string responseBody = await response.Content.ReadAsStringAsync();
 
         if (!response.IsSuccessStatusCode)
