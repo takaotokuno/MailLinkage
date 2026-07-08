@@ -20,14 +20,14 @@ internal sealed class ApiQueueConsumer(
     /// </summary>
     public async Task<ProcessResult> ConsumeAsync()
     {
-        var result = new ProcessResult(Total: 0);
+        ProcessResult result = new ProcessResult(Total: 0);
         Log.Information("API consumer started. Endpoint={Endpoint}", options.Api.Endpoint);
 
-        await foreach (var item in reader.ReadAllAsync())
+        await foreach (ApiQueueItem item in reader.ReadAllAsync())
         {
             using (LogContext.PushProperty("MessageId", item.Request.MessageId))
             {
-                var succeeded = await PostAndHandleResultAsync(item);
+                bool succeeded = await PostAndHandleResultAsync(item);
                 result = succeeded ? result.AddSuccess() : result.AddFailure();
             }
         }
@@ -57,10 +57,10 @@ internal sealed class ApiQueueConsumer(
     /// </summary>
     private async Task<bool> PostMessageAsync(ApiQueueItem item)
     {
-        var request = item.Request;
+        ReceivedMailRequest request = item.Request;
         Log.Information("Posting queued API request. MessageId={MessageId}, Subject={Subject}", request.MessageId, request.Subject);
-        using var response = await httpClient.PostAsJsonAsync(options.Api.Endpoint, request);
-        var responseBody = await response.Content.ReadAsStringAsync();
+        using HttpResponseMessage response = await httpClient.PostAsJsonAsync(options.Api.Endpoint, request);
+        string responseBody = await response.Content.ReadAsStringAsync();
 
         if (!response.IsSuccessStatusCode)
         {

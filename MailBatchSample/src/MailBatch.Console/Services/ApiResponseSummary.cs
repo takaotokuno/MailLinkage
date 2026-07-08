@@ -14,7 +14,7 @@ internal static class ApiResponseSummary
             return null;
         }
 
-        var match = Regex.Match(responseBody, "\"id\"\\s*:\\s*(\\d+)", RegexOptions.IgnoreCase);
+        Match match = Regex.Match(responseBody, "\"id\"\\s*:\\s*(\\d+)", RegexOptions.IgnoreCase);
         return match.Success ? match.Groups[1].Value : null;
     }
 
@@ -28,7 +28,7 @@ internal static class ApiResponseSummary
             return string.Empty;
         }
 
-        var normalized = Regex.Replace(value, "\\s+", " ").Trim();
+        string normalized = Regex.Replace(value, "\\s+", " ").Trim();
         return normalized.Length <= maxLength ? normalized : normalized[..maxLength] + "...";
     }
 }

@@ -12,7 +12,7 @@ public sealed class SmtpSecurityTests
     [InlineData(false, SecureSocketOptions.StartTlsWhenAvailable)]
     public void ToSecureSocketOptions_MapsSslFlagToMailKitOption(bool useSsl, SecureSocketOptions expected)
     {
-        var option = SmtpSecurity.ToSecureSocketOptions(useSsl);
+        SecureSocketOptions option = SmtpSecurity.ToSecureSocketOptions(useSsl);
 
         Assert.Equal(expected, option);
     }

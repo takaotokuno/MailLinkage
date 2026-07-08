@@ -3,15 +3,15 @@ using MailBatch.Console.Logging;
 using MailBatch.Console.Services;
 using Serilog;
 
-var exitCode = 0;
-var runId = Guid.NewGuid().ToString("N");
+int exitCode = 0;
+string runId = Guid.NewGuid().ToString();
 
 try
 {
-    var options = AppConfiguration.Load(args);
+    MailBatch.Console.Options.AppOptions options = AppConfiguration.Load(args);
     Log.Logger = BatchLogger.Create(options.Batch.LogDirectory, runId);
 
-    var runner = new BatchRunner(options, runId);
+    BatchRunner runner = new BatchRunner(options, runId);
     exitCode = await runner.RunAsync();
 }
 catch (Exception ex)

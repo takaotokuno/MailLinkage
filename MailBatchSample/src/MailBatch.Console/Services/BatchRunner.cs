@@ -15,12 +15,12 @@ internal sealed class BatchRunner(AppOptions options, string runId)
     public async Task<int> RunAsync()
     {
         LogStart();
-        using var imapClient = CreateImapClient();
+        using ImapClient imapClient = CreateImapClient();
         await ConnectImapAsync(imapClient);
-        var folder = await OpenMailboxAsync(imapClient);
-        var targetUids = await SearchTargetMessagesAsync(folder);
-        using var httpClient = CreateHttpClient();
-        var result = await ProcessMessagesAsync(folder, targetUids, httpClient);
+        IMailFolder folder = await OpenMailboxAsync(imapClient);
+        IReadOnlyList<UniqueId> targetUids = await SearchTargetMessagesAsync(folder);
+        using HttpClient httpClient = CreateHttpClient();
+        ProcessResult result = await ProcessMessagesAsync(folder, targetUids, httpClient);
         await DisconnectImapAsync(imapClient);
         LogFinish(result);
         return ToExitCode(result);
@@ -47,7 +47,7 @@ internal sealed class BatchRunner(AppOptions options, string runId)
     /// </summary>
     private static ImapClient CreateImapClient()
     {
-        var imapClient = new ImapClient();
+        ImapClient imapClient = new ImapClient();
         imapClient.ServerCertificateValidationCallback = (_, _, _, _) => true;
         return imapClient;
     }
@@ -68,7 +68,7 @@ internal sealed class BatchRunner(AppOptions options, string runId)
     /// </summary>
     private async Task<IMailFolder> OpenMailboxAsync(ImapClient imapClient)
     {
-        var folder = await imapClient.GetFolderAsync(options.Imap.Mailbox);
+        IMailFolder folder = await imapClient.GetFolderAsync(options.Imap.Mailbox);
         await folder.OpenAsync(FolderAccess.ReadWrite);
         return folder;
     }
@@ -78,9 +78,9 @@ internal sealed class BatchRunner(AppOptions options, string runId)
     /// </summary>
     private async Task<IReadOnlyList<UniqueId>> SearchTargetMessagesAsync(IMailFolder folder)
     {
-        var query = MailSearchQueryFactory.Create(options.MailSearch);
-        var uids = await folder.SearchAsync(query);
-        var targetUids = uids.Take(options.MailSearch.MaxMessages).ToList();
+        MailKit.Search.SearchQuery query = MailSearchQueryFactory.Create(options.MailSearch);
+        IList<UniqueId> uids = await folder.SearchAsync(query);
+        List<UniqueId> targetUids = uids.Take(options.MailSearch.MaxMessages).ToList();
         Log.Information("Found {MessageCount} target messages. Mailbox={Mailbox}", targetUids.Count, options.Imap.Mailbox);
         return targetUids;
     }
@@ -107,21 +107,21 @@ internal sealed class BatchRunner(AppOptions options, string runId)
             return new ProcessResult(Total: 0);
         }
 
-        var queue = Channel.CreateUnbounded<ApiQueueItem>(new UnboundedChannelOptions
+        Channel<ApiQueueItem> queue = Channel.CreateUnbounded<ApiQueueItem>(new UnboundedChannelOptions
         {
             SingleReader = true,
             SingleWriter = true
         });
-        using var imapLock = new SemaphoreSlim(1, 1);
+        using SemaphoreSlim imapLock = new SemaphoreSlim(1, 1);
 
-        var producer = new MailFetchQueueProducer(folder, queue.Writer, imapLock);
-        var consumer = new ApiQueueConsumer(options, folder, httpClient, queue.Reader, imapLock);
+        MailFetchQueueProducer producer = new MailFetchQueueProducer(folder, queue.Writer, imapLock);
+        ApiQueueConsumer consumer = new ApiQueueConsumer(options, folder, httpClient, queue.Reader, imapLock);
 
-        var producerTask = producer.ProduceAsync(targetUids);
-        var consumerTask = consumer.ConsumeAsync();
+        Task<ProcessResult> producerTask = producer.ProduceAsync(targetUids);
+        Task<ProcessResult> consumerTask = consumer.ConsumeAsync();
 
-        var producerResult = await producerTask;
-        var consumerResult = await consumerTask;
+        ProcessResult producerResult = await producerTask;
+        ProcessResult consumerResult = await consumerTask;
 
         Log.Information(
             "Queue processing completed. Enqueued={Enqueued}, QueueFailures={QueueFailures}, ApiSucceeded={ApiSucceeded}, ApiFailed={ApiFailed}",

@@ -12,7 +12,7 @@ public sealed class MailSearchQueryFactoryTests
     [Fact]
     public void Create_ReturnsAllQueryWhenNoFiltersAreConfigured()
     {
-        var query = MailSearchQueryFactory.Create(new MailSearchOptions { UnreadOnly = false, SinceDays = null });
+        SearchQuery query = MailSearchQueryFactory.Create(new MailSearchOptions { UnreadOnly = false, SinceDays = null });
 
         Assert.Equal(SearchQuery.All, query);
     }
@@ -21,16 +21,16 @@ public sealed class MailSearchQueryFactoryTests
     [Fact]
     public void Create_IncludesUnreadSubjectAndSinceFiltersWhenConfigured()
     {
-        var options = new MailSearchOptions
+        MailSearchOptions options = new MailSearchOptions
         {
             UnreadOnly = true,
             SubjectContains = "Target",
             SinceDays = 3
         };
-        var expectedDate = DateTime.UtcNow.Date.AddDays(-3);
+        DateTime expectedDate = DateTime.UtcNow.Date.AddDays(-3);
 
-        var query = MailSearchQueryFactory.Create(options);
-        var terms = GetSearchTerms(query);
+        SearchQuery query = MailSearchQueryFactory.Create(options);
+        IReadOnlyCollection<string> terms = GetSearchTerms(query);
 
         Assert.Contains("NotSeen", terms);
         Assert.Contains("SubjectContains", terms);
@@ -45,17 +45,17 @@ public sealed class MailSearchQueryFactoryTests
     [InlineData(-1)]
     public void Create_IgnoresNonPositiveSinceDays(int sinceDays)
     {
-        var query = MailSearchQueryFactory.Create(new MailSearchOptions { UnreadOnly = false, SinceDays = sinceDays });
+        SearchQuery query = MailSearchQueryFactory.Create(new MailSearchOptions { UnreadOnly = false, SinceDays = sinceDays });
 
         Assert.Equal(SearchQuery.All, query);
     }
 
     private static IReadOnlyCollection<string> GetSearchTerms(SearchQuery query)
     {
-        var terms = new List<string>();
+        List<string> terms = new List<string>();
         Visit(query, q =>
         {
-            var term = q.GetType().GetProperty("Term")?.GetValue(q)?.ToString();
+            string? term = q.GetType().GetProperty("Term")?.GetValue(q)?.ToString();
             if (!string.IsNullOrWhiteSpace(term))
             {
                 terms.Add(term);
@@ -67,12 +67,12 @@ public sealed class MailSearchQueryFactoryTests
 
     private static IReadOnlyCollection<string> GetSearchValues(SearchQuery query)
     {
-        var values = new List<string>();
+        List<string> values = new List<string>();
         Visit(query, q =>
         {
-            foreach (var property in q.GetType().GetProperties())
+            foreach (System.Reflection.PropertyInfo property in q.GetType().GetProperties())
             {
-                var value = property.GetValue(q);
+                object? value = property.GetValue(q);
                 if (value is string text)
                 {
                     values.Add(text);
@@ -91,7 +91,7 @@ public sealed class MailSearchQueryFactoryTests
     {
         visitor(query);
 
-        foreach (var propertyName in new[] { "Left", "Right", "Operand" })
+        foreach (string? propertyName in new[] { "Left", "Right", "Operand" })
         {
             if (query.GetType().GetProperty(propertyName)?.GetValue(query) is SearchQuery child)
             {

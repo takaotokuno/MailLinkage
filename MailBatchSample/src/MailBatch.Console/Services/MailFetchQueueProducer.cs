@@ -13,15 +13,15 @@ internal sealed class MailFetchQueueProducer(IMailFolder folder, ChannelWriter<A
     /// </summary>
     public async Task<ProcessResult> ProduceAsync(IReadOnlyList<UniqueId> targetUids)
     {
-        var result = new ProcessResult(Total: 0);
+        ProcessResult result = new ProcessResult(Total: 0);
 
         try
         {
-            foreach (var uid in targetUids)
+            foreach (UniqueId uid in targetUids)
             {
                 try
                 {
-                    var request = await CreateRequestAsync(uid);
+                    ReceivedMailRequest request = await CreateRequestAsync(uid);
                     await writer.WriteAsync(new ApiQueueItem(uid, request));
                     result = result.AddSuccess();
                     Log.Information(
@@ -54,8 +54,8 @@ internal sealed class MailFetchQueueProducer(IMailFolder folder, ChannelWriter<A
         await imapLock.WaitAsync();
         try
         {
-            var message = await folder.GetMessageAsync(uid);
-            var summary = await folder.FetchAsync(new[] { uid }, MessageSummaryItems.InternalDate);
+            MimeKit.MimeMessage message = await folder.GetMessageAsync(uid);
+            IList<IMessageSummary> summary = await folder.FetchAsync(new[] { uid }, MessageSummaryItems.InternalDate);
             return ReceivedMailMapper.ToRequest(message, summary.FirstOrDefault()?.InternalDate);
         }
         finally

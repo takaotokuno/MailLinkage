@@ -2,14 +2,14 @@ using MailKit.Net.Smtp;
 using TestMailSender.Configuration;
 using TestMailSender.Mail;
 
-var exitCode = 0;
+int exitCode = 0;
 
 try
 {
-    var options = AppConfiguration.Load(args);
-    var message = MailMessageFactory.Create(options);
+    TestMailSender.Options.AppOptions options = AppConfiguration.Load(args);
+    MimeKit.MimeMessage message = MailMessageFactory.Create(options);
 
-    using var smtpClient = new SmtpClient();
+    using SmtpClient smtpClient = new SmtpClient();
     await smtpClient.ConnectAsync(options.Smtp.Host, options.Smtp.Port, SmtpSecurity.ToSecureSocketOptions(options.Smtp.UseSsl));
 
     if (!string.IsNullOrWhiteSpace(options.Smtp.UserName))
