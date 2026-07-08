@@ -16,7 +16,7 @@ internal sealed record ReceivedMailRequest(
     [JsonIgnore]
     public UniqueId Uid { get; init; }
 
-    public IReadOnlyList<string> Validate()
+    public void Validate()
     {
         List<string> errors = [];
 
@@ -30,6 +30,15 @@ internal sealed record ReceivedMailRequest(
             errors.Add($"Body length must be less than or equal to {MaxBodyLength} characters. Actual={Body.Length}.");
         }
 
-        return errors;
+        if (errors.Count > 0)
+        {
+            throw new ReceivedMailRequestValidationException(errors);
+        }
     }
+}
+
+internal sealed class ReceivedMailRequestValidationException(IReadOnlyList<string> errors)
+    : Exception(string.Join(Environment.NewLine, errors))
+{
+    public IReadOnlyList<string> Errors { get; } = errors;
 }

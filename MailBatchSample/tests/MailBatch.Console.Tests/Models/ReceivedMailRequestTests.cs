@@ -8,29 +8,29 @@ namespace MailBatch.Console.Tests.Models;
 public sealed class ReceivedMailRequestTests
 {
     [Fact]
-    public void Validate_ReturnsNoErrorsWhenSubjectAndBodyAreWithinLimits()
+    public void Validate_DoesNotThrowWhenSubjectAndBodyAreWithinLimits()
     {
         ReceivedMailRequest request = CreateRequest(
             subject: new string('s', ReceivedMailRequest.MaxSubjectLength),
             body: new string('b', ReceivedMailRequest.MaxBodyLength));
 
-        IReadOnlyList<string> errors = request.Validate();
+        Exception? exception = Record.Exception(request.Validate);
 
-        Assert.Empty(errors);
+        Assert.Null(exception);
     }
 
     [Fact]
-    public void Validate_ReturnsErrorsWhenSubjectAndBodyExceedLimits()
+    public void Validate_ThrowsErrorMessagesWhenSubjectAndBodyExceedLimits()
     {
         ReceivedMailRequest request = CreateRequest(
             subject: new string('s', ReceivedMailRequest.MaxSubjectLength + 1),
             body: new string('b', ReceivedMailRequest.MaxBodyLength + 1));
 
-        IReadOnlyList<string> errors = request.Validate();
+        ReceivedMailRequestValidationException exception = Assert.Throws<ReceivedMailRequestValidationException>(request.Validate);
 
-        Assert.Equal(2, errors.Count);
-        Assert.Contains(errors, error => error.Contains("Subject length", StringComparison.Ordinal));
-        Assert.Contains(errors, error => error.Contains("Body length", StringComparison.Ordinal));
+        Assert.Equal(2, exception.Errors.Count);
+        Assert.Contains("Subject length", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("Body length", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]

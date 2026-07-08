@@ -47,12 +47,14 @@ internal sealed class MailFetchQueueProducer(
         try
         {
             ReceivedMailRequest request = await CreateRequestAsync(uid);
-            if (!await ValidateRequestAsync(request, result))
-            {
-                return;
-            }
-
-            await QueueRequestAsync(request, result);
+            await ValidateRequestAsync(request);
+            await QueueRequestAsync(request);
+            result.IncrementSuccess();
+            logger.LogInformation(
+                "Queued API request. MessageId={MessageId}, QueueCount={QueueCount}, BodyLength={BodyLength}",
+                request.MessageId,
+                result.Succeeded,
+                request.Body?.Length ?? 0);
         }
         catch (Exception ex)
         {
@@ -80,38 +82,31 @@ internal sealed class MailFetchQueueProducer(
     }
 
     /// <summary>
-    /// 受信メールリクエストを検証し、エラーがある場合は通知と集計を行います。
+    /// 受信メールリクエストを検証し、エラーがある場合は通知を行います。
     /// </summary>
-    private async Task<bool> ValidateRequestAsync(ReceivedMailRequest request, ProcessResultAccumulator result)
+    private async Task ValidateRequestAsync(ReceivedMailRequest request)
     {
-        IReadOnlyList<string> validationErrors = request.Validate();
-        if (validationErrors.Count == 0)
+        try
         {
-            return true;
+            request.Validate();
         }
-
-        await NotifyValidationErrorAsync(request, validationErrors);
-        result.IncrementFailure();
-        logger.LogWarning(
-            "Validation failed for received mail request. MessageId={MessageId}, Errors={ValidationErrors}",
-            request.MessageId,
-            string.Join("; ", validationErrors));
-
-        return false;
+        catch (ReceivedMailRequestValidationException ex)
+        {
+            await NotifyValidationErrorAsync(request, ex.Errors);
+            logger.LogWarning(
+                "Validation failed for received mail request. MessageId={MessageId}, Errors={ValidationErrors}",
+                request.MessageId,
+                string.Join("; ", ex.Errors));
+            throw;
+        }
     }
 
     /// <summary>
-    /// 検証済みの受信メールリクエストを内部キューへ追加し、成功件数を集計します。
+    /// 検証済みの受信メールリクエストを内部キューへ追加します。
     /// </summary>
-    private async Task QueueRequestAsync(ReceivedMailRequest request, ProcessResultAccumulator result)
+    private async Task QueueRequestAsync(ReceivedMailRequest request)
     {
         await writer.WriteAsync(request);
-        result.IncrementSuccess();
-        logger.LogInformation(
-            "Queued API request. MessageId={MessageId}, QueueCount={QueueCount}, BodyLength={BodyLength}",
-            request.MessageId,
-            result.Succeeded,
-            request.Body?.Length ?? 0);
     }
 
     /// <summary>
