@@ -1,7 +1,7 @@
 using MailBatch.Console.ReceivedMails;
 using MailBatch.Console.NotificationMails;
+using MailBatch.Console.Models;
 using MailBatch.Console.Options;
-using MailBatch.Console.BatchProcessing;
 using Xunit;
 
 namespace MailBatch.Console.Tests.NotificationMails;

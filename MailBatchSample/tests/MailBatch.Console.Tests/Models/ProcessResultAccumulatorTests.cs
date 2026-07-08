@@ -1,7 +1,7 @@
-using MailBatch.Console.BatchProcessing;
+using MailBatch.Console.Models;
 using Xunit;
 
-namespace MailBatch.Console.Tests.BatchProcessing;
+namespace MailBatch.Console.Tests.Models;
 
 public sealed class ProcessResultAccumulatorTests
 {
