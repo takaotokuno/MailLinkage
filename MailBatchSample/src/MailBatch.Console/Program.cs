@@ -1,6 +1,9 @@
 using MailBatch.Console.Configuration;
 using MailBatch.Console.Logging;
+using MailBatch.Console.Options;
 using MailBatch.Console.Services;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Serilog;
 
 int exitCode = 0;
@@ -8,10 +11,18 @@ string runId = Guid.NewGuid().ToString();
 
 try
 {
-    MailBatch.Console.Options.AppOptions options = AppConfiguration.Load(args);
-    Log.Logger = BatchLogger.Create(options.Batch.LogDirectory, runId);
+    AppConfiguration.LoadedConfiguration loadedConfiguration = AppConfiguration.Load(args);
+    AppOptions options = loadedConfiguration.Options;
+    Log.Logger = BatchLogger.Create(loadedConfiguration.Configuration, runId);
 
-    BatchRunner runner = new BatchRunner(options, runId);
+    await using ServiceProvider serviceProvider = new ServiceCollection()
+        .AddSingleton(options)
+        .AddSingleton(new BatchRunContext(runId))
+        .AddLogging(builder => builder.AddSerilog(Log.Logger, dispose: false))
+        .AddTransient<BatchRunner>()
+        .BuildServiceProvider();
+
+    BatchRunner runner = serviceProvider.GetRequiredService<BatchRunner>();
     exitCode = await runner.RunAsync();
 }
 catch (Exception ex)

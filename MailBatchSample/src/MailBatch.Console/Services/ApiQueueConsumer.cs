@@ -3,8 +3,7 @@ using System.Threading.Channels;
 using MailBatch.Console.Models;
 using MailBatch.Console.Options;
 using MailKit;
-using Serilog;
-using Serilog.Context;
+using Microsoft.Extensions.Logging;
 
 namespace MailBatch.Console.Services;
 
@@ -13,7 +12,8 @@ internal sealed class ApiQueueConsumer(
     IMailFolder folder,
     HttpClient httpClient,
     ChannelReader<ApiQueueItem> reader,
-    SemaphoreSlim imapLock)
+    SemaphoreSlim imapLock,
+    ILogger<ApiQueueConsumer> logger)
 {
     /// <summary>
     /// 内部キューからAPI送信用データを順次取り出し、APIへPOSTします。
@@ -21,18 +21,18 @@ internal sealed class ApiQueueConsumer(
     public async Task<ProcessResult> ConsumeAsync()
     {
         ProcessResult result = new ProcessResult(Total: 0);
-        Log.Information("API consumer started. Endpoint={Endpoint}", options.Api.Endpoint);
+        logger.LogInformation("API consumer started. Endpoint={Endpoint}", options.Api.Endpoint);
 
         await foreach (ApiQueueItem item in reader.ReadAllAsync())
         {
-            using (LogContext.PushProperty("MessageId", item.Request.MessageId))
+            using (logger.BeginScope(new Dictionary<string, object> { ["MessageId"] = item.Request.MessageId }))
             {
                 bool succeeded = await PostAndHandleResultAsync(item);
                 result = succeeded ? result.AddSuccess() : result.AddFailure();
             }
         }
 
-        Log.Information("Consumer confirmed no remaining queued data. ApiSucceeded={Succeeded}, ApiFailed={Failed}", result.Succeeded, result.Failed);
+        logger.LogInformation("Consumer confirmed no remaining queued data. ApiSucceeded={Succeeded}, ApiFailed={Failed}", result.Succeeded, result.Failed);
         return result;
     }
 
@@ -47,7 +47,7 @@ internal sealed class ApiQueueConsumer(
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Unexpected error while processing queued API request. MessageId={MessageId}", item.Request.MessageId);
+            logger.LogError(ex, "Unexpected error while processing queued API request. MessageId={MessageId}", item.Request.MessageId);
             return false;
         }
     }
@@ -58,7 +58,7 @@ internal sealed class ApiQueueConsumer(
     private async Task<bool> PostMessageAsync(ApiQueueItem item)
     {
         ReceivedMailRequest request = item.Request;
-        Log.Information("Posting queued API request. MessageId={MessageId}, Subject={Subject}", request.MessageId, request.Subject);
+        logger.LogInformation("Posting queued API request. MessageId={MessageId}, Subject={Subject}", request.MessageId, request.Subject);
         using HttpResponseMessage response = await httpClient.PostAsJsonAsync(options.Api.Endpoint, request);
         string responseBody = await response.Content.ReadAsStringAsync();
 
@@ -84,9 +84,9 @@ internal sealed class ApiQueueConsumer(
     /// <summary>
     /// API送信成功時のステータスコードと保存済みIDをログに出力します。
     /// </summary>
-    private static void LogApiSuccess(string messageId, int statusCode, string responseBody)
+    private void LogApiSuccess(string messageId, int statusCode, string responseBody)
     {
-        Log.Information(
+        logger.LogInformation(
             "API post succeeded. MessageId={MessageId}, StatusCode={StatusCode}, SavedId={SavedId}",
             messageId,
             statusCode,
@@ -96,9 +96,9 @@ internal sealed class ApiQueueConsumer(
     /// <summary>
     /// API送信失敗時のステータスコードとレスポンス概要をログに出力します。
     /// </summary>
-    private static void LogApiFailure(string messageId, int statusCode, string responseBody)
+    private void LogApiFailure(string messageId, int statusCode, string responseBody)
     {
-        Log.Warning(
+        logger.LogWarning(
             "API post failed. MessageId={MessageId}, StatusCode={StatusCode}, Response={ResponseSummary}",
             messageId,
             statusCode,
@@ -125,6 +125,6 @@ internal sealed class ApiQueueConsumer(
             imapLock.Release();
         }
 
-        Log.Information("Marked message as seen. MessageId={MessageId}", messageId);
+        logger.LogInformation("Marked message as seen. MessageId={MessageId}", messageId);
     }
 }
