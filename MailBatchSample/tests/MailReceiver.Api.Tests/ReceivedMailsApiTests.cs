@@ -47,12 +47,12 @@ public sealed class ReceivedMailsApiTests : IAsyncLifetime
     [Fact]
     public async Task Health_ReturnsHealthyStatus()
     {
-        using var client = CreateClient();
+        using HttpClient client = CreateClient();
 
-        using var response = await client.GetAsync("/health");
+        using HttpResponseMessage response = await client.GetAsync("/health");
 
         response.EnsureSuccessStatusCode();
-        var content = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>();
+        Dictionary<string, string>? content = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>();
         Assert.Equal("Healthy", content?["status"]);
     }
 
@@ -60,21 +60,21 @@ public sealed class ReceivedMailsApiTests : IAsyncLifetime
     [Fact]
     public async Task CreateReceivedMail_PersistsMailAndRejectsDuplicateMessageId()
     {
-        using var client = CreateClient();
-        var request = new CreateReceivedMailRequest(
+        using HttpClient client = CreateClient();
+        CreateReceivedMailRequest request = new(
             MessageId: "<api-test-message@example.com>",
             Sender: "sender@example.com",
             Subject: "API test subject",
             Body: "API test body",
             ReceivedAt: "2026-06-24T12:00:00Z");
 
-        using var createdResponse = await client.PostAsJsonAsync("/api/received-mails", request);
-        using var duplicateResponse = await client.PostAsJsonAsync("/api/received-mails", request);
-        var mails = await client.GetFromJsonAsync<List<ReceivedMailResponse>>("/api/received-mails");
+        using HttpResponseMessage createdResponse = await client.PostAsJsonAsync("/api/received-mails", request);
+        using HttpResponseMessage duplicateResponse = await client.PostAsJsonAsync("/api/received-mails", request);
+        List<ReceivedMailResponse>? mails = await client.GetFromJsonAsync<List<ReceivedMailResponse>>("/api/received-mails");
 
         Assert.Equal(HttpStatusCode.Created, createdResponse.StatusCode);
         Assert.Equal(HttpStatusCode.Conflict, duplicateResponse.StatusCode);
-        var mail = Assert.Single(mails ?? []);
+        ReceivedMailResponse mail = Assert.Single(mails ?? []);
         Assert.Equal(request.MessageId, mail.MessageId);
         Assert.Equal(request.Sender, mail.Sender);
         Assert.Equal(request.Subject, mail.Subject);
@@ -85,18 +85,18 @@ public sealed class ReceivedMailsApiTests : IAsyncLifetime
     [Fact]
     public async Task CreateReceivedMail_TrimsValuesAndReturnsCreatedResourceById()
     {
-        using var client = CreateClient();
-        var request = new CreateReceivedMailRequest(
+        using HttpClient client = CreateClient();
+        CreateReceivedMailRequest request = new(
             MessageId: "  <trimmed-message@example.com>  ",
             Sender: "  sender@example.com  ",
             Subject: "  Trimmed subject  ",
             Body: null,
             ReceivedAt: "  2026-06-24T12:00:00+09:00  ");
 
-        using var createdResponse = await client.PostAsJsonAsync("/api/received-mails", request);
-        var createdMail = await createdResponse.Content.ReadFromJsonAsync<ReceivedMailResponse>();
-        using var fetchedResponse = await client.GetAsync($"/api/received-mails/{createdMail?.Id}");
-        var fetchedMail = await fetchedResponse.Content.ReadFromJsonAsync<ReceivedMailResponse>();
+        using HttpResponseMessage createdResponse = await client.PostAsJsonAsync("/api/received-mails", request);
+        ReceivedMailResponse? createdMail = await createdResponse.Content.ReadFromJsonAsync<ReceivedMailResponse>();
+        using HttpResponseMessage fetchedResponse = await client.GetAsync($"/api/received-mails/{createdMail?.Id}");
+        ReceivedMailResponse? fetchedMail = await fetchedResponse.Content.ReadFromJsonAsync<ReceivedMailResponse>();
 
         Assert.Equal(HttpStatusCode.Created, createdResponse.StatusCode);
         Assert.NotNull(createdResponse.Headers.Location);
@@ -108,13 +108,32 @@ public sealed class ReceivedMailsApiTests : IAsyncLifetime
         Assert.Equal(new DateTimeOffset(2026, 6, 24, 12, 0, 0, TimeSpan.FromHours(9)), fetchedMail?.ReceivedAt);
     }
 
+    // 空文字の本文が保存時に null として正規化されることを確認する。
+    [Fact]
+    public async Task CreateReceivedMail_NormalizesEmptyBodyToNull()
+    {
+        using HttpClient client = CreateClient();
+        CreateReceivedMailRequest request = new(
+            MessageId: "<empty-body-message@example.com>",
+            Sender: "sender@example.com",
+            Subject: "Empty body",
+            Body: string.Empty,
+            ReceivedAt: "2026-06-24T12:00:00Z");
+
+        using HttpResponseMessage createdResponse = await client.PostAsJsonAsync("/api/received-mails", request);
+        ReceivedMailResponse? createdMail = await createdResponse.Content.ReadFromJsonAsync<ReceivedMailResponse>();
+
+        Assert.Equal(HttpStatusCode.Created, createdResponse.StatusCode);
+        Assert.Null(createdMail?.Body);
+    }
+
     // 存在しない受信メール ID を取得しようとした場合に NotFound を返すことを確認する。
     [Fact]
     public async Task GetReceivedMailById_ReturnsNotFoundForUnknownId()
     {
-        using var client = CreateClient();
+        using HttpClient client = CreateClient();
 
-        using var response = await client.GetAsync("/api/received-mails/404");
+        using HttpResponseMessage response = await client.GetAsync("/api/received-mails/404");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -123,16 +142,16 @@ public sealed class ReceivedMailsApiTests : IAsyncLifetime
     [Fact]
     public async Task CreateReceivedMail_ReturnsValidationProblemForInvalidRequest()
     {
-        using var client = CreateClient();
-        var request = new CreateReceivedMailRequest(
+        using HttpClient client = CreateClient();
+        CreateReceivedMailRequest request = new(
             MessageId: "   ",
             Sender: "not-an-email",
             Subject: new string('s', 501),
             Body: "body",
             ReceivedAt: "not-a-date");
 
-        using var response = await client.PostAsJsonAsync("/api/received-mails", request);
-        var problem = await response.Content.ReadFromJsonAsync<HttpValidationProblemDetails>();
+        using HttpResponseMessage response = await client.PostAsJsonAsync("/api/received-mails", request);
+        HttpValidationProblemDetails? problem = await response.Content.ReadFromJsonAsync<HttpValidationProblemDetails>();
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Contains(nameof(CreateReceivedMailRequest.MessageId), problem?.Errors.Keys ?? []);

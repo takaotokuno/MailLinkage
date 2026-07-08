@@ -14,9 +14,9 @@ public sealed class MailMessageFactoryTests
     [InlineData("duplicate", "Target subject")]
     public void Create_SelectsSubjectFromConfiguredMode(string mode, string expectedSubject)
     {
-        var options = CreateOptions(mode);
+        AppOptions options = CreateOptions(mode);
 
-        var message = MailMessageFactory.Create(options);
+        MimeKit.MimeMessage message = MailMessageFactory.Create(options);
 
         Assert.Equal(expectedSubject, message.Subject);
         Assert.Equal("sender@example.com", message.From.Mailboxes.Single().Address);
@@ -28,9 +28,9 @@ public sealed class MailMessageFactoryTests
     [Fact]
     public void Create_UsesConfiguredDuplicateMessageIdForDuplicateMode()
     {
-        var options = CreateOptions("duplicate");
+        AppOptions options = CreateOptions("duplicate");
 
-        var message = MailMessageFactory.Create(options);
+        MimeKit.MimeMessage message = MailMessageFactory.Create(options);
 
         Assert.Equal("duplicate-message-id@example.com", message.MessageId);
     }
@@ -39,9 +39,9 @@ public sealed class MailMessageFactoryTests
     [Fact]
     public void Create_UsesCustomSubjectWhenModeIsCustom()
     {
-        var options = CreateOptions("custom");
+        AppOptions options = CreateOptions("custom");
 
-        var message = MailMessageFactory.Create(options);
+        MimeKit.MimeMessage message = MailMessageFactory.Create(options);
 
         Assert.Equal("Custom subject", message.Subject);
         Assert.EndsWith("@example.local", message.MessageId);
@@ -51,9 +51,9 @@ public sealed class MailMessageFactoryTests
     [Fact]
     public void Create_ThrowsWhenCustomModeDoesNotConfigureSubject()
     {
-        var options = CreateOptions("custom", subject: null);
+        AppOptions options = CreateOptions("custom", subject: null);
 
-        var exception = Assert.Throws<InvalidOperationException>(() => MailMessageFactory.Create(options));
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => MailMessageFactory.Create(options));
 
         Assert.Equal("Mail:Subject is required when Mail:Mode is custom.", exception.Message);
     }

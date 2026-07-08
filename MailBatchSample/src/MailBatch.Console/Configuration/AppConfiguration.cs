@@ -8,17 +8,19 @@ internal static class AppConfiguration
     /// <summary>
     /// コマンドライン引数、環境変数、設定ファイルからアプリケーション設定を読み込み、検証します。
     /// </summary>
-    public static AppOptions Load(string[] args)
+    public static LoadedConfiguration Load(string[] args)
     {
-        var configuration = new ConfigurationBuilder()
+        IConfigurationRoot configuration = new ConfigurationBuilder()
             .SetBasePath(AppContext.BaseDirectory)
             .AddJsonFile("appsettings.json", optional: false, reloadOnChange: false)
             .AddEnvironmentVariables(prefix: "MAILBATCH_")
             .AddCommandLine(args)
             .Build();
 
-        var options = configuration.Get<AppOptions>() ?? new AppOptions();
+        AppOptions options = configuration.Get<AppOptions>() ?? new AppOptions();
         options.Validate();
-        return options;
+        return new LoadedConfiguration(configuration, options);
     }
+
+    public sealed record LoadedConfiguration(IConfigurationRoot Configuration, AppOptions Options);
 }

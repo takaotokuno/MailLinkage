@@ -12,7 +12,7 @@ public sealed class MailReceiverDbContext(DbContextOptions<MailReceiverDbContext
     /// </summary>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        var receivedMail = modelBuilder.Entity<ReceivedMail>();
+        Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<ReceivedMail> receivedMail = modelBuilder.Entity<ReceivedMail>();
 
         receivedMail.ToTable("received_mails");
         receivedMail.HasKey(mail => mail.Id);

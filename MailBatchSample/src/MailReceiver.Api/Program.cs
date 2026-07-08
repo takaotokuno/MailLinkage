@@ -10,12 +10,12 @@ const int MessageIdMaxLength = 255;
 const int SenderMaxLength = 320;
 const int SubjectMaxLength = 500;
 
-var builder = WebApplication.CreateBuilder(args);
+WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 ConfigureLogging(builder.Logging);
 ConfigureServices(builder.Services, builder.Configuration);
 
-var app = builder.Build();
+WebApplication app = builder.Build();
 
 ConfigureMiddleware(app);
 await InitializeDatabaseAsync(app);
@@ -46,7 +46,7 @@ static void ConfigureServices(IServiceCollection services, IConfiguration config
 /// </summary>
 static void ConfigureSqlite(DbContextOptionsBuilder options, IConfiguration configuration)
 {
-    var connectionString = configuration.GetConnectionString("MailReceiver")
+    string connectionString = configuration.GetConnectionString("MailReceiver")
         ?? throw new InvalidOperationException("ConnectionStrings:MailReceiver is not configured.");
 
     options.UseSqlite(connectionString);
@@ -83,7 +83,7 @@ static void MapHealthCheckEndpoint(WebApplication app)
 /// </summary>
 static void MapReceivedMailEndpoints(WebApplication app)
 {
-    var receivedMails = app.MapGroup("/api/received-mails")
+    RouteGroupBuilder receivedMails = app.MapGroup("/api/received-mails")
         .WithTags("ReceivedMails");
 
     MapCreateReceivedMailEndpoint(receivedMails);
@@ -131,12 +131,12 @@ static async Task<Ok<List<ReceivedMailResponse>>> ListReceivedMailsAsync(
     MailReceiverDbContext dbContext,
     CancellationToken cancellationToken)
 {
-    var mails = await dbContext.ReceivedMails
+    List<ReceivedMail> mails = await dbContext.ReceivedMails
         .AsNoTracking()
         .OrderBy(mail => mail.Id)
         .ToListAsync(cancellationToken);
 
-    var responses = mails
+    List<ReceivedMailResponse> responses = mails
         .Select(ToResponse)
         .ToList();
 
@@ -151,7 +151,7 @@ static async Task<Results<Ok<ReceivedMailResponse>, NotFound<ProblemDetails>>> G
     MailReceiverDbContext dbContext,
     CancellationToken cancellationToken)
 {
-    var mail = await dbContext.ReceivedMails
+    ReceivedMail? mail = await dbContext.ReceivedMails
         .AsNoTracking()
         .FirstOrDefaultAsync(candidate => candidate.Id == id, cancellationToken);
 
@@ -177,8 +177,8 @@ static async Task<Results<CreatedAtRoute<ReceivedMailResponse>, ValidationProble
     ILoggerFactory loggerFactory,
     CancellationToken cancellationToken)
 {
-    var logger = loggerFactory.CreateLogger("ReceivedMails");
-    var validationErrors = Validate(request, out var normalizedRequest, out var receivedAt);
+    ILogger logger = loggerFactory.CreateLogger("ReceivedMails");
+    Dictionary<string, string[]> validationErrors = Validate(request, out NormalizedCreateReceivedMailRequest? normalizedRequest, out DateTimeOffset receivedAt);
     if (validationErrors.Count > 0)
     {
         logger.LogWarning("Received mail request validation failed. MessageId: {MessageId}, ErrorFields: {ErrorFields}",
@@ -193,7 +193,7 @@ static async Task<Results<CreatedAtRoute<ReceivedMailResponse>, ValidationProble
         return TypedResults.Conflict(CreateDuplicateProblemDetails(normalizedRequest.MessageId));
     }
 
-    var receivedMail = new ReceivedMail
+    ReceivedMail receivedMail = new()
     {
         MessageId = normalizedRequest.MessageId,
         Sender = normalizedRequest.Sender,
@@ -236,11 +236,11 @@ static Dictionary<string, string[]> Validate(
     out NormalizedCreateReceivedMailRequest normalizedRequest,
     out DateTimeOffset receivedAt)
 {
-    var errors = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
-    var messageId = request.MessageId?.Trim() ?? string.Empty;
-    var sender = request.Sender?.Trim() ?? string.Empty;
-    var subject = request.Subject?.Trim() ?? string.Empty;
-    var receivedAtText = request.ReceivedAt?.Trim() ?? string.Empty;
+    Dictionary<string, string[]> errors = new(StringComparer.OrdinalIgnoreCase);
+    string messageId = request.MessageId?.Trim() ?? string.Empty;
+    string sender = request.Sender?.Trim() ?? string.Empty;
+    string subject = request.Subject?.Trim() ?? string.Empty;
+    string receivedAtText = request.ReceivedAt?.Trim() ?? string.Empty;
 
     AddRequiredAndLengthErrors(errors, nameof(request.MessageId), messageId, MessageIdMaxLength);
     AddRequiredAndLengthErrors(errors, nameof(request.Sender), sender, SenderMaxLength);
@@ -296,7 +296,7 @@ static void AddRequiredAndLengthErrors(
 /// </summary>
 static bool IsPlausibleEmailAddress(string value)
 {
-    var atSignIndex = value.IndexOf('@');
+    int atSignIndex = value.IndexOf('@');
     return atSignIndex > 0 && atSignIndex < value.Length - 1;
 }
 
@@ -333,15 +333,15 @@ static ReceivedMailResponse ToResponse(ReceivedMail mail) => new(
 /// </summary>
 static async Task InitializeDatabaseAsync(WebApplication app)
 {
-    using var scope = app.Services.CreateScope();
-    var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
-    var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("DatabaseInitialization");
-    var connectionString = configuration.GetConnectionString("MailReceiver")
+    using IServiceScope scope = app.Services.CreateScope();
+    IConfiguration configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+    ILogger logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("DatabaseInitialization");
+    string connectionString = configuration.GetConnectionString("MailReceiver")
         ?? throw new InvalidOperationException("ConnectionStrings:MailReceiver is not configured.");
 
     EnsureSqliteDirectoryExists(connectionString, logger);
 
-    var dbContext = scope.ServiceProvider.GetRequiredService<MailReceiverDbContext>();
+    MailReceiverDbContext dbContext = scope.ServiceProvider.GetRequiredService<MailReceiverDbContext>();
     await dbContext.Database.EnsureCreatedAsync();
     logger.LogInformation("MailReceiver database was initialized.");
 }
@@ -351,13 +351,13 @@ static async Task InitializeDatabaseAsync(WebApplication app)
 /// </summary>
 static void EnsureSqliteDirectoryExists(string connectionString, ILogger logger)
 {
-    var builder = new SqliteConnectionStringBuilder(connectionString);
+    SqliteConnectionStringBuilder builder = new(connectionString);
     if (string.IsNullOrWhiteSpace(builder.DataSource) || builder.DataSource.Equals(":memory:", StringComparison.OrdinalIgnoreCase))
     {
         return;
     }
 
-    var directory = Path.GetDirectoryName(Path.GetFullPath(builder.DataSource));
+    string? directory = Path.GetDirectoryName(Path.GetFullPath(builder.DataSource));
     if (string.IsNullOrEmpty(directory) || Directory.Exists(directory))
     {
         return;

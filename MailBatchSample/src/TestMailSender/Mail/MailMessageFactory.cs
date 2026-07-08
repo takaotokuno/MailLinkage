@@ -11,8 +11,8 @@ internal static class MailMessageFactory
     /// </summary>
     public static MimeMessage Create(AppOptions options)
     {
-        var mode = options.Mail.Mode.Trim().ToLowerInvariant();
-        var subject = mode switch
+        string mode = options.Mail.Mode.Trim().ToLowerInvariant();
+        string subject = mode switch
         {
             "target" => options.Mail.TargetSubject,
             "nontarget" or "non-target" => options.Mail.NonTargetSubject,
@@ -20,7 +20,7 @@ internal static class MailMessageFactory
             _ => options.Mail.Subject ?? throw new InvalidOperationException("Mail:Subject is required when Mail:Mode is custom.")
         };
 
-        var message = new MimeMessage();
+        MimeMessage message = new();
         message.From.Add(MailboxAddress.Parse(options.Mail.From));
         message.To.Add(MailboxAddress.Parse(options.Mail.To));
         message.Subject = subject;

@@ -28,7 +28,7 @@ internal sealed class AppOptions
         Require(Mail.TargetSubject, "Mail:TargetSubject");
         Require(Mail.NonTargetSubject, "Mail:NonTargetSubject");
 
-        var normalizedMode = Mail.Mode.Trim().ToLowerInvariant();
+        string normalizedMode = Mail.Mode.Trim().ToLowerInvariant();
         if (normalizedMode is not ("target" or "nontarget" or "non-target" or "duplicate" or "custom"))
         {
             throw new InvalidOperationException("Mail:Mode must be target, nontarget, non-target, duplicate, or custom.");

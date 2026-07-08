@@ -1,24 +1,17 @@
-using MailKit.Net.Smtp;
 using TestMailSender.Configuration;
+using TestMailSender.Infrastructure;
 using TestMailSender.Mail;
+using TestMailSender.Services;
 
-var exitCode = 0;
+int exitCode = 0;
 
 try
 {
-    var options = AppConfiguration.Load(args);
-    var message = MailMessageFactory.Create(options);
+    TestMailSender.Options.AppOptions options = AppConfiguration.Load(args);
+    MimeKit.MimeMessage message = MailMessageFactory.Create(options);
+    ITestMailSender mailSender = new SmtpTestMailSender();
 
-    using var smtpClient = new SmtpClient();
-    await smtpClient.ConnectAsync(options.Smtp.Host, options.Smtp.Port, SmtpSecurity.ToSecureSocketOptions(options.Smtp.UseSsl));
-
-    if (!string.IsNullOrWhiteSpace(options.Smtp.UserName))
-    {
-        await smtpClient.AuthenticateAsync(options.Smtp.UserName, options.Smtp.Password!);
-    }
-
-    await smtpClient.SendAsync(message);
-    await smtpClient.DisconnectAsync(true);
+    await mailSender.SendAsync(options.Smtp, message);
 
     Console.WriteLine("Test mail sent.");
     Console.WriteLine($"Mode: {options.Mail.Mode}");

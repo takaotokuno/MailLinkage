@@ -1,9 +1,9 @@
 using System.Net;
 using System.Text.RegularExpressions;
-using MailBatch.Console.Models;
+using MailBatch.Console.ReceivedMails;
 using MimeKit;
 
-namespace MailBatch.Console.Mail;
+namespace MailBatch.Console.ReceivedMails;
 
 internal static class ReceivedMailMapper
 {
@@ -12,7 +12,7 @@ internal static class ReceivedMailMapper
     /// </summary>
     public static ReceivedMailRequest ToRequest(MimeMessage message, DateTimeOffset? internalDate)
     {
-        var receivedAt = internalDate?.ToUniversalTime()
+        DateTimeOffset receivedAt = internalDate?.ToUniversalTime()
             ?? (message.Date != DateTimeOffset.MinValue ? message.Date.ToUniversalTime() : DateTimeOffset.UtcNow);
 
         return new ReceivedMailRequest(
@@ -28,7 +28,7 @@ internal static class ReceivedMailMapper
     /// </summary>
     private static string GetMessageId(MimeMessage message)
     {
-        var messageId = message.Headers[HeaderId.MessageId];
+        string? messageId = message.Headers[HeaderId.MessageId];
 
         return string.IsNullOrWhiteSpace(messageId) ? $"<missing-{Guid.NewGuid():N}>" : messageId;
     }

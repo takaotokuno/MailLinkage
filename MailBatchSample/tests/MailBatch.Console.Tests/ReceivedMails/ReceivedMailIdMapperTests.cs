@@ -11,7 +11,7 @@ public sealed class ReceivedMailIdMapperTests
     [Fact]
     public void ToReceivedMailId_ConvertsFromUniqueId()
     {
-        var mailId = ReceivedMailIdMapper.ToReceivedMailId(new UniqueId(123));
+        ReceivedMailId mailId = ReceivedMailIdMapper.ToReceivedMailId(new UniqueId(123));
 
         Assert.Equal(new ReceivedMailId(123), mailId);
     }
@@ -20,7 +20,7 @@ public sealed class ReceivedMailIdMapperTests
     [Fact]
     public void ToUniqueId_ConvertsToUniqueId()
     {
-        var uniqueId = ReceivedMailIdMapper.ToUniqueId(new ReceivedMailId(456));
+        UniqueId uniqueId = ReceivedMailIdMapper.ToUniqueId(new ReceivedMailId(456));
 
         Assert.Equal(new UniqueId(456), uniqueId);
     }

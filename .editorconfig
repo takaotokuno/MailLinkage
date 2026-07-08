@@ -10,6 +10,17 @@ trim_trailing_whitespace = true
 indent_style = space
 indent_size = 4
 
+# Prefer explicit type instead of 'var'
+csharp_style_var_for_built_in_types = false:warning
+csharp_style_var_when_type_is_apparent = false:warning
+csharp_style_var_elsewhere = false:warning
+
+# Prefer target-typed new expressions
+csharp_style_implicit_object_creation_when_type_is_apparent = true:warning
+
+# IDE0008: Use explicit type
+dotnet_diagnostic.IDE0008.severity = warning
+
 [*.{csproj,slnx,props,targets,xml}]
 indent_style = space
 indent_size = 2
