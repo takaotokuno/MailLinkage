@@ -60,7 +60,7 @@ public sealed class MailNotificationFactoryTests
                     {
                         Name = MailNotificationOptions.ValidationErrorTemplateName,
                         Subject = "Validation {MessageId} {Subject}",
-                        Body = "Errors:{ValidationErrors}"
+                        Body = "Errors:\n{ValidationErrors}"
                     }
                 ]
             }
