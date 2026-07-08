@@ -40,28 +40,40 @@ internal sealed class BatchRunner(
         int exitCode = ToExitCode(result);
         await mailNotifier.SendAsync(new MailNotification(
             options.Notification.AdminAddress,
-            $"Mail batch {ToRunStatus(exitCode)}: RunId={runContext.RunId}",
-            CreateRunStatusNotificationBody(result, exitCode),
-            DateTimeOffset.UtcNow));
+            CreateRunStatusNotificationSubject(result, exitCode),
+            CreateRunStatusNotificationBody(result, exitCode)));
 
         return exitCode;
     }
 
 
     /// <summary>
-    /// バッチ実行結果の通知本文を作成します。
+    /// 設定されたテンプレートからバッチ実行結果の通知件名を作成します。
+    /// </summary>
+    private string CreateRunStatusNotificationSubject(ProcessResult result, int exitCode)
+    {
+        return ApplyNotificationTemplate(options.Notification.SubjectTemplate, result, exitCode);
+    }
+
+    /// <summary>
+    /// 設定されたテンプレートからバッチ実行結果の通知本文を作成します。
     /// </summary>
     private string CreateRunStatusNotificationBody(ProcessResult result, int exitCode)
     {
-        return string.Join(
-            Environment.NewLine,
-            $"Mail batch {ToRunStatus(exitCode)}.",
-            $"RunId: {runContext.RunId}",
-            $"Status: {ToRunStatus(exitCode)}",
-            $"ExitCode: {exitCode}",
-            $"Total: {result.Total}",
-            $"Succeeded: {result.Succeeded}",
-            $"Failed: {result.Failed}");
+        return ApplyNotificationTemplate(options.Notification.BodyTemplate, result, exitCode);
+    }
+
+    private string ApplyNotificationTemplate(string template, ProcessResult result, int exitCode)
+    {
+        string status = ToRunStatus(exitCode);
+
+        return template
+            .Replace("{RunId}", runContext.RunId, StringComparison.Ordinal)
+            .Replace("{Status}", status, StringComparison.Ordinal)
+            .Replace("{ExitCode}", exitCode.ToString(), StringComparison.Ordinal)
+            .Replace("{Total}", result.Total.ToString(), StringComparison.Ordinal)
+            .Replace("{Succeeded}", result.Succeeded.ToString(), StringComparison.Ordinal)
+            .Replace("{Failed}", result.Failed.ToString(), StringComparison.Ordinal);
     }
 
     private static string ToRunStatus(int exitCode)
