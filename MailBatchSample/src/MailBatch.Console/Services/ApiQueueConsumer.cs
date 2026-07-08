@@ -20,7 +20,7 @@ internal sealed class ApiQueueConsumer(
     /// </summary>
     public async Task<ProcessResult> ConsumeAsync()
     {
-        ProcessResult result = new ProcessResult(Total: 0);
+        ProcessResultAccumulator result = new ProcessResultAccumulator();
         logger.LogInformation("API consumer started. Endpoint={Endpoint}", options.Api.Endpoint);
 
         await foreach (ApiQueueItem item in reader.ReadAllAsync())
@@ -28,12 +28,19 @@ internal sealed class ApiQueueConsumer(
             using (logger.BeginScope(new Dictionary<string, object> { ["MessageId"] = item.Request.MessageId }))
             {
                 bool succeeded = await PostAndHandleResultAsync(item);
-                result = succeeded ? result.AddSuccess() : result.AddFailure();
+                if (succeeded)
+                {
+                    result.IncrementSuccess();
+                }
+                else
+                {
+                    result.IncrementFailure();
+                }
             }
         }
 
         logger.LogInformation("Consumer confirmed no remaining queued data. ApiSucceeded={Succeeded}, ApiFailed={Failed}", result.Succeeded, result.Failed);
-        return result;
+        return result.ToResult();
     }
 
     /// <summary>

@@ -13,7 +13,7 @@ internal sealed class MailFetchQueueProducer(IMailFolder folder, ChannelWriter<A
     /// </summary>
     public async Task<ProcessResult> ProduceAsync(IReadOnlyList<UniqueId> targetUids)
     {
-        ProcessResult result = new ProcessResult(Total: 0);
+        ProcessResultAccumulator result = new ProcessResultAccumulator();
 
         try
         {
@@ -23,7 +23,7 @@ internal sealed class MailFetchQueueProducer(IMailFolder folder, ChannelWriter<A
                 {
                     ReceivedMailRequest request = await CreateRequestAsync(uid);
                     await writer.WriteAsync(new ApiQueueItem(uid, request));
-                    result = result.AddSuccess();
+                    result.IncrementSuccess();
                     logger.LogInformation(
                         "Queued API request. MessageId={MessageId}, QueueCount={QueueCount}, BodyLength={BodyLength}",
                         request.MessageId,
@@ -32,7 +32,7 @@ internal sealed class MailFetchQueueProducer(IMailFolder folder, ChannelWriter<A
                 }
                 catch (Exception ex)
                 {
-                    result = result.AddFailure();
+                    result.IncrementFailure();
                     logger.LogError(ex, "Failed to fetch, transform, or queue message. Uid={Uid}", uid);
                 }
             }
@@ -43,7 +43,7 @@ internal sealed class MailFetchQueueProducer(IMailFolder folder, ChannelWriter<A
             logger.LogInformation("Producer completed queue additions. Enqueued={Enqueued}, Failed={Failed}", result.Succeeded, result.Failed);
         }
 
-        return result;
+        return result.ToResult();
     }
 
     /// <summary>
