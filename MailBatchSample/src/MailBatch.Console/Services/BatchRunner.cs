@@ -14,7 +14,8 @@ internal sealed class BatchRunner(
     BatchRunContext runContext,
     ILogger<BatchRunner> logger,
     ILoggerFactory loggerFactory,
-    IMailNotifier mailNotifier)
+    IMailNotifier mailNotifier,
+    MailNotificationFactory mailNotificationFactory)
 {
     /// <summary>
     /// メール取得からAPI送信までのバッチ処理全体を実行し、終了コードを返します。
@@ -39,52 +40,9 @@ internal sealed class BatchRunner(
         LogFinish(result);
 
         int exitCode = ToExitCode(result);
-        await mailNotifier.SendAsync(new MailNotification(
-            options.Notification.AdminAddress,
-            CreateRunStatusNotificationSubject(result, exitCode),
-            CreateRunStatusNotificationBody(result, exitCode)));
+        await mailNotifier.SendAsync(mailNotificationFactory.CreateRunStatusNotification(result, exitCode));
 
         return exitCode;
-    }
-
-
-    /// <summary>
-    /// 設定されたテンプレートからバッチ実行結果の通知件名を作成します。
-    /// </summary>
-    private string CreateRunStatusNotificationSubject(ProcessResult result, int exitCode)
-    {
-        return ApplyNotificationTemplate(GetRunStatusTemplate().Subject, result, exitCode);
-    }
-
-    /// <summary>
-    /// 設定されたテンプレートからバッチ実行結果の通知本文を作成します。
-    /// </summary>
-    private string CreateRunStatusNotificationBody(ProcessResult result, int exitCode)
-    {
-        return ApplyNotificationTemplate(GetRunStatusTemplate().Body, result, exitCode);
-    }
-
-    private MailNotificationTemplateOptions GetRunStatusTemplate()
-    {
-        return options.Notification.GetTemplate(MailNotificationOptions.RunStatusTemplateName);
-    }
-
-    private string ApplyNotificationTemplate(string template, ProcessResult result, int exitCode)
-    {
-        string status = ToRunStatus(exitCode);
-
-        return template
-            .Replace("{RunId}", runContext.RunId, StringComparison.Ordinal)
-            .Replace("{Status}", status, StringComparison.Ordinal)
-            .Replace("{ExitCode}", exitCode.ToString(), StringComparison.Ordinal)
-            .Replace("{Total}", result.Total.ToString(), StringComparison.Ordinal)
-            .Replace("{Succeeded}", result.Succeeded.ToString(), StringComparison.Ordinal)
-            .Replace("{Failed}", result.Failed.ToString(), StringComparison.Ordinal);
-    }
-
-    private static string ToRunStatus(int exitCode)
-    {
-        return exitCode == 0 ? "succeeded" : "failed";
     }
 
     /// <summary>
@@ -191,11 +149,11 @@ internal sealed class BatchRunner(
         using SemaphoreSlim imapLock = new(1, 1);
 
         MailFetchQueueProducer producer = new(
-            options,
             folder,
             queue.Writer,
             imapLock,
             mailNotifier,
+            mailNotificationFactory,
             loggerFactory.CreateLogger<MailFetchQueueProducer>());
 
         ApiQueueConsumer consumer = new(

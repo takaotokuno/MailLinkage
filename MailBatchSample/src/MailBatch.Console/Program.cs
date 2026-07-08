@@ -28,6 +28,7 @@ try
             builder.AddSerilog(Log.Logger, dispose: false);
         })
         .AddTransient<IMailNotifier, SmtpMailNotifier>()
+        .AddTransient<MailNotificationFactory>()
         .AddTransient<BatchRunner>()
         .BuildServiceProvider();
 
