@@ -1,9 +1,9 @@
 using System.Net;
 using System.Text.RegularExpressions;
-using MailBatch.Console.Models;
+using MailBatch.Console.ReceivedMails;
 using MimeKit;
 
-namespace MailBatch.Console.Mail;
+namespace MailBatch.Console.ReceivedMails;
 
 internal static class ReceivedMailMapper
 {

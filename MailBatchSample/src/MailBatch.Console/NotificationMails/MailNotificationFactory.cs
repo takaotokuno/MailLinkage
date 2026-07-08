@@ -1,8 +1,8 @@
-using MailBatch.Console.Models;
+using MailBatch.Console.ReceivedMails;
 using MailBatch.Console.Options;
-using MailBatch.Console.Services;
+using MailBatch.Console.BatchProcessing;
 
-namespace MailBatch.Console.Notifications;
+namespace MailBatch.Console.NotificationMails;
 
 internal sealed class MailNotificationFactory(AppOptions options, BatchRunContext runContext)
 {

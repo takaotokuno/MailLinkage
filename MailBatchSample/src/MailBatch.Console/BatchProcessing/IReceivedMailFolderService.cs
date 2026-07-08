@@ -1,8 +1,8 @@
-using MailBatch.Console.Models;
+using MailBatch.Console.ReceivedMails;
 using MailKit;
 using MailKit.Search;
 
-namespace MailBatch.Console.Services;
+namespace MailBatch.Console.BatchProcessing;
 
 /// <summary>
 /// 受信メールフォルダに対する操作を提供します。

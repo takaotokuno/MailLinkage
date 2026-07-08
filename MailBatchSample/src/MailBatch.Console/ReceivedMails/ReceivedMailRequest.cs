@@ -1,7 +1,7 @@
 using System.Text.Json.Serialization;
 using MailKit;
 
-namespace MailBatch.Console.Models;
+namespace MailBatch.Console.ReceivedMails;
 
 internal sealed record ReceivedMailRequest(
     string MessageId,

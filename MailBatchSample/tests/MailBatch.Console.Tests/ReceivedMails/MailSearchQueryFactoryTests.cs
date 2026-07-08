@@ -1,10 +1,10 @@
 using System.Globalization;
 using Xunit;
-using MailBatch.Console.Mail;
+using MailBatch.Console.ReceivedMails;
 using MailBatch.Console.Options;
 using MailKit.Search;
 
-namespace MailBatch.Console.Tests.Mail;
+namespace MailBatch.Console.Tests.ReceivedMails;
 
 public sealed class MailSearchQueryFactoryTests
 {

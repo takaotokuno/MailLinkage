@@ -1,4 +1,4 @@
-namespace MailBatch.Console.Services;
+namespace MailBatch.Console.BatchProcessing;
 
 /// <summary>
 /// 確定した処理結果を表します。

@@ -1,4 +1,4 @@
-namespace MailBatch.Console.Notifications;
+namespace MailBatch.Console.NotificationMails;
 
 internal sealed record MailNotification(
     string To,
