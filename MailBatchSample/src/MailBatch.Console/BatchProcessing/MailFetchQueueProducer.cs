@@ -1,6 +1,7 @@
 using System.Threading.Channels;
 using MailBatch.Console.ReceivedMails;
 using MailBatch.Console.NotificationMails;
+using MailBatch.Console.Models;
 using MailKit;
 using Microsoft.Extensions.Logging;
 

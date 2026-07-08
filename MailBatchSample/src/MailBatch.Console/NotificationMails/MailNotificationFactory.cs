@@ -1,6 +1,6 @@
 using MailBatch.Console.ReceivedMails;
 using MailBatch.Console.Options;
-using MailBatch.Console.BatchProcessing;
+using MailBatch.Console.Models;
 
 namespace MailBatch.Console.NotificationMails;
 

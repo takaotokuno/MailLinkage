@@ -1,8 +1,9 @@
+using MailBatch.Console.BatchProcessing;
 using MailBatch.Console.Configuration;
 using MailBatch.Console.Infrastructure;
 using MailBatch.Console.NotificationMails;
 using MailBatch.Console.Options;
-using MailBatch.Console.BatchProcessing;
+using MailBatch.Console.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Serilog;
