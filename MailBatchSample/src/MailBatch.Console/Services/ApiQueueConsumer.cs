@@ -80,12 +80,12 @@ internal sealed class ApiQueueConsumer(
     }
 
     /// <summary>
-    /// API送信成功時のログ出力と既読化処理を行います。
+    /// API送信成功時のログ出力と処理済みメールボックスへの移動を行います。
     /// </summary>
     private async Task HandleSuccessfulPostAsync(UniqueId uid, ReceivedMailRequest request, int statusCode, string responseBody)
     {
         LogApiSuccess(request.MessageId, statusCode, responseBody);
-        await MarkAsSeenIfNeededAsync(uid, request.MessageId);
+        await MoveToProcessedMailboxAsync(uid, request.MessageId);
     }
 
     /// <summary>
@@ -113,25 +113,39 @@ internal sealed class ApiQueueConsumer(
     }
 
     /// <summary>
-    /// 設定で有効な場合、処理済みメールに既読フラグを付与します。
+    /// 処理済みメールを設定されたメールボックスへ移動します。
     /// </summary>
-    private async Task MarkAsSeenIfNeededAsync(UniqueId uid, string messageId)
+    private async Task MoveToProcessedMailboxAsync(UniqueId uid, string messageId)
     {
-        if (!options.Processing.MarkAsSeenOnSuccess)
-        {
-            return;
-        }
-
         await imapLock.WaitAsync();
         try
         {
-            await folder.AddFlagsAsync(uid, MessageFlags.Seen, true);
+            IMailFolder destinationFolder = await GetOrCreateProcessedMailboxAsync();
+            await folder.MoveToAsync(uid, destinationFolder);
         }
         finally
         {
             imapLock.Release();
         }
 
-        logger.LogInformation("Marked message as seen. MessageId={MessageId}", messageId);
+        logger.LogInformation(
+            "Moved processed message. MessageId={MessageId}, DestinationMailbox={DestinationMailbox}",
+            messageId,
+            options.Processing.ProcessedMailbox);
+    }
+
+    /// <summary>
+    /// 処理済みメールボックスを取得し、存在しない場合は作成します。
+    /// </summary>
+    private async Task<IMailFolder> GetOrCreateProcessedMailboxAsync()
+    {
+        try
+        {
+            return await folder.GetSubfolderAsync(options.Processing.ProcessedMailbox);
+        }
+        catch (FolderNotFoundException)
+        {
+            return await folder.CreateAsync(options.Processing.ProcessedMailbox, true);
+        }
     }
 }

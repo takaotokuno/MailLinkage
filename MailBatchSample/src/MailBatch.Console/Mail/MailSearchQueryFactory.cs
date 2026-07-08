@@ -12,14 +12,14 @@ internal static class MailSearchQueryFactory
     {
         SearchQuery? query = null;
 
-        if (options.UnreadOnly)
-        {
-            AddFilter(SearchQuery.NotSeen);
-        }
-
         if (!string.IsNullOrWhiteSpace(options.SubjectContains))
         {
             AddFilter(SearchQuery.SubjectContains(options.SubjectContains));
+        }
+
+        if (!string.IsNullOrWhiteSpace(options.From))
+        {
+            AddFilter(SearchQuery.FromContains(options.From));
         }
 
         if (options.SinceDays is > 0)
