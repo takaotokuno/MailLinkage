@@ -6,14 +6,18 @@ using Microsoft.Extensions.Logging;
 
 namespace MailBatch.Console.Services;
 
-internal sealed class MailFetchQueueProducer(IMailFolder folder, ChannelWriter<ApiQueueItem> writer, SemaphoreSlim imapLock, ILogger<MailFetchQueueProducer> logger)
+internal sealed class MailFetchQueueProducer(
+    IMailFolder folder,
+    ChannelWriter<ApiQueueItem> writer,
+    SemaphoreSlim imapLock,
+    ILogger<MailFetchQueueProducer> logger)
 {
     /// <summary>
     /// メールを取得し、API送信用データへ加工したうえで内部キューへ追加します。
     /// </summary>
     public async Task<ProcessResult> ProduceAsync(IReadOnlyList<UniqueId> targetUids)
     {
-        ProcessResultAccumulator result = new ProcessResultAccumulator();
+        ProcessResultAccumulator result = new();
 
         try
         {

@@ -61,7 +61,7 @@ public sealed class ReceivedMailsApiTests : IAsyncLifetime
     public async Task CreateReceivedMail_PersistsMailAndRejectsDuplicateMessageId()
     {
         using HttpClient client = CreateClient();
-        CreateReceivedMailRequest request = new CreateReceivedMailRequest(
+        CreateReceivedMailRequest request = new(
             MessageId: "<api-test-message@example.com>",
             Sender: "sender@example.com",
             Subject: "API test subject",
@@ -86,7 +86,7 @@ public sealed class ReceivedMailsApiTests : IAsyncLifetime
     public async Task CreateReceivedMail_TrimsValuesAndReturnsCreatedResourceById()
     {
         using HttpClient client = CreateClient();
-        CreateReceivedMailRequest request = new CreateReceivedMailRequest(
+        CreateReceivedMailRequest request = new(
             MessageId: "  <trimmed-message@example.com>  ",
             Sender: "  sender@example.com  ",
             Subject: "  Trimmed subject  ",
@@ -124,7 +124,7 @@ public sealed class ReceivedMailsApiTests : IAsyncLifetime
     public async Task CreateReceivedMail_ReturnsValidationProblemForInvalidRequest()
     {
         using HttpClient client = CreateClient();
-        CreateReceivedMailRequest request = new CreateReceivedMailRequest(
+        CreateReceivedMailRequest request = new(
             MessageId: "   ",
             Sender: "not-an-email",
             Subject: new string('s', 501),

@@ -193,7 +193,7 @@ static async Task<Results<CreatedAtRoute<ReceivedMailResponse>, ValidationProble
         return TypedResults.Conflict(CreateDuplicateProblemDetails(normalizedRequest.MessageId));
     }
 
-    ReceivedMail receivedMail = new ReceivedMail
+    ReceivedMail receivedMail = new()
     {
         MessageId = normalizedRequest.MessageId,
         Sender = normalizedRequest.Sender,
@@ -236,7 +236,7 @@ static Dictionary<string, string[]> Validate(
     out NormalizedCreateReceivedMailRequest normalizedRequest,
     out DateTimeOffset receivedAt)
 {
-    Dictionary<string, string[]> errors = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
+    Dictionary<string, string[]> errors = new(StringComparer.OrdinalIgnoreCase);
     string messageId = request.MessageId?.Trim() ?? string.Empty;
     string sender = request.Sender?.Trim() ?? string.Empty;
     string subject = request.Subject?.Trim() ?? string.Empty;
@@ -351,7 +351,7 @@ static async Task InitializeDatabaseAsync(WebApplication app)
 /// </summary>
 static void EnsureSqliteDirectoryExists(string connectionString, ILogger logger)
 {
-    SqliteConnectionStringBuilder builder = new SqliteConnectionStringBuilder(connectionString);
+    SqliteConnectionStringBuilder builder = new(connectionString);
     if (string.IsNullOrWhiteSpace(builder.DataSource) || builder.DataSource.Equals(":memory:", StringComparison.OrdinalIgnoreCase))
     {
         return;

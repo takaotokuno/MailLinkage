@@ -11,8 +11,7 @@ internal sealed class BatchRunner(
     AppOptions options,
     BatchRunContext runContext,
     ILogger<BatchRunner> logger,
-    ILoggerFactory loggerFactory
-)
+    ILoggerFactory loggerFactory)
 {
     /// <summary>
     /// メール取得からAPI送信までのバッチ処理全体を実行し、終了コードを返します。
@@ -122,8 +121,7 @@ internal sealed class BatchRunner(
     private async Task<ProcessResult> ProcessMessagesAsync(
         IMailFolder folder,
         IReadOnlyList<UniqueId> targetUids,
-        HttpClient httpClient
-    )
+        HttpClient httpClient)
     {
         if (targetUids.Count == 0)
         {
@@ -141,15 +139,15 @@ internal sealed class BatchRunner(
 
         // IMAPフォルダ操作を同時に実行しないためロック
         // Producerはメール取得、Consumerはメール移動でIMAPフォルダを触るため、同じLockを共有する。
-        using SemaphoreSlim imapLock = new SemaphoreSlim(1, 1);
+        using SemaphoreSlim imapLock = new(1, 1);
 
-        MailFetchQueueProducer producer = new MailFetchQueueProducer(
+        MailFetchQueueProducer producer = new(
             folder,
             queue.Writer,
             imapLock,
             loggerFactory.CreateLogger<MailFetchQueueProducer>());
 
-        ApiQueueConsumer consumer = new ApiQueueConsumer(
+        ApiQueueConsumer consumer = new(
             options,
             folder,
             httpClient,

@@ -20,7 +20,7 @@ internal static class MailMessageFactory
             _ => options.Mail.Subject ?? throw new InvalidOperationException("Mail:Subject is required when Mail:Mode is custom.")
         };
 
-        MimeMessage message = new MimeMessage();
+        MimeMessage message = new();
         message.From.Add(MailboxAddress.Parse(options.Mail.From));
         message.To.Add(MailboxAddress.Parse(options.Mail.To));
         message.Subject = subject;

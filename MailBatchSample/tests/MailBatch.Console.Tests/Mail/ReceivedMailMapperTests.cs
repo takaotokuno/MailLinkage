@@ -10,12 +10,12 @@ public sealed class ReceivedMailMapperTests
     [Fact]
     public void ToRequest_UsesInternalDateAndPlainTextBodyWhenAvailable()
     {
-        MimeMessage message = new MimeMessage();
+        MimeMessage message = new();
         message.From.Add(MailboxAddress.Parse("sender@example.com"));
         message.MessageId = "<message-1@example.com>";
         message.Subject = "Subject";
         message.Body = new TextPart("plain") { Text = "plain body" };
-        DateTimeOffset internalDate = new DateTimeOffset(2026, 6, 24, 12, 30, 0, TimeSpan.FromHours(9));
+        DateTimeOffset internalDate = new(2026, 6, 24, 12, 30, 0, TimeSpan.FromHours(9));
 
         Models.ReceivedMailRequest request = ReceivedMailMapper.ToRequest(message, internalDate);
 
@@ -30,7 +30,7 @@ public sealed class ReceivedMailMapperTests
     [Fact]
     public void ToRequest_ConvertsHtmlBodyToReadableTextWhenPlainTextBodyIsMissing()
     {
-        MimeMessage message = new MimeMessage();
+        MimeMessage message = new();
         message.From.Add(MailboxAddress.Parse("sender@example.com"));
         message.MessageId = "<message-2@example.com>";
         message.Subject = "HTML";
@@ -45,7 +45,7 @@ public sealed class ReceivedMailMapperTests
     [Fact]
     public void ToRequest_UsesMessageDateWhenInternalDateIsMissing()
     {
-        MimeMessage message = new MimeMessage();
+        MimeMessage message = new();
         message.From.Add(MailboxAddress.Parse("sender@example.com"));
         message.MessageId = "<message-date@example.com>";
         message.Subject = "Date fallback";
@@ -61,7 +61,7 @@ public sealed class ReceivedMailMapperTests
     [Fact]
     public void ToRequest_GeneratesMessageIdAndAllowsNullBodyWhenSourceFieldsAreMissing()
     {
-        MimeMessage message = new MimeMessage();
+        MimeMessage message = new();
         message.From.Add(MailboxAddress.Parse("sender@example.com"));
         message.Headers.Remove(HeaderId.MessageId);
 

@@ -21,7 +21,7 @@ public sealed class MailSearchQueryFactoryTests
     [Fact]
     public void Create_IncludesUnreadSubjectAndSinceFiltersWhenConfigured()
     {
-        MailSearchOptions options = new MailSearchOptions
+        MailSearchOptions options = new()
         {
             UnreadOnly = true,
             SubjectContains = "Target",
@@ -52,7 +52,7 @@ public sealed class MailSearchQueryFactoryTests
 
     private static IReadOnlyCollection<string> GetSearchTerms(SearchQuery query)
     {
-        List<string> terms = new List<string>();
+        List<string> terms = new();
         Visit(query, q =>
         {
             string? term = q.GetType().GetProperty("Term")?.GetValue(q)?.ToString();
@@ -67,7 +67,7 @@ public sealed class MailSearchQueryFactoryTests
 
     private static IReadOnlyCollection<string> GetSearchValues(SearchQuery query)
     {
-        List<string> values = new List<string>();
+        List<string> values = new();
         Visit(query, q =>
         {
             foreach (System.Reflection.PropertyInfo property in q.GetType().GetProperties())

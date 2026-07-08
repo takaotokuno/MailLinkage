@@ -20,7 +20,7 @@ internal sealed class ApiQueueConsumer(
     /// </summary>
     public async Task<ProcessResult> ConsumeAsync()
     {
-        ProcessResultAccumulator result = new ProcessResultAccumulator();
+        ProcessResultAccumulator result = new();
         logger.LogInformation("API consumer started. Endpoint={Endpoint}", options.Api.Endpoint);
 
         await foreach (ApiQueueItem item in reader.ReadAllAsync())

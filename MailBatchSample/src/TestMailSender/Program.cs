@@ -9,7 +9,7 @@ try
     TestMailSender.Options.AppOptions options = AppConfiguration.Load(args);
     MimeKit.MimeMessage message = MailMessageFactory.Create(options);
 
-    using SmtpClient smtpClient = new SmtpClient();
+    using SmtpClient smtpClient = new();
     await smtpClient.ConnectAsync(options.Smtp.Host, options.Smtp.Port, SmtpSecurity.ToSecureSocketOptions(options.Smtp.UseSsl));
 
     if (!string.IsNullOrWhiteSpace(options.Smtp.UserName))
