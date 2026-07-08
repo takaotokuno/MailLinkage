@@ -7,6 +7,11 @@ using Microsoft.Extensions.Logging;
 
 namespace MailBatch.Console.BatchProcessing;
 
+internal interface IMailFetchQueueProducer
+{
+    Task<ProcessResult> ProduceAsync(IReadOnlyList<UniqueId> targetUids, CancellationToken cancellationToken = default);
+}
+
 internal sealed class MailFetchQueueProducer(
     IReceivedMailFolderService receivedMailFolderService,
     ChannelWriter<ReceivedMailRequest> writer,

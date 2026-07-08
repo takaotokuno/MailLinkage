@@ -8,10 +8,15 @@ using Microsoft.Extensions.Logging;
 
 namespace MailBatch.Console.BatchProcessing;
 
+internal interface IApiQueueConsumer
+{
+    Task<ProcessResult> ConsumeAsync(CancellationToken cancellationToken = default);
+}
+
 internal sealed class ApiQueueConsumer(
     AppOptions options,
     IReceivedMailFolderService receivedMailFolderService,
-    IReceivedMailApiClient receivedMailApiClient,
+    IApiClient receivedMailApiClient,
     ChannelReader<ReceivedMailRequest> reader,
     ILogger<ApiQueueConsumer> logger)
 {
