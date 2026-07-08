@@ -1,10 +1,9 @@
-using System.Net.Http.Json;
+using System.Threading.Channels;
 using MailBatch.Console.Mail;
 using MailBatch.Console.Options;
 using MailKit;
 using MailKit.Net.Imap;
 using Serilog;
-using Serilog.Context;
 
 namespace MailBatch.Console.Services;
 
@@ -99,123 +98,42 @@ internal sealed class BatchRunner(AppOptions options, string runId)
     }
 
     /// <summary>
-    /// 対象メールを順番に処理し、成功件数と失敗件数を集計します。
+    /// 対象メールを取得・加工するProducerと、API送信するConsumerを並行実行します。
     /// </summary>
     private async Task<ProcessResult> ProcessMessagesAsync(IMailFolder folder, IReadOnlyList<UniqueId> targetUids, HttpClient httpClient)
     {
-        var result = new ProcessResult(Total: targetUids.Count);
-
-        foreach (var uid in targetUids)
+        if (targetUids.Count == 0)
         {
-            result = result.Add(await ProcessMessageAsync(folder, uid, httpClient));
+            return new ProcessResult(Total: 0);
         }
 
-        return result;
-    }
-
-    /// <summary>
-    /// 指定されたメールをAPI送信用リクエストに変換し、送信結果を返します。
-    /// </summary>
-    private async Task<bool> ProcessMessageAsync(IMailFolder folder, UniqueId uid, HttpClient httpClient)
-    {
-        var dto = await CreateRequestAsync(folder, uid);
-
-        using (LogContext.PushProperty("MessageId", dto.MessageId))
+        var queue = Channel.CreateUnbounded<ApiQueueItem>(new UnboundedChannelOptions
         {
-            return await PostAndHandleResultAsync(folder, uid, httpClient, dto);
-        }
-    }
+            SingleReader = true,
+            SingleWriter = true
+        });
+        using var imapLock = new SemaphoreSlim(1, 1);
 
-    /// <summary>
-    /// 指定されたUIDのメール本文と内部受信日時を取得し、受信メールリクエストを作成します。
-    /// </summary>
-    private static async Task<Models.ReceivedMailRequest> CreateRequestAsync(IMailFolder folder, UniqueId uid)
-    {
-        var message = await folder.GetMessageAsync(uid);
-        var summary = await folder.FetchAsync(new[] { uid }, MessageSummaryItems.InternalDate);
-        return ReceivedMailMapper.ToRequest(message, summary.FirstOrDefault()?.InternalDate);
-    }
+        var producer = new MailFetchQueueProducer(folder, queue.Writer, imapLock);
+        var consumer = new ApiQueueConsumer(options, folder, httpClient, queue.Reader, imapLock);
 
-    /// <summary>
-    /// メール送信処理を実行し、予期しない例外をログに記録して失敗として扱います。
-    /// </summary>
-    private async Task<bool> PostAndHandleResultAsync(IMailFolder folder, UniqueId uid, HttpClient httpClient, Models.ReceivedMailRequest dto)
-    {
-        try
-        {
-            return await PostMessageAsync(folder, uid, httpClient, dto);
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Unexpected error while processing message. MessageId={MessageId}", dto.MessageId);
-            return false;
-        }
-    }
+        var producerTask = producer.ProduceAsync(targetUids);
+        var consumerTask = consumer.ConsumeAsync();
 
-    /// <summary>
-    /// 受信メールリクエストをAPIへ送信し、レスポンスに応じた後続処理を行います。
-    /// </summary>
-    private async Task<bool> PostMessageAsync(IMailFolder folder, UniqueId uid, HttpClient httpClient, Models.ReceivedMailRequest dto)
-    {
-        Log.Information("Posting message to API. MessageId={MessageId}, Subject={Subject}", dto.MessageId, dto.Subject);
-        using var response = await httpClient.PostAsJsonAsync(options.Api.Endpoint, dto);
-        var responseBody = await response.Content.ReadAsStringAsync();
+        var producerResult = await producerTask;
+        var consumerResult = await consumerTask;
 
-        if (!response.IsSuccessStatusCode)
-        {
-            LogApiFailure(dto.MessageId, (int)response.StatusCode, responseBody);
-            return false;
-        }
-
-        await HandleSuccessfulPostAsync(folder, uid, dto.MessageId, (int)response.StatusCode, responseBody);
-        return true;
-    }
-
-    /// <summary>
-    /// API送信成功時のログ出力と既読化処理を行います。
-    /// </summary>
-    private async Task HandleSuccessfulPostAsync(IMailFolder folder, UniqueId uid, string messageId, int statusCode, string responseBody)
-    {
-        LogApiSuccess(messageId, statusCode, responseBody);
-        await MarkAsSeenIfNeededAsync(folder, uid, messageId);
-    }
-
-    /// <summary>
-    /// API送信成功時のステータスコードと保存済みIDをログに出力します。
-    /// </summary>
-    private static void LogApiSuccess(string messageId, int statusCode, string responseBody)
-    {
         Log.Information(
-            "API post succeeded. MessageId={MessageId}, StatusCode={StatusCode}, SavedId={SavedId}",
-            messageId,
-            statusCode,
-            ApiResponseSummary.ExtractSavedId(responseBody));
-    }
+            "Queue processing completed. Enqueued={Enqueued}, QueueFailures={QueueFailures}, ApiSucceeded={ApiSucceeded}, ApiFailed={ApiFailed}",
+            producerResult.Succeeded,
+            producerResult.Failed,
+            consumerResult.Succeeded,
+            consumerResult.Failed);
 
-    /// <summary>
-    /// API送信失敗時のステータスコードとレスポンス概要をログに出力します。
-    /// </summary>
-    private static void LogApiFailure(string messageId, int statusCode, string responseBody)
-    {
-        Log.Warning(
-            "API post failed. MessageId={MessageId}, StatusCode={StatusCode}, Response={ResponseSummary}",
-            messageId,
-            statusCode,
-            ApiResponseSummary.Summarize(responseBody));
-    }
-
-    /// <summary>
-    /// 設定で有効な場合、処理済みメールに既読フラグを付与します。
-    /// </summary>
-    private async Task MarkAsSeenIfNeededAsync(IMailFolder folder, UniqueId uid, string messageId)
-    {
-        if (!options.Processing.MarkAsSeenOnSuccess)
-        {
-            return;
-        }
-
-        await folder.AddFlagsAsync(uid, MessageFlags.Seen, true);
-        Log.Information("Marked message as seen. MessageId={MessageId}", messageId);
+        return new ProcessResult(
+            Total: targetUids.Count,
+            Succeeded: consumerResult.Succeeded,
+            Failed: producerResult.Failed + consumerResult.Failed);
     }
 
     /// <summary>
@@ -240,16 +158,5 @@ internal sealed class BatchRunner(AppOptions options, string runId)
     private static int ToExitCode(ProcessResult result)
     {
         return result.Failed > 0 ? 2 : 0;
-    }
-
-    private sealed record ProcessResult(int Total, int Succeeded = 0, int Failed = 0)
-    {
-        /// <summary>
-        /// 1件分の処理結果を集計に加算した新しい処理結果を返します。
-        /// </summary>
-        public ProcessResult Add(bool succeeded)
-        {
-            return succeeded ? this with { Succeeded = Succeeded + 1 } : this with { Failed = Failed + 1 };
-        }
     }
 }
