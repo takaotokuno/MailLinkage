@@ -27,34 +27,7 @@ internal sealed class MailFetchQueueProducer(
         {
             foreach (UniqueId uid in targetUids)
             {
-                try
-                {
-                    ReceivedMailRequest request = await CreateRequestAsync(uid);
-                    IReadOnlyList<string> validationErrors = request.Validate();
-                    if (validationErrors.Count > 0)
-                    {
-                        await NotifyValidationErrorAsync(request, validationErrors);
-                        result.IncrementFailure();
-                        logger.LogWarning(
-                            "Validation failed for received mail request. MessageId={MessageId}, Errors={ValidationErrors}",
-                            request.MessageId,
-                            string.Join("; ", validationErrors));
-                        continue;
-                    }
-
-                    await writer.WriteAsync(request);
-                    result.IncrementSuccess();
-                    logger.LogInformation(
-                        "Queued API request. MessageId={MessageId}, QueueCount={QueueCount}, BodyLength={BodyLength}",
-                        request.MessageId,
-                        result.Succeeded,
-                        request.Body?.Length ?? 0);
-                }
-                catch (Exception ex)
-                {
-                    result.IncrementFailure();
-                    logger.LogError(ex, "Failed to fetch, transform, validate, or queue message. Uid={Uid}", uid);
-                }
+                await ProduceSingleAsync(uid, result);
             }
         }
         finally
@@ -64,6 +37,28 @@ internal sealed class MailFetchQueueProducer(
         }
 
         return result.ToResult();
+    }
+
+    /// <summary>
+    /// 指定されたUIDのメールを1件処理し、処理結果を集計します。
+    /// </summary>
+    private async Task ProduceSingleAsync(UniqueId uid, ProcessResultAccumulator result)
+    {
+        try
+        {
+            ReceivedMailRequest request = await CreateRequestAsync(uid);
+            if (!await ValidateRequestAsync(request, result))
+            {
+                return;
+            }
+
+            await QueueRequestAsync(request, result);
+        }
+        catch (Exception ex)
+        {
+            result.IncrementFailure();
+            logger.LogError(ex, "Failed to fetch, transform, validate, or queue message. Uid={Uid}", uid);
+        }
     }
 
     /// <summary>
@@ -82,6 +77,41 @@ internal sealed class MailFetchQueueProducer(
         {
             imapLock.Release();
         }
+    }
+
+    /// <summary>
+    /// 受信メールリクエストを検証し、エラーがある場合は通知と集計を行います。
+    /// </summary>
+    private async Task<bool> ValidateRequestAsync(ReceivedMailRequest request, ProcessResultAccumulator result)
+    {
+        IReadOnlyList<string> validationErrors = request.Validate();
+        if (validationErrors.Count == 0)
+        {
+            return true;
+        }
+
+        await NotifyValidationErrorAsync(request, validationErrors);
+        result.IncrementFailure();
+        logger.LogWarning(
+            "Validation failed for received mail request. MessageId={MessageId}, Errors={ValidationErrors}",
+            request.MessageId,
+            string.Join("; ", validationErrors));
+
+        return false;
+    }
+
+    /// <summary>
+    /// 検証済みの受信メールリクエストを内部キューへ追加し、成功件数を集計します。
+    /// </summary>
+    private async Task QueueRequestAsync(ReceivedMailRequest request, ProcessResultAccumulator result)
+    {
+        await writer.WriteAsync(request);
+        result.IncrementSuccess();
+        logger.LogInformation(
+            "Queued API request. MessageId={MessageId}, QueueCount={QueueCount}, BodyLength={BodyLength}",
+            request.MessageId,
+            result.Succeeded,
+            request.Body?.Length ?? 0);
     }
 
     /// <summary>
@@ -104,6 +134,9 @@ internal sealed class MailFetchQueueProducer(
             ApplyValidationErrorNotificationTemplate(template.Body, request, validationErrorsText)));
     }
 
+    /// <summary>
+    /// バリデーションエラー通知テンプレートのプレースホルダーを置換します。
+    /// </summary>
     private static string ApplyValidationErrorNotificationTemplate(
         string template,
         ReceivedMailRequest request,
@@ -115,6 +148,9 @@ internal sealed class MailFetchQueueProducer(
             .Replace("{ValidationErrors}", validationErrors, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// 通知に埋め込む文字列を指定文字数以内に短縮します。
+    /// </summary>
     private static string CreatePreview(string value)
     {
         const int maxPreviewLength = 200;
