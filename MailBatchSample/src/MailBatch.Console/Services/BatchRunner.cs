@@ -1,5 +1,6 @@
 using System.Threading.Channels;
 using MailBatch.Console.Mail;
+using MailBatch.Console.Notifications;
 using MailBatch.Console.Options;
 using MailKit;
 using MailKit.Net.Imap;
@@ -11,7 +12,8 @@ internal sealed class BatchRunner(
     AppOptions options,
     BatchRunContext runContext,
     ILogger<BatchRunner> logger,
-    ILoggerFactory loggerFactory)
+    ILoggerFactory loggerFactory,
+    IMailNotifier mailNotifier)
 {
     /// <summary>
     /// メール取得からAPI送信までのバッチ処理全体を実行し、終了コードを返します。
@@ -35,7 +37,36 @@ internal sealed class BatchRunner(
 
         LogFinish(result);
 
-        return ToExitCode(result);
+        int exitCode = ToExitCode(result);
+        await mailNotifier.SendAsync(new MailNotification(
+            options.Notification.AdminAddress,
+            $"Mail batch {ToRunStatus(exitCode)}: RunId={runContext.RunId}",
+            CreateRunStatusNotificationBody(result, exitCode),
+            DateTimeOffset.UtcNow));
+
+        return exitCode;
+    }
+
+
+    /// <summary>
+    /// バッチ実行結果の通知本文を作成します。
+    /// </summary>
+    private string CreateRunStatusNotificationBody(ProcessResult result, int exitCode)
+    {
+        return string.Join(
+            Environment.NewLine,
+            $"Mail batch {ToRunStatus(exitCode)}.",
+            $"RunId: {runContext.RunId}",
+            $"Status: {ToRunStatus(exitCode)}",
+            $"ExitCode: {exitCode}",
+            $"Total: {result.Total}",
+            $"Succeeded: {result.Succeeded}",
+            $"Failed: {result.Failed}");
+    }
+
+    private static string ToRunStatus(int exitCode)
+    {
+        return exitCode == 0 ? "succeeded" : "failed";
     }
 
     /// <summary>

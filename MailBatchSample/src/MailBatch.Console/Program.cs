@@ -1,4 +1,5 @@
 using MailBatch.Console.Configuration;
+using MailBatch.Console.Notifications;
 using MailBatch.Console.Options;
 using MailBatch.Console.Services;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,6 +27,7 @@ try
             builder.ClearProviders();
             builder.AddSerilog(Log.Logger, dispose: false);
         })
+        .AddTransient<IMailNotifier, SmtpMailNotifier>()
         .AddTransient<BatchRunner>()
         .BuildServiceProvider();
 
