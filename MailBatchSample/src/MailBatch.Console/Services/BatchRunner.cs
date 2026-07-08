@@ -7,7 +7,12 @@ using Microsoft.Extensions.Logging;
 
 namespace MailBatch.Console.Services;
 
-internal sealed class BatchRunner(AppOptions options, BatchRunContext runContext, ILogger<BatchRunner> logger, ILoggerFactory loggerFactory)
+internal sealed class BatchRunner(
+    AppOptions options,
+    BatchRunContext runContext,
+    ILogger<BatchRunner> logger,
+    ILoggerFactory loggerFactory
+)
 {
     /// <summary>
     /// メール取得からAPI送信までのバッチ処理全体を実行し、終了コードを返します。
@@ -15,14 +20,22 @@ internal sealed class BatchRunner(AppOptions options, BatchRunContext runContext
     public async Task<int> RunAsync()
     {
         LogStart();
-        using ImapClient imapClient = CreateImapClient();
+
+        // メールサーバに接続する
+        using ImapClient imapClient = new();
         await ConnectImapAsync(imapClient);
         IMailFolder folder = await OpenMailboxAsync(imapClient);
+
+        // 処理対象メールを取得する
         IReadOnlyList<UniqueId> targetUids = await SearchTargetMessagesAsync(folder);
+
         using HttpClient httpClient = CreateHttpClient();
         ProcessResult result = await ProcessMessagesAsync(folder, targetUids, httpClient);
+
         await DisconnectImapAsync(imapClient);
+
         LogFinish(result);
+
         return ToExitCode(result);
     }
 
@@ -43,24 +56,25 @@ internal sealed class BatchRunner(AppOptions options, BatchRunContext runContext
     }
 
     /// <summary>
-    /// サーバー証明書の検証コールバックを設定したIMAPクライアントを作成します。
-    /// </summary>
-    private static ImapClient CreateImapClient()
-    {
-        ImapClient imapClient = new ImapClient();
-        imapClient.ServerCertificateValidationCallback = (_, _, _, _) => true;
-        return imapClient;
-    }
-
-    /// <summary>
     /// 設定値を使用してIMAPサーバーに接続し、認証します。
     /// </summary>
     private async Task ConnectImapAsync(ImapClient imapClient)
     {
-        logger.LogInformation("Connecting to IMAP server. Host={Host}, Port={Port}, UseSsl={UseSsl}", options.Imap.Host, options.Imap.Port, options.Imap.UseSsl);
-        await imapClient.ConnectAsync(options.Imap.Host, options.Imap.Port, ImapSecurity.ToSecureSocketOptions(options.Imap.UseSsl));
+        logger.LogInformation(
+            "Connecting to IMAP server. Host={Host}, Port={Port}, SecureSocketOption={SecureSocketOption}",
+            options.Imap.Host, options.Imap.Port,
+            options.Imap.SecureSocketOption);
+
+        await imapClient.ConnectAsync(
+            options.Imap.Host,
+            options.Imap.Port,
+            options.Imap.GetSecureSocketOptions());
         await imapClient.AuthenticateAsync(options.Imap.UserName, options.Imap.Password);
-        logger.LogInformation("Connected and authenticated to IMAP server. Host={Host}, UserName={UserName}", options.Imap.Host, options.Imap.UserName);
+
+        logger.LogInformation(
+            "Connected and authenticated to IMAP server. Host={Host}, UserName={UserName}",
+            options.Imap.Host,
+            options.Imap.UserName);
     }
 
     /// <summary>
@@ -81,7 +95,12 @@ internal sealed class BatchRunner(AppOptions options, BatchRunContext runContext
         MailKit.Search.SearchQuery query = MailSearchQueryFactory.Create(options.MailSearch);
         IList<UniqueId> uids = await folder.SearchAsync(query);
         List<UniqueId> targetUids = uids.Take(options.MailSearch.MaxMessages).ToList();
-        logger.LogInformation("Found {MessageCount} target messages. Mailbox={Mailbox}", targetUids.Count, options.Imap.Mailbox);
+
+        logger.LogInformation(
+            "Found {MessageCount} target messages. Mailbox={Mailbox}",
+            targetUids.Count,
+            options.Imap.Mailbox);
+
         return targetUids;
     }
 
@@ -100,23 +119,45 @@ internal sealed class BatchRunner(AppOptions options, BatchRunContext runContext
     /// <summary>
     /// 対象メールを取得・加工するProducerと、API送信するConsumerを並行実行します。
     /// </summary>
-    private async Task<ProcessResult> ProcessMessagesAsync(IMailFolder folder, IReadOnlyList<UniqueId> targetUids, HttpClient httpClient)
+    private async Task<ProcessResult> ProcessMessagesAsync(
+        IMailFolder folder,
+        IReadOnlyList<UniqueId> targetUids,
+        HttpClient httpClient
+    )
     {
         if (targetUids.Count == 0)
         {
             return new ProcessResult(Total: 0);
         }
 
+        // 非同期キューを作成する。
+        // UnboundedChannel: 上限なしのキュー
+        // SingleReader/SingleWriter を True に設定すると、読み手・書き手が1つである前提で.NETが処理を最適化する
         Channel<ApiQueueItem> queue = Channel.CreateUnbounded<ApiQueueItem>(new UnboundedChannelOptions
         {
             SingleReader = true,
             SingleWriter = true
         });
+
+        // IMAPフォルダ操作を同時に実行しないためロック
+        // Producerはメール取得、Consumerはメール移動でIMAPフォルダを触るため、同じLockを共有する。
         using SemaphoreSlim imapLock = new SemaphoreSlim(1, 1);
 
-        MailFetchQueueProducer producer = new MailFetchQueueProducer(folder, queue.Writer, imapLock, loggerFactory.CreateLogger<MailFetchQueueProducer>());
-        ApiQueueConsumer consumer = new ApiQueueConsumer(options, folder, httpClient, queue.Reader, imapLock, loggerFactory.CreateLogger<ApiQueueConsumer>());
+        MailFetchQueueProducer producer = new MailFetchQueueProducer(
+            folder,
+            queue.Writer,
+            imapLock,
+            loggerFactory.CreateLogger<MailFetchQueueProducer>());
 
+        ApiQueueConsumer consumer = new ApiQueueConsumer(
+            options,
+            folder,
+            httpClient,
+            queue.Reader,
+            imapLock,
+            loggerFactory.CreateLogger<ApiQueueConsumer>());
+
+        // Producer と Consumer を並行して実行し完了まで待機する。
         Task<ProcessResult> producerTask = producer.ProduceAsync(targetUids);
         Task<ProcessResult> consumerTask = consumer.ConsumeAsync();
 
@@ -139,9 +180,10 @@ internal sealed class BatchRunner(AppOptions options, BatchRunContext runContext
     /// <summary>
     /// IMAPサーバーから正常に切断します。
     /// </summary>
-    private static async Task DisconnectImapAsync(ImapClient imapClient)
+    private async Task DisconnectImapAsync(ImapClient imapClient)
     {
         await imapClient.DisconnectAsync(true);
+        logger.LogInformation("Disconnecting from IMAP server.");
     }
 
     /// <summary>
@@ -149,7 +191,11 @@ internal sealed class BatchRunner(AppOptions options, BatchRunContext runContext
     /// </summary>
     private void LogFinish(ProcessResult result)
     {
-        logger.LogInformation("Mail batch finished. Succeeded={Succeeded}, Failed={Failed}, Total={Total}", result.Succeeded, result.Failed, result.Total);
+        logger.LogInformation(
+            "Mail batch finished. Succeeded={Succeeded}, Failed={Failed}, Total={Total}",
+            result.Succeeded,
+            result.Failed,
+            result.Total);
     }
 
     /// <summary>
