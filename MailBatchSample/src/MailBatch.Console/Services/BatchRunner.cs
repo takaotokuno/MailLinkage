@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using MailBatch.Console.Mail;
+using MailBatch.Console.Models;
 using MailBatch.Console.Options;
 using MailKit;
 using MailKit.Net.Imap;
@@ -19,9 +20,9 @@ internal sealed class BatchRunner(AppOptions options, string runId)
         using var imapClient = CreateImapClient();
         await ConnectImapAsync(imapClient);
         var folder = await OpenMailboxAsync(imapClient);
-        var targetUids = await SearchTargetMessagesAsync(folder);
+        var targetMailIds = await SearchTargetMessagesAsync(folder);
         using var httpClient = CreateHttpClient();
-        var result = await ProcessMessagesAsync(folder, targetUids, httpClient);
+        var result = await ProcessMessagesAsync(folder, targetMailIds, httpClient);
         await DisconnectImapAsync(imapClient);
         LogFinish(result);
         return ToExitCode(result);
@@ -75,15 +76,18 @@ internal sealed class BatchRunner(AppOptions options, string runId)
     }
 
     /// <summary>
-    /// 検索条件に一致する処理対象メールのUID一覧を取得します。
+    /// 検索条件に一致する処理対象メールの受信メールID一覧を取得します。
     /// </summary>
-    private async Task<IReadOnlyList<UniqueId>> SearchTargetMessagesAsync(IMailFolder folder)
+    private async Task<IReadOnlyList<ReceivedMailId>> SearchTargetMessagesAsync(IMailFolder folder)
     {
         var query = MailSearchQueryFactory.Create(options.MailSearch);
         var uids = await folder.SearchAsync(query);
-        var targetUids = uids.Take(options.MailSearch.MaxMessages).ToList();
-        Log.Information("Found {MessageCount} target messages. Mailbox={Mailbox}", targetUids.Count, options.Imap.Mailbox);
-        return targetUids;
+        var targetMailIds = uids
+            .Take(options.MailSearch.MaxMessages)
+            .Select(ReceivedMailIdMapper.ToReceivedMailId)
+            .ToList();
+        Log.Information("Found {MessageCount} target messages. Mailbox={Mailbox}", targetMailIds.Count, options.Imap.Mailbox);
+        return targetMailIds;
     }
 
     /// <summary>
@@ -101,13 +105,13 @@ internal sealed class BatchRunner(AppOptions options, string runId)
     /// <summary>
     /// 対象メールを順番に処理し、成功件数と失敗件数を集計します。
     /// </summary>
-    private async Task<ProcessResult> ProcessMessagesAsync(IMailFolder folder, IReadOnlyList<UniqueId> targetUids, HttpClient httpClient)
+    private async Task<ProcessResult> ProcessMessagesAsync(IMailFolder folder, IReadOnlyList<ReceivedMailId> targetMailIds, HttpClient httpClient)
     {
-        var result = new ProcessResult(Total: targetUids.Count);
+        var result = new ProcessResult(Total: targetMailIds.Count);
 
-        foreach (var uid in targetUids)
+        foreach (var mailId in targetMailIds)
         {
-            result = result.Add(await ProcessMessageAsync(folder, uid, httpClient));
+            result = result.Add(await ProcessMessageAsync(folder, mailId, httpClient));
         }
 
         return result;
@@ -116,21 +120,22 @@ internal sealed class BatchRunner(AppOptions options, string runId)
     /// <summary>
     /// 指定されたメールをAPI送信用リクエストに変換し、送信結果を返します。
     /// </summary>
-    private async Task<bool> ProcessMessageAsync(IMailFolder folder, UniqueId uid, HttpClient httpClient)
+    private async Task<bool> ProcessMessageAsync(IMailFolder folder, ReceivedMailId mailId, HttpClient httpClient)
     {
-        var dto = await CreateRequestAsync(folder, uid);
+        var dto = await CreateRequestAsync(folder, mailId);
 
         using (LogContext.PushProperty("MessageId", dto.MessageId))
         {
-            return await PostAndHandleResultAsync(folder, uid, httpClient, dto);
+            return await PostAndHandleResultAsync(folder, mailId, httpClient, dto);
         }
     }
 
     /// <summary>
-    /// 指定されたUIDのメール本文と内部受信日時を取得し、受信メールリクエストを作成します。
+    /// 指定された受信メールIDのメール本文と内部受信日時を取得し、受信メールリクエストを作成します。
     /// </summary>
-    private static async Task<Models.ReceivedMailRequest> CreateRequestAsync(IMailFolder folder, UniqueId uid)
+    private static async Task<ReceivedMailRequest> CreateRequestAsync(IMailFolder folder, ReceivedMailId mailId)
     {
+        var uid = ReceivedMailIdMapper.ToUniqueId(mailId);
         var message = await folder.GetMessageAsync(uid);
         var summary = await folder.FetchAsync(new[] { uid }, MessageSummaryItems.InternalDate);
         return ReceivedMailMapper.ToRequest(message, summary.FirstOrDefault()?.InternalDate);
@@ -139,11 +144,11 @@ internal sealed class BatchRunner(AppOptions options, string runId)
     /// <summary>
     /// メール送信処理を実行し、予期しない例外をログに記録して失敗として扱います。
     /// </summary>
-    private async Task<bool> PostAndHandleResultAsync(IMailFolder folder, UniqueId uid, HttpClient httpClient, Models.ReceivedMailRequest dto)
+    private async Task<bool> PostAndHandleResultAsync(IMailFolder folder, ReceivedMailId mailId, HttpClient httpClient, ReceivedMailRequest dto)
     {
         try
         {
-            return await PostMessageAsync(folder, uid, httpClient, dto);
+            return await PostMessageAsync(folder, mailId, httpClient, dto);
         }
         catch (Exception ex)
         {
@@ -155,7 +160,7 @@ internal sealed class BatchRunner(AppOptions options, string runId)
     /// <summary>
     /// 受信メールリクエストをAPIへ送信し、レスポンスに応じた後続処理を行います。
     /// </summary>
-    private async Task<bool> PostMessageAsync(IMailFolder folder, UniqueId uid, HttpClient httpClient, Models.ReceivedMailRequest dto)
+    private async Task<bool> PostMessageAsync(IMailFolder folder, ReceivedMailId mailId, HttpClient httpClient, ReceivedMailRequest dto)
     {
         Log.Information("Posting message to API. MessageId={MessageId}, Subject={Subject}", dto.MessageId, dto.Subject);
         using var response = await httpClient.PostAsJsonAsync(options.Api.Endpoint, dto);
@@ -167,17 +172,17 @@ internal sealed class BatchRunner(AppOptions options, string runId)
             return false;
         }
 
-        await HandleSuccessfulPostAsync(folder, uid, dto.MessageId, (int)response.StatusCode, responseBody);
+        await HandleSuccessfulPostAsync(folder, mailId, dto.MessageId, (int)response.StatusCode, responseBody);
         return true;
     }
 
     /// <summary>
     /// API送信成功時のログ出力と既読化処理を行います。
     /// </summary>
-    private async Task HandleSuccessfulPostAsync(IMailFolder folder, UniqueId uid, string messageId, int statusCode, string responseBody)
+    private async Task HandleSuccessfulPostAsync(IMailFolder folder, ReceivedMailId mailId, string messageId, int statusCode, string responseBody)
     {
         LogApiSuccess(messageId, statusCode, responseBody);
-        await MarkAsSeenIfNeededAsync(folder, uid, messageId);
+        await MarkAsSeenIfNeededAsync(folder, mailId, messageId);
     }
 
     /// <summary>
@@ -207,14 +212,14 @@ internal sealed class BatchRunner(AppOptions options, string runId)
     /// <summary>
     /// 設定で有効な場合、処理済みメールに既読フラグを付与します。
     /// </summary>
-    private async Task MarkAsSeenIfNeededAsync(IMailFolder folder, UniqueId uid, string messageId)
+    private async Task MarkAsSeenIfNeededAsync(IMailFolder folder, ReceivedMailId mailId, string messageId)
     {
         if (!options.Processing.MarkAsSeenOnSuccess)
         {
             return;
         }
 
-        await folder.AddFlagsAsync(uid, MessageFlags.Seen, true);
+        await folder.AddFlagsAsync(ReceivedMailIdMapper.ToUniqueId(mailId), MessageFlags.Seen, true);
         Log.Information("Marked message as seen. MessageId={MessageId}", messageId);
     }
 
