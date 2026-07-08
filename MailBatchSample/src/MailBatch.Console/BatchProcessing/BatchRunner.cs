@@ -4,6 +4,7 @@ using MailBatch.Console.NotificationMails;
 using MailBatch.Console.Options;
 using MailBatch.Console.Models;
 using MailKit;
+using MailBatch.Console.Infrastructure;
 using Microsoft.Extensions.Logging;
 
 namespace MailBatch.Console.BatchProcessing;
@@ -13,6 +14,7 @@ internal sealed class BatchRunner(
     BatchRunContext runContext,
     ILogger<BatchRunner> logger,
     ILoggerFactory loggerFactory,
+    IReceivedMailApiClient receivedMailApiClient,
     IMailNotifier mailNotifier,
     MailNotificationFactory mailNotificationFactory,
     IReceivedMailFolderService receivedMailFolderService)
@@ -35,8 +37,7 @@ internal sealed class BatchRunner(
             IReadOnlyList<UniqueId> targetUids = await SearchTargetMessagesAsync();
 
             // メールを連携
-            using HttpClient httpClient = CreateHttpClient();
-            result = await ProcessMessagesAsync(targetUids, httpClient);
+            result = await ProcessMessagesAsync(targetUids);
         }
         finally
         {
@@ -78,23 +79,9 @@ internal sealed class BatchRunner(
     }
 
     /// <summary>
-    /// API送信用のベースURLとタイムアウトを設定したHTTPクライアントを作成します。
-    /// </summary>
-    private HttpClient CreateHttpClient()
-    {
-        return new HttpClient
-        {
-            BaseAddress = options.Api.BaseUrl,
-            Timeout = TimeSpan.FromSeconds(options.Api.TimeoutSeconds)
-        };
-    }
-
-    /// <summary>
     /// 対象メールを取得・加工するProducerと、API送信するConsumerを並行実行します。
     /// </summary>
-    private async Task<ProcessResult> ProcessMessagesAsync(
-        IReadOnlyList<UniqueId> targetUids,
-        HttpClient httpClient)
+    private async Task<ProcessResult> ProcessMessagesAsync(IReadOnlyList<UniqueId> targetUids)
     {
         if (targetUids.Count == 0)
         {
@@ -120,7 +107,7 @@ internal sealed class BatchRunner(
         ApiQueueConsumer consumer = new(
             options,
             receivedMailFolderService,
-            httpClient,
+            receivedMailApiClient,
             queue.Reader,
             loggerFactory.CreateLogger<ApiQueueConsumer>());
 
