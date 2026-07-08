@@ -4,6 +4,8 @@ using MailBatch.Console.Infrastructure;
 using MailBatch.Console.NotificationMails;
 using MailBatch.Console.Options;
 using MailBatch.Console.Models;
+using Polly;
+using Polly.Extensions.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Serilog;
@@ -32,6 +34,13 @@ try
         .AddTransient<IMailNotifier, SmtpMailNotifier>()
         .AddTransient<MailNotificationFactory>()
         .AddScoped<IReceivedMailFolderService, ReceivedMailFolderService>()
+        .AddHttpClient<IReceivedMailApiClient, ReceivedMailApiClient>(client =>
+        {
+            client.BaseAddress = options.Api.BaseUrl;
+            client.Timeout = TimeSpan.FromSeconds(options.Api.TimeoutSeconds);
+        })
+        .AddPolicyHandler(CreateApiRetryPolicy(options.Api))
+        .Services
         .AddTransient<BatchRunner>()
         .BuildServiceProvider();
 
@@ -53,3 +62,13 @@ finally
 }
 
 return exitCode;
+
+
+static IAsyncPolicy<HttpResponseMessage> CreateApiRetryPolicy(ApiOptions apiOptions)
+{
+    return HttpPolicyExtensions
+        .HandleTransientHttpError()
+        .WaitAndRetryAsync(
+            apiOptions.RetryCount,
+            retryAttempt => TimeSpan.FromSeconds(apiOptions.RetryDelaySeconds * Math.Pow(2, retryAttempt - 1)));
+}

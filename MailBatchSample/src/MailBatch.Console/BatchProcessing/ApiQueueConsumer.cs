@@ -1,8 +1,8 @@
-using System.Net.Http.Json;
 using System.Threading.Channels;
 using MailBatch.Console.ReceivedMails;
 using MailBatch.Console.Options;
 using MailBatch.Console.Models;
+using MailBatch.Console.Infrastructure;
 using MailKit;
 using Microsoft.Extensions.Logging;
 
@@ -11,7 +11,7 @@ namespace MailBatch.Console.BatchProcessing;
 internal sealed class ApiQueueConsumer(
     AppOptions options,
     IReceivedMailFolderService receivedMailFolderService,
-    HttpClient httpClient,
+    IReceivedMailApiClient receivedMailApiClient,
     ChannelReader<ReceivedMailRequest> reader,
     ILogger<ApiQueueConsumer> logger)
 {
@@ -73,7 +73,7 @@ internal sealed class ApiQueueConsumer(
             request.MessageId,
             request.Subject);
 
-        using HttpResponseMessage response = await httpClient.PostAsJsonAsync(options.Api.Endpoint, request);
+        using HttpResponseMessage response = await receivedMailApiClient.PostReceivedMailAsync(request);
         string responseBody = await response.Content.ReadAsStringAsync();
 
         if (!response.IsSuccessStatusCode)

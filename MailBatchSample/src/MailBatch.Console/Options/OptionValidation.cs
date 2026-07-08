@@ -33,4 +33,12 @@ internal static class OptionValidation
             throw new InvalidOperationException($"{key} must be greater than 0.");
         }
     }
+
+    public static void RequireNonNegative(int value, string key)
+    {
+        if (value < 0)
+        {
+            throw new InvalidOperationException($"{key} must be greater than or equal to 0.");
+        }
+    }
 }
