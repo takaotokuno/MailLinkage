@@ -12,19 +12,19 @@ public sealed class MailSearchQueryFactoryTests
     [Fact]
     public void Create_ReturnsAllQueryWhenNoFiltersAreConfigured()
     {
-        SearchQuery query = MailSearchQueryFactory.Create(new MailSearchOptions { UnreadOnly = false, SinceDays = null });
+        SearchQuery query = MailSearchQueryFactory.Create(new MailSearchOptions { SinceDays = null });
 
         Assert.Equal(SearchQuery.All, query);
     }
 
-    // 未読、件名、指定日数以降の各条件が設定された場合に検索クエリへ含まれることを確認する。
+    // 件名、From、指定日数以降の各条件が設定された場合に検索クエリへ含まれることを確認する。
     [Fact]
-    public void Create_IncludesUnreadSubjectAndSinceFiltersWhenConfigured()
+    public void Create_IncludesSubjectFromAndSinceFiltersWhenConfigured()
     {
         MailSearchOptions options = new()
         {
-            UnreadOnly = true,
             SubjectContains = "Target",
+            From = "sender@example.local",
             SinceDays = 3
         };
         DateTime expectedDate = DateTime.UtcNow.Date.AddDays(-3);
@@ -32,10 +32,12 @@ public sealed class MailSearchQueryFactoryTests
         SearchQuery query = MailSearchQueryFactory.Create(options);
         IReadOnlyCollection<string> terms = GetSearchTerms(query);
 
-        Assert.Contains("NotSeen", terms);
+        Assert.DoesNotContain("NotSeen", terms);
         Assert.Contains("SubjectContains", terms);
+        Assert.Contains("FromContains", terms);
         Assert.Contains("DeliveredAfter", terms);
         Assert.Contains("Target", GetSearchValues(query));
+        Assert.Contains("sender@example.local", GetSearchValues(query));
         Assert.Contains(expectedDate.ToString(CultureInfo.InvariantCulture), GetSearchValues(query));
     }
 
@@ -45,7 +47,7 @@ public sealed class MailSearchQueryFactoryTests
     [InlineData(-1)]
     public void Create_IgnoresNonPositiveSinceDays(int sinceDays)
     {
-        SearchQuery query = MailSearchQueryFactory.Create(new MailSearchOptions { UnreadOnly = false, SinceDays = sinceDays });
+        SearchQuery query = MailSearchQueryFactory.Create(new MailSearchOptions { SinceDays = sinceDays });
 
         Assert.Equal(SearchQuery.All, query);
     }

@@ -18,6 +18,7 @@ internal sealed class AppOptions
         Imap.Validate();
         Api.Validate();
         MailSearch.Validate();
+        Processing.Validate();
         Notification.Validate();
     }
 }

@@ -86,6 +86,8 @@ dotnet run --project MailBatchSample/src/MailBatch.Console/MailBatch.Console.csp
 | IMAP | `mailserver:3143` |
 | API | `http://mailreceiver-api:8080/api/received-mails` |
 | 対象件名 | `連携対象` |
+| 対象送信元 | `sender@example.local` |
+| 処理済みメールボックス | `Processed` |
 | ログ出力先 | `MailBatchSample/logs/` |
 
 バッチ実行後、ログは日次ファイルとして `MailBatchSample/logs/batch-yyyyMMdd.log` に出力される。
@@ -161,7 +163,7 @@ curl http://mailreceiver-api:8080/api/received-mails
 - パスワード、接続文字列に含まれる秘匿値はログ出力しない。
 - 日時は可能な限り UTC またはタイムゾーン付き ISO 8601 で扱う。
 - メール本文は長文になり得るため、ログへ全文を出力しない。
-- IMAP 取得後に既読化・削除するかどうかは、検証シナリオに合わせて実装時に明示する。
+- API 連携に成功したメールは、再処理を避けるため処理済みメールボックスへ移動する。
 - Docker Compose からの接続先とホスト実行時の接続先が異なるため、設定で切り替えられるようにする。
 
 
@@ -201,7 +203,7 @@ curl http://mailreceiver-api:8080/api/received-mails
 
 - `curl --url "imap://mailserver:3143/INBOX" --user "test@example.local:password"` で対象メールが `INBOX` に存在することを確認する。
 - 件名に検索条件の既定値 `連携対象` が含まれることを確認する。
-- 検索条件や既読・フラグの扱いを変更している場合は、設定値とメールの状態が一致していることを確認する。
+- 検索条件や処理済みメールボックスへの移動設定を変更している場合は、設定値とメールの所在が一致していることを確認する。
 
 ### API 連携に失敗する
 
