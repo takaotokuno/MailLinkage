@@ -22,7 +22,7 @@ internal sealed class BatchRunner(
     /// <summary>
     /// メール取得からAPI送信までのバッチ処理全体を実行し、終了コードを返します。
     /// </summary>
-    public async Task<int> RunAsync()
+    public async Task<int> RunAsync(CancellationToken cancellationToken = default)
     {
         LogStart();
 
@@ -31,23 +31,23 @@ internal sealed class BatchRunner(
         try
         {
             // メールサーバに接続し、必要なフォルダを準備する
-            await receivedMailFolderService.ConnectAsync();
+            await receivedMailFolderService.ConnectAsync(cancellationToken);
 
             // 処理対象メールを取得する
-            IReadOnlyList<UniqueId> targetUids = await SearchTargetMessagesAsync();
+            IReadOnlyList<UniqueId> targetUids = await SearchTargetMessagesAsync(cancellationToken);
 
             // メールを連携
-            result = await ProcessMessagesAsync(targetUids);
+            result = await ProcessMessagesAsync(targetUids, cancellationToken);
         }
         finally
         {
-            await receivedMailFolderService.DisconnectAsync();
+            await receivedMailFolderService.DisconnectAsync(CancellationToken.None);
         }
 
         // 終了処理
         int exitCode = ToExitCode(result);
 
-        await mailNotifier.SendAsync(mailNotificationFactory.CreateRunStatusNotification(result, exitCode));
+        await mailNotifier.SendAsync(mailNotificationFactory.CreateRunStatusNotification(result, exitCode), cancellationToken);
         LogFinish(result);
 
         return exitCode;
@@ -72,16 +72,16 @@ internal sealed class BatchRunner(
     /// <summary>
     /// 検索条件に一致する処理対象メールのUID一覧を取得します。
     /// </summary>
-    private async Task<IReadOnlyList<UniqueId>> SearchTargetMessagesAsync()
+    private async Task<IReadOnlyList<UniqueId>> SearchTargetMessagesAsync(CancellationToken cancellationToken)
     {
         MailKit.Search.SearchQuery query = MailSearchQueryFactory.Create(options.MailSearch);
-        return await receivedMailFolderService.SearchTargetMessagesAsync(query, options.MailSearch.MaxMessages);
+        return await receivedMailFolderService.SearchTargetMessagesAsync(query, options.MailSearch.MaxMessages, cancellationToken);
     }
 
     /// <summary>
     /// 対象メールを取得・加工するProducerと、API送信するConsumerを並行実行します。
     /// </summary>
-    private async Task<ProcessResult> ProcessMessagesAsync(IReadOnlyList<UniqueId> targetUids)
+    private async Task<ProcessResult> ProcessMessagesAsync(IReadOnlyList<UniqueId> targetUids, CancellationToken cancellationToken)
     {
         if (targetUids.Count == 0)
         {
@@ -112,8 +112,8 @@ internal sealed class BatchRunner(
             loggerFactory.CreateLogger<ApiQueueConsumer>());
 
         // Producer と Consumer を並行して実行し完了まで待機する。
-        Task<ProcessResult> producerTask = producer.ProduceAsync(targetUids);
-        Task<ProcessResult> consumerTask = consumer.ConsumeAsync();
+        Task<ProcessResult> producerTask = producer.ProduceAsync(targetUids, cancellationToken);
+        Task<ProcessResult> consumerTask = consumer.ConsumeAsync(cancellationToken);
 
         ProcessResult producerResult = await producerTask;
         ProcessResult consumerResult = await consumerTask;

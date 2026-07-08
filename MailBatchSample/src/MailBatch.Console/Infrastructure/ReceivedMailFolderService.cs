@@ -24,9 +24,9 @@ internal sealed class ReceivedMailFolderService(
     /// <summary>
     /// IMAPサーバーへ接続し、受信メールフォルダと処理済みフォルダを利用可能な状態にします。
     /// </summary>
-    public async Task ConnectAsync()
+    public async Task ConnectAsync(CancellationToken cancellationToken = default)
     {
-        await imapLock.WaitAsync();
+        await imapLock.WaitAsync(cancellationToken);
         try
         {
             if (imapClient?.IsConnected == true && receiveFolder?.IsOpen == true)
@@ -46,12 +46,13 @@ internal sealed class ReceivedMailFolderService(
             await imapClient.ConnectAsync(
                 options.Imap.Host,
                 options.Imap.Port,
-                options.Imap.GetSecureSocketOptions());
-            await imapClient.AuthenticateAsync(options.Imap.UserName, options.Imap.Password);
+                options.Imap.GetSecureSocketOptions(),
+                cancellationToken);
+            await imapClient.AuthenticateAsync(options.Imap.UserName, options.Imap.Password, cancellationToken);
 
-            receiveFolder = await GetOrCreateFolderAsync(options.Imap.Mailbox);
-            await receiveFolder.OpenAsync(FolderAccess.ReadWrite);
-            processedFolder = await GetOrCreateProcessedMailboxAsync(receiveFolder);
+            receiveFolder = await GetOrCreateFolderAsync(options.Imap.Mailbox, cancellationToken);
+            await receiveFolder.OpenAsync(FolderAccess.ReadWrite, cancellationToken);
+            processedFolder = await GetOrCreateProcessedMailboxAsync(receiveFolder, cancellationToken);
 
             logger.LogInformation(
                 "Connected and prepared IMAP folders. Host={Host}, UserName={UserName}, Mailbox={Mailbox}, ProcessedMailbox={ProcessedMailbox}",
@@ -69,14 +70,14 @@ internal sealed class ReceivedMailFolderService(
     /// <summary>
     /// IMAPサーバーから正常に切断します。
     /// </summary>
-    public async Task DisconnectAsync()
+    public async Task DisconnectAsync(CancellationToken cancellationToken = default)
     {
-        await imapLock.WaitAsync();
+        await imapLock.WaitAsync(cancellationToken);
         try
         {
             if (imapClient?.IsConnected == true)
             {
-                await imapClient.DisconnectAsync(true);
+                await imapClient.DisconnectAsync(true, cancellationToken);
                 logger.LogInformation("Disconnected from IMAP server.");
             }
         }
@@ -93,13 +94,13 @@ internal sealed class ReceivedMailFolderService(
     /// <summary>
     /// 検索条件に一致する処理対象メールのUID一覧を取得します。
     /// </summary>
-    public async Task<IReadOnlyList<UniqueId>> SearchTargetMessagesAsync(SearchQuery query, int maxMessages)
+    public async Task<IReadOnlyList<UniqueId>> SearchTargetMessagesAsync(SearchQuery query, int maxMessages, CancellationToken cancellationToken = default)
     {
-        await imapLock.WaitAsync();
+        await imapLock.WaitAsync(cancellationToken);
         try
         {
             IMailFolder folder = GetOpenedReceiveFolder();
-            IList<UniqueId> uids = await folder.SearchAsync(query);
+            IList<UniqueId> uids = await folder.SearchAsync(query, cancellationToken);
             List<UniqueId> targetUids = uids.Take(maxMessages).ToList();
 
             logger.LogInformation(
@@ -118,14 +119,14 @@ internal sealed class ReceivedMailFolderService(
     /// <summary>
     /// 指定されたUIDのメール本文と内部受信日時を取得し、受信メールリクエストを作成します。
     /// </summary>
-    public async Task<ReceivedMailRequest> CreateRequestAsync(UniqueId uid)
+    public async Task<ReceivedMailRequest> CreateRequestAsync(UniqueId uid, CancellationToken cancellationToken = default)
     {
-        await imapLock.WaitAsync();
+        await imapLock.WaitAsync(cancellationToken);
         try
         {
             IMailFolder folder = GetOpenedReceiveFolder();
-            MimeMessage message = await folder.GetMessageAsync(uid);
-            IList<IMessageSummary> summary = await folder.FetchAsync([uid], MessageSummaryItems.InternalDate);
+            MimeMessage message = await folder.GetMessageAsync(uid, cancellationToken);
+            IList<IMessageSummary> summary = await folder.FetchAsync([uid], MessageSummaryItems.InternalDate, cancellationToken);
 
             ReceivedMailRequest request = ReceivedMailMapper.ToRequest(
                 message,
@@ -142,14 +143,14 @@ internal sealed class ReceivedMailFolderService(
     /// <summary>
     /// 処理済みメールを設定されたメールボックスへ移動します。
     /// </summary>
-    public async Task MoveToProcessedMailboxAsync(UniqueId uid, string messageId)
+    public async Task MoveToProcessedMailboxAsync(UniqueId uid, string messageId, CancellationToken cancellationToken = default)
     {
-        await imapLock.WaitAsync();
+        await imapLock.WaitAsync(cancellationToken);
         try
         {
             IMailFolder folder = GetOpenedReceiveFolder();
-            processedFolder ??= await GetOrCreateProcessedMailboxAsync(folder);
-            await folder.MoveToAsync(uid, processedFolder);
+            processedFolder ??= await GetOrCreateProcessedMailboxAsync(folder, cancellationToken);
+            await folder.MoveToAsync(uid, processedFolder, cancellationToken);
         }
         finally
         {
@@ -178,11 +179,11 @@ internal sealed class ReceivedMailFolderService(
         return receiveFolder;
     }
 
-    private async Task<IMailFolder> GetOrCreateFolderAsync(string folderName)
+    private async Task<IMailFolder> GetOrCreateFolderAsync(string folderName, CancellationToken cancellationToken)
     {
         try
         {
-            return await imapClient!.GetFolderAsync(folderName);
+            return await imapClient!.GetFolderAsync(folderName, cancellationToken);
         }
         catch (FolderNotFoundException)
         {
@@ -192,19 +193,19 @@ internal sealed class ReceivedMailFolderService(
             }
 
             IMailFolder root = imapClient.GetFolder(imapClient.PersonalNamespaces[0]);
-            return await root.CreateAsync(folderName, true);
+            return await root.CreateAsync(folderName, true, cancellationToken);
         }
     }
 
-    private async Task<IMailFolder> GetOrCreateProcessedMailboxAsync(IMailFolder folder)
+    private async Task<IMailFolder> GetOrCreateProcessedMailboxAsync(IMailFolder folder, CancellationToken cancellationToken)
     {
         try
         {
-            return await folder.GetSubfolderAsync(options.Processing.ProcessedMailbox);
+            return await folder.GetSubfolderAsync(options.Processing.ProcessedMailbox, cancellationToken);
         }
         catch (FolderNotFoundException)
         {
-            return await folder.CreateAsync(options.Processing.ProcessedMailbox, true);
+            return await folder.CreateAsync(options.Processing.ProcessedMailbox, true, cancellationToken);
         }
     }
 }
