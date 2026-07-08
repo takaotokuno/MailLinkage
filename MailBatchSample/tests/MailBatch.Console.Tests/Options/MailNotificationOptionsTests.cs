@@ -8,15 +8,7 @@ public sealed class MailNotificationOptionsTests
     [Fact]
     public void Validate_WithValidOptions_DoesNotThrow()
     {
-        MailNotificationOptions options = new()
-        {
-            SmtpHost = "mailserver",
-            SmtpPort = 3025,
-            From = "mailbatch@example.local",
-            AdminAddress = "admin@example.local",
-            SubjectTemplate = "Mail batch {Status}: RunId={RunId}",
-            BodyTemplate = "RunId: {RunId}"
-        };
+        MailNotificationOptions options = CreateValidOptions();
 
         Exception? exception = Record.Exception(options.Validate);
 
@@ -26,17 +18,58 @@ public sealed class MailNotificationOptionsTests
     [Fact]
     public void Validate_WithMissingAdminAddress_ThrowsInvalidOperationException()
     {
-        MailNotificationOptions options = new()
-        {
-            SmtpHost = "mailserver",
-            SmtpPort = 3025,
-            From = "mailbatch@example.local",
-            SubjectTemplate = "Mail batch {Status}: RunId={RunId}",
-            BodyTemplate = "RunId: {RunId}"
-        };
+        MailNotificationOptions options = CreateValidOptions(adminAddress: string.Empty);
 
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(options.Validate);
 
         Assert.Equal("Notification:AdminAddress is required.", exception.Message);
+    }
+
+    [Fact]
+    public void Validate_WithMissingValidationErrorTemplate_ThrowsInvalidOperationException()
+    {
+        MailNotificationOptions options = CreateValidOptions(templates:
+        [
+            new MailNotificationTemplateOptions
+            {
+                Name = MailNotificationOptions.RunStatusTemplateName,
+                Subject = "Mail batch {Status}: RunId={RunId}",
+                Body = "RunId: {RunId}"
+            }
+        ]);
+
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(options.Validate);
+
+        Assert.Equal("Notification:Templates requires a template named 'ValidationError'.", exception.Message);
+    }
+
+    private static MailNotificationOptions CreateValidOptions(
+        string adminAddress = "admin@example.local",
+        List<MailNotificationTemplateOptions>? templates = null)
+    {
+        templates ??=
+        [
+            new MailNotificationTemplateOptions
+            {
+                Name = MailNotificationOptions.RunStatusTemplateName,
+                Subject = "Mail batch {Status}: RunId={RunId}",
+                Body = "RunId: {RunId}"
+            },
+            new MailNotificationTemplateOptions
+            {
+                Name = MailNotificationOptions.ValidationErrorTemplateName,
+                Subject = "Received mail validation failed: MessageId={MessageId}",
+                Body = "Validation errors:\n{ValidationErrors}"
+            }
+        ];
+
+        return new MailNotificationOptions
+        {
+            SmtpHost = "mailserver",
+            SmtpPort = 3025,
+            From = "mailbatch@example.local",
+            AdminAddress = adminAddress,
+            Templates = templates
+        };
     }
 }

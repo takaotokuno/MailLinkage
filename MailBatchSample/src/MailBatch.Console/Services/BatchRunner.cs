@@ -53,7 +53,7 @@ internal sealed class BatchRunner(
     /// </summary>
     private string CreateRunStatusNotificationSubject(ProcessResult result, int exitCode)
     {
-        return ApplyNotificationTemplate(options.Notification.SubjectTemplate, result, exitCode);
+        return ApplyNotificationTemplate(GetRunStatusTemplate().Subject, result, exitCode);
     }
 
     /// <summary>
@@ -61,7 +61,12 @@ internal sealed class BatchRunner(
     /// </summary>
     private string CreateRunStatusNotificationBody(ProcessResult result, int exitCode)
     {
-        return ApplyNotificationTemplate(options.Notification.BodyTemplate, result, exitCode);
+        return ApplyNotificationTemplate(GetRunStatusTemplate().Body, result, exitCode);
+    }
+
+    private MailNotificationTemplateOptions GetRunStatusTemplate()
+    {
+        return options.Notification.GetTemplate(MailNotificationOptions.RunStatusTemplateName);
     }
 
     private string ApplyNotificationTemplate(string template, ProcessResult result, int exitCode)
@@ -186,6 +191,7 @@ internal sealed class BatchRunner(
         using SemaphoreSlim imapLock = new(1, 1);
 
         MailFetchQueueProducer producer = new(
+            options,
             folder,
             queue.Writer,
             imapLock,
