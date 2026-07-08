@@ -108,6 +108,25 @@ public sealed class ReceivedMailsApiTests : IAsyncLifetime
         Assert.Equal(new DateTimeOffset(2026, 6, 24, 12, 0, 0, TimeSpan.FromHours(9)), fetchedMail?.ReceivedAt);
     }
 
+    // 空文字の本文が保存時に null として正規化されることを確認する。
+    [Fact]
+    public async Task CreateReceivedMail_NormalizesEmptyBodyToNull()
+    {
+        using HttpClient client = CreateClient();
+        CreateReceivedMailRequest request = new(
+            MessageId: "<empty-body-message@example.com>",
+            Sender: "sender@example.com",
+            Subject: "Empty body",
+            Body: string.Empty,
+            ReceivedAt: "2026-06-24T12:00:00Z");
+
+        using HttpResponseMessage createdResponse = await client.PostAsJsonAsync("/api/received-mails", request);
+        ReceivedMailResponse? createdMail = await createdResponse.Content.ReadFromJsonAsync<ReceivedMailResponse>();
+
+        Assert.Equal(HttpStatusCode.Created, createdResponse.StatusCode);
+        Assert.Null(createdMail?.Body);
+    }
+
     // 存在しない受信メール ID を取得しようとした場合に NotFound を返すことを確認する。
     [Fact]
     public async Task GetReceivedMailById_ReturnsNotFoundForUnknownId()
