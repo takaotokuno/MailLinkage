@@ -25,9 +25,9 @@ internal interface IReceivedMailFolderService : IAsyncDisposable
     Task<IReadOnlyList<UniqueId>> SearchTargetMessagesAsync(SearchQuery query, int maxMessages, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 指定されたUIDのメール本文と内部受信日時を取得し、受信メールリクエストを作成します。
+    /// 指定されたUIDのメール本文と内部受信日時を取得します。
     /// </summary>
-    Task<ReceivedMailRequest> CreateRequestAsync(UniqueId uid, CancellationToken cancellationToken = default);
+    Task<ReceivedMailContent> ReadMessageAsync(UniqueId uid, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 処理済みメールを設定されたメールボックスへ移動します。

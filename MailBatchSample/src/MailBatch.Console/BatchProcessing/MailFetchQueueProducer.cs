@@ -17,6 +17,7 @@ internal sealed class MailFetchQueueProducer(
     ChannelWriter<ReceivedMailRequest> writer,
     IMailNotifier mailNotifier,
     MailNotificationFactory mailNotificationFactory,
+    IReceivedMailMapper receivedMailMapper,
     ILogger<MailFetchQueueProducer> logger) : IMailFetchQueueProducer
 {
     /// <summary>
@@ -75,11 +76,12 @@ internal sealed class MailFetchQueueProducer(
     }
 
     /// <summary>
-    /// 指定されたUIDのメール本文と内部受信日時を取得し、受信メールリクエストを作成します。
+    /// 指定されたUIDのメール本文と内部受信日時を取得し、アプリケーション層で受信メールリクエストへ変換します。
     /// </summary>
     private async Task<ReceivedMailRequest> CreateRequestAsync(UniqueId uid, CancellationToken cancellationToken)
     {
-        return await receivedMailFolderService.CreateRequestAsync(uid, cancellationToken);
+        ReceivedMailContent content = await receivedMailFolderService.ReadMessageAsync(uid, cancellationToken);
+        return receivedMailMapper.ToRequest(content);
     }
 
     /// <summary>

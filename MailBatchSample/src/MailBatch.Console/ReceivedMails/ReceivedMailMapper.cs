@@ -1,18 +1,18 @@
 using System.Net;
 using System.Text.RegularExpressions;
-using MailBatch.Console.ReceivedMails;
 using MimeKit;
 
 namespace MailBatch.Console.ReceivedMails;
 
-internal static class ReceivedMailMapper
+internal sealed class ReceivedMailMapper : IReceivedMailMapper
 {
     /// <summary>
     /// MIMEメッセージと内部受信日時から、API送信用の受信メールリクエストを生成します。
     /// </summary>
-    public static ReceivedMailRequest ToRequest(MimeMessage message, DateTimeOffset? internalDate)
+    public ReceivedMailRequest ToRequest(ReceivedMailContent content)
     {
-        DateTimeOffset receivedAt = internalDate?.ToUniversalTime()
+        MimeMessage message = content.Message;
+        DateTimeOffset receivedAt = content.InternalDate?.ToUniversalTime()
             ?? (message.Date != DateTimeOffset.MinValue ? message.Date.ToUniversalTime() : DateTimeOffset.UtcNow);
 
         return new ReceivedMailRequest(
@@ -20,7 +20,7 @@ internal static class ReceivedMailMapper
             Sender: message.From.Mailboxes.FirstOrDefault()?.Address ?? message.From.ToString(),
             Subject: message.Subject ?? string.Empty,
             Body: ExtractBody(message),
-            ReceivedAt: receivedAt);
+            ReceivedAt: receivedAt) with { Uid = content.Uid };
     }
 
     /// <summary>

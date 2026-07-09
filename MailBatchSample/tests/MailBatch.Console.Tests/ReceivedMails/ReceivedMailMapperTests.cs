@@ -1,6 +1,7 @@
 using Xunit;
 using MailBatch.Console.ReceivedMails;
 using MimeKit;
+using MailKit;
 
 namespace MailBatch.Console.Tests.ReceivedMails;
 
@@ -17,7 +18,7 @@ public sealed class ReceivedMailMapperTests
         message.Body = new TextPart("plain") { Text = "plain body" };
         DateTimeOffset internalDate = new(2026, 6, 24, 12, 30, 0, TimeSpan.FromHours(9));
 
-        ReceivedMailRequest request = ReceivedMailMapper.ToRequest(message, internalDate);
+        ReceivedMailRequest request = new ReceivedMailMapper().ToRequest(new ReceivedMailContent(new UniqueId(1), message, internalDate));
 
         Assert.Equal("<message-1@example.com>", request.MessageId);
         Assert.Equal("sender@example.com", request.Sender);
@@ -36,7 +37,7 @@ public sealed class ReceivedMailMapperTests
         message.Subject = "HTML";
         message.Body = new TextPart("html") { Text = "<p>Hello&nbsp;<strong>world</strong></p>" };
 
-        ReceivedMailRequest request = ReceivedMailMapper.ToRequest(message, DateTimeOffset.UnixEpoch);
+        ReceivedMailRequest request = new ReceivedMailMapper().ToRequest(new ReceivedMailContent(new UniqueId(1), message, DateTimeOffset.UnixEpoch));
 
         Assert.Equal("Hello  world", request.Body);
     }
@@ -52,7 +53,7 @@ public sealed class ReceivedMailMapperTests
         message.Body = new TextPart("plain") { Text = "body" };
         message.Date = new DateTimeOffset(2026, 6, 24, 10, 0, 0, TimeSpan.FromHours(9));
 
-        ReceivedMailRequest request = ReceivedMailMapper.ToRequest(message, internalDate: null);
+        ReceivedMailRequest request = new ReceivedMailMapper().ToRequest(new ReceivedMailContent(new UniqueId(1), message, null));
 
         Assert.Equal(message.Date.ToUniversalTime(), request.ReceivedAt);
     }
@@ -65,7 +66,7 @@ public sealed class ReceivedMailMapperTests
         message.From.Add(MailboxAddress.Parse("sender@example.com"));
         message.Headers.Remove(HeaderId.MessageId);
 
-        ReceivedMailRequest request = ReceivedMailMapper.ToRequest(message, DateTimeOffset.UnixEpoch);
+        ReceivedMailRequest request = new ReceivedMailMapper().ToRequest(new ReceivedMailContent(new UniqueId(1), message, DateTimeOffset.UnixEpoch));
 
         Assert.StartsWith("<missing-", request.MessageId);
         Assert.Equal("sender@example.com", request.Sender);
