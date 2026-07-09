@@ -4,6 +4,7 @@ using MailBatch.Console.Infrastructure;
 using MailBatch.Console.NotificationMails;
 using MailBatch.Console.Options;
 using MailBatch.Console.Models;
+using MailBatch.Console.ReceivedMails;
 using Polly;
 using Polly.Extensions.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -40,6 +41,12 @@ try
         })
         .AddTransient<IMailNotifier, SmtpMailNotifier>()
         .AddTransient<MailNotificationFactory>()
+        .AddScoped<IImapConnection, ImapConnection>()
+        .AddScoped<IMailFolderProvider, MailFolderProvider>()
+        .AddScoped<IReceivedMailSearcher, ReceivedMailSearcher>()
+        .AddScoped<IReceivedMailReader, ReceivedMailReader>()
+        .AddScoped<IProcessedMailMover, ProcessedMailMover>()
+        .AddScoped<IReceivedMailMapper, ReceivedMailMapper>()
         .AddScoped<IReceivedMailFolderService, ReceivedMailFolderService>()
         .AddTransient<IMailSearchService, MailSearchService>()
         .AddTransient<IReceivedMailQueueFactory, ReceivedMailQueueFactory>()

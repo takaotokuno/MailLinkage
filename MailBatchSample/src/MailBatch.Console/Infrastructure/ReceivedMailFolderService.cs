@@ -2,25 +2,24 @@ using MailBatch.Console.ReceivedMails;
 using MailBatch.Console.Models;
 using MailBatch.Console.Options;
 using MailBatch.Console.BatchProcessing;
-using MailKit;
-using MailKit.Net.Imap;
-using MailKit.Search;
 using Microsoft.Extensions.Logging;
-using MimeKit;
 
 namespace MailBatch.Console.Infrastructure;
 
 /// <summary>
-/// 受信メールフォルダに対するIMAP操作を一元管理します。
+/// 受信メールフォルダ操作の排他制御とユースケース向けの調整を担当します。
 /// </summary>
 internal sealed class ReceivedMailFolderService(
     AppOptions options,
+    IImapConnection imapConnection,
+    IMailFolderProvider mailFolderProvider,
+    IReceivedMailSearcher receivedMailSearcher,
+    IReceivedMailReader receivedMailReader,
+    IProcessedMailMover processedMailMover,
+    IReceivedMailMapper receivedMailMapper,
     ILogger<ReceivedMailFolderService> logger) : IReceivedMailFolderService
 {
     private readonly SemaphoreSlim imapLock = new(1, 1);
-    private ImapClient? imapClient;
-    private IMailFolder? receiveFolder;
-    private IMailFolder? processedFolder;
 
     /// <summary>
     /// IMAPサーバーへ接続し、受信メールフォルダと処理済みフォルダを利用可能な状態にします。
@@ -30,30 +29,14 @@ internal sealed class ReceivedMailFolderService(
         await imapLock.WaitAsync(cancellationToken);
         try
         {
-            if (imapClient?.IsConnected == true && receiveFolder?.IsOpen == true)
+            if (imapConnection.IsConnected && mailFolderProvider.ReceiveFolder?.IsOpen == true)
             {
                 return;
             }
 
-            imapClient?.Dispose();
-            imapClient = new ImapClient();
-
-            logger.LogInformation(
-                "Connecting to IMAP server. Host={Host}, Port={Port}, SecureSocketOption={SecureSocketOption}",
-                options.Imap.Host,
-                options.Imap.Port,
-                options.Imap.SecureSocketOption);
-
-            await imapClient.ConnectAsync(
-                options.Imap.Host,
-                options.Imap.Port,
-                options.Imap.GetSecureSocketOptions(),
-                cancellationToken);
-            await imapClient.AuthenticateAsync(options.Imap.UserName, options.Imap.Password, cancellationToken);
-
-            receiveFolder = await GetOrCreateFolderAsync(options.Imap.Mailbox, cancellationToken);
-            await receiveFolder.OpenAsync(FolderAccess.ReadWrite, cancellationToken);
-            processedFolder = await GetOrCreateProcessedMailboxAsync(receiveFolder, cancellationToken);
+            mailFolderProvider.Clear();
+            await imapConnection.ConnectAsync(cancellationToken);
+            await mailFolderProvider.PrepareFoldersAsync(cancellationToken);
 
             logger.LogInformation(
                 "Connected and prepared IMAP folders. Host={Host}, UserName={UserName}, Mailbox={Mailbox}, ProcessedMailbox={ProcessedMailbox}",
@@ -76,18 +59,11 @@ internal sealed class ReceivedMailFolderService(
         await imapLock.WaitAsync(cancellationToken);
         try
         {
-            if (imapClient?.IsConnected == true)
-            {
-                await imapClient.DisconnectAsync(true, cancellationToken);
-                logger.LogInformation("Disconnected from IMAP server.");
-            }
+            mailFolderProvider.Clear();
+            await imapConnection.DisconnectAsync(cancellationToken);
         }
         finally
         {
-            receiveFolder = null;
-            processedFolder = null;
-            imapClient?.Dispose();
-            imapClient = null;
             imapLock.Release();
         }
     }
@@ -100,17 +76,7 @@ internal sealed class ReceivedMailFolderService(
         await imapLock.WaitAsync(cancellationToken);
         try
         {
-            IMailFolder folder = GetOpenedReceiveFolder();
-            SearchQuery query = MailKitSearchQueryMapper.ToSearchQuery(condition);
-            IList<UniqueId> uids = await folder.SearchAsync(query, cancellationToken);
-            List<ReceivedMailId> targetMailIds = uids.Take(maxMessages).Select(MailKitReceivedMailIdMapper.ToReceivedMailId).ToList();
-
-            logger.LogInformation(
-                "Found {MessageCount} target messages. Mailbox={Mailbox}",
-                targetMailIds.Count,
-                options.Imap.Mailbox);
-
-            return targetMailIds;
+            return await receivedMailSearcher.SearchTargetMessagesAsync(condition, maxMessages, cancellationToken);
         }
         finally
         {
@@ -123,18 +89,11 @@ internal sealed class ReceivedMailFolderService(
     /// </summary>
     public async Task<ReceivedMailRequest> CreateRequestAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
     {
-        UniqueId uid = MailKitReceivedMailIdMapper.ToUniqueId(mailId);
-
         await imapLock.WaitAsync(cancellationToken);
         try
         {
-            IMailFolder folder = GetOpenedReceiveFolder();
-            MimeMessage message = await folder.GetMessageAsync(uid, cancellationToken);
-            IList<IMessageSummary> summary = await folder.FetchAsync([uid], MessageSummaryItems.InternalDate, cancellationToken);
-
-            ReceivedMailRequest request = ReceivedMailMapper.ToRequest(
-                message,
-                summary.FirstOrDefault()?.InternalDate);
+            ReceivedMailContent mailContent = await receivedMailReader.ReadAsync(mailId, cancellationToken);
+            ReceivedMailRequest request = receivedMailMapper.ToRequest(mailContent.Message, mailContent.InternalDate);
 
             return request with { MailId = mailId };
         }
@@ -149,69 +108,20 @@ internal sealed class ReceivedMailFolderService(
     /// </summary>
     public async Task MoveToProcessedMailboxAsync(ReceivedMailId mailId, string messageId, CancellationToken cancellationToken = default)
     {
-        UniqueId uid = MailKitReceivedMailIdMapper.ToUniqueId(mailId);
-
         await imapLock.WaitAsync(cancellationToken);
         try
         {
-            IMailFolder folder = GetOpenedReceiveFolder();
-            processedFolder ??= await GetOrCreateProcessedMailboxAsync(folder, cancellationToken);
-            await folder.MoveToAsync(uid, processedFolder, cancellationToken);
+            await processedMailMover.MoveToProcessedMailboxAsync(mailId, messageId, cancellationToken);
         }
         finally
         {
             imapLock.Release();
         }
-
-        logger.LogInformation(
-            "Moved processed message. MessageId={MessageId}, DestinationMailbox={DestinationMailbox}",
-            messageId,
-            options.Processing.ProcessedMailbox);
     }
 
     public async ValueTask DisposeAsync()
     {
         await DisconnectAsync();
         imapLock.Dispose();
-    }
-
-    private IMailFolder GetOpenedReceiveFolder()
-    {
-        if (receiveFolder?.IsOpen != true)
-        {
-            throw new InvalidOperationException("Receive mailbox is not open. Call ConnectAsync before operating mail folders.");
-        }
-
-        return receiveFolder;
-    }
-
-    private async Task<IMailFolder> GetOrCreateFolderAsync(string folderName, CancellationToken cancellationToken)
-    {
-        try
-        {
-            return await imapClient!.GetFolderAsync(folderName, cancellationToken);
-        }
-        catch (FolderNotFoundException)
-        {
-            if (imapClient!.PersonalNamespaces.Count == 0)
-            {
-                throw;
-            }
-
-            IMailFolder root = imapClient.GetFolder(imapClient.PersonalNamespaces[0]);
-            return await root.CreateAsync(folderName, true, cancellationToken);
-        }
-    }
-
-    private async Task<IMailFolder> GetOrCreateProcessedMailboxAsync(IMailFolder folder, CancellationToken cancellationToken)
-    {
-        try
-        {
-            return await folder.GetSubfolderAsync(options.Processing.ProcessedMailbox, cancellationToken);
-        }
-        catch (FolderNotFoundException)
-        {
-            return await folder.CreateAsync(options.Processing.ProcessedMailbox, true, cancellationToken);
-        }
     }
 }
