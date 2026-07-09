@@ -1,6 +1,6 @@
 using MailBatch.Console.Options;
 using MailBatch.Console.ReceivedMails;
-using MailKit;
+using MailBatch.Console.Models;
 
 namespace MailBatch.Console.BatchProcessing;
 
@@ -8,9 +8,9 @@ internal sealed class MailSearchService(
     AppOptions options,
     IReceivedMailFolderService receivedMailFolderService) : IMailSearchService
 {
-    public async Task<IReadOnlyList<UniqueId>> SearchTargetMessagesAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<ReceivedMailId>> SearchTargetMessagesAsync(CancellationToken cancellationToken = default)
     {
-        MailKit.Search.SearchQuery query = MailSearchQueryFactory.Create(options.MailSearch);
-        return await receivedMailFolderService.SearchTargetMessagesAsync(query, options.MailSearch.MaxMessages, cancellationToken);
+        MailSearchCondition condition = MailSearchConditionFactory.Create(options.MailSearch);
+        return await receivedMailFolderService.SearchTargetMessagesAsync(condition, options.MailSearch.MaxMessages, cancellationToken);
     }
 }

@@ -1,12 +1,12 @@
 using MailBatch.Console.Models;
 using MailKit;
 
-namespace MailBatch.Console.Mail;
+namespace MailBatch.Console.Infrastructure;
 
 /// <summary>
 /// MailKit固有のUIDとアプリケーション層の受信メールIDを相互変換します。
 /// </summary>
-internal static class ReceivedMailIdMapper
+internal static class MailKitReceivedMailIdMapper
 {
     /// <summary>
     /// MailKitのUIDをアプリケーション層の受信メールIDへ変換します。

@@ -43,8 +43,8 @@ internal sealed class BatchRunner(
 
     private async Task<ProcessResult> RunUseCaseAsync(CancellationToken cancellationToken)
     {
-        IReadOnlyList<MailKit.UniqueId> targetUids = await mailSearchService.SearchTargetMessagesAsync(cancellationToken);
-        return await receivedMailPipeline.ProcessAsync(targetUids, cancellationToken);
+        IReadOnlyList<ReceivedMailId> targetMailIds = await mailSearchService.SearchTargetMessagesAsync(cancellationToken);
+        return await receivedMailPipeline.ProcessAsync(targetMailIds, cancellationToken);
     }
 
     /// <summary>

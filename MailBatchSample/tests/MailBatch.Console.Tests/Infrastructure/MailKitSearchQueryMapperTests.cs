@@ -1,55 +1,36 @@
 using System.Globalization;
-using Xunit;
+using MailBatch.Console.Infrastructure;
 using MailBatch.Console.ReceivedMails;
-using MailBatch.Console.Options;
 using MailKit.Search;
+using Xunit;
 
-namespace MailBatch.Console.Tests.ReceivedMails;
+namespace MailBatch.Console.Tests.Infrastructure;
 
-public sealed class MailSearchQueryFactoryTests
+public sealed class MailKitSearchQueryMapperTests
 {
-    // 検索条件が設定されていない場合に全件検索クエリを返すことを確認する。
     [Fact]
-    public void Create_ReturnsAllQueryWhenNoFiltersAreConfigured()
+    public void ToSearchQuery_ReturnsAllQueryWhenNoFiltersAreConfigured()
     {
-        SearchQuery query = MailSearchQueryFactory.Create(new MailSearchOptions { SinceDays = null });
+        SearchQuery query = MailKitSearchQueryMapper.ToSearchQuery(MailSearchCondition.All);
 
         Assert.Equal(SearchQuery.All, query);
     }
 
-    // 件名、From、指定日数以降の各条件が設定された場合に検索クエリへ含まれることを確認する。
     [Fact]
-    public void Create_IncludesSubjectFromAndSinceFiltersWhenConfigured()
+    public void ToSearchQuery_IncludesSubjectFromAndDeliveredAfterFiltersWhenConfigured()
     {
-        MailSearchOptions options = new()
-        {
-            SubjectContains = "Target",
-            From = "sender@example.local",
-            SinceDays = 3
-        };
-        DateTime expectedDate = DateTime.UtcNow.Date.AddDays(-3);
+        DateTime deliveredAfter = DateTime.UtcNow.Date.AddDays(-3);
+        MailSearchCondition condition = new("Target", "sender@example.local", deliveredAfter);
 
-        SearchQuery query = MailSearchQueryFactory.Create(options);
+        SearchQuery query = MailKitSearchQueryMapper.ToSearchQuery(condition);
         IReadOnlyCollection<string> terms = GetSearchTerms(query);
 
-        Assert.DoesNotContain("NotSeen", terms);
         Assert.Contains("SubjectContains", terms);
         Assert.Contains("FromContains", terms);
         Assert.Contains("DeliveredAfter", terms);
         Assert.Contains("Target", GetSearchValues(query));
         Assert.Contains("sender@example.local", GetSearchValues(query));
-        Assert.Contains(expectedDate.ToString(CultureInfo.InvariantCulture), GetSearchValues(query));
-    }
-
-    // SinceDays が 0 以下の場合に日付フィルターを無視して全件検索クエリを返すことを確認する。
-    [Theory]
-    [InlineData(0)]
-    [InlineData(-1)]
-    public void Create_IgnoresNonPositiveSinceDays(int sinceDays)
-    {
-        SearchQuery query = MailSearchQueryFactory.Create(new MailSearchOptions { SinceDays = sinceDays });
-
-        Assert.Equal(SearchQuery.All, query);
+        Assert.Contains(deliveredAfter.ToString(CultureInfo.InvariantCulture), GetSearchValues(query));
     }
 
     private static IReadOnlyCollection<string> GetSearchTerms(SearchQuery query)

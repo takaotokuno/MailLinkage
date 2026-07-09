@@ -1,7 +1,6 @@
 using System.Threading.Channels;
 using MailBatch.Console.Models;
 using MailBatch.Console.ReceivedMails;
-using MailKit;
 using Microsoft.Extensions.Logging;
 
 namespace MailBatch.Console.BatchProcessing;
@@ -11,9 +10,9 @@ internal sealed class ReceivedMailPipeline(
     IReceivedMailPipelineComponentFactory componentFactory,
     ILogger<ReceivedMailPipeline> logger) : IReceivedMailPipeline
 {
-    public async Task<ProcessResult> ProcessAsync(IReadOnlyList<UniqueId> targetUids, CancellationToken cancellationToken = default)
+    public async Task<ProcessResult> ProcessAsync(IReadOnlyList<ReceivedMailId> targetMailIds, CancellationToken cancellationToken = default)
     {
-        if (targetUids.Count == 0)
+        if (targetMailIds.Count == 0)
         {
             return new ProcessResult(Total: 0);
         }
@@ -22,7 +21,7 @@ internal sealed class ReceivedMailPipeline(
         IMailFetchQueueProducer producer = componentFactory.CreateProducer(queue.Writer);
         IApiQueueConsumer consumer = componentFactory.CreateConsumer(queue.Reader);
 
-        Task<ProcessResult> producerTask = producer.ProduceAsync(targetUids, cancellationToken);
+        Task<ProcessResult> producerTask = producer.ProduceAsync(targetMailIds, cancellationToken);
         Task<ProcessResult> consumerTask = consumer.ConsumeAsync(cancellationToken);
 
         ProcessResult producerResult = await producerTask;
@@ -36,7 +35,7 @@ internal sealed class ReceivedMailPipeline(
             consumerResult.Failed);
 
         return new ProcessResult(
-            Total: targetUids.Count,
+            Total: targetMailIds.Count,
             Succeeded: consumerResult.Succeeded,
             Failed: producerResult.Failed + consumerResult.Failed);
     }
