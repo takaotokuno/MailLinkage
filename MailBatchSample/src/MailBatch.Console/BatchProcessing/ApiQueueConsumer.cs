@@ -3,7 +3,6 @@ using MailBatch.Console.ReceivedMails;
 using MailBatch.Console.Options;
 using MailBatch.Console.Models;
 using MailBatch.Console.Infrastructure;
-using MailKit;
 using Microsoft.Extensions.Logging;
 
 namespace MailBatch.Console.BatchProcessing;
@@ -91,17 +90,17 @@ internal sealed class ApiQueueConsumer(
             return false;
         }
 
-        await HandleSuccessfulPostAsync(request.Uid, request, (int)response.StatusCode, responseBody, cancellationToken);
+        await HandleSuccessfulPostAsync(request.MailId, request, (int)response.StatusCode, responseBody, cancellationToken);
         return true;
     }
 
     /// <summary>
     /// API送信成功時のログ出力と処理済みメールボックスへの移動を行います。
     /// </summary>
-    private async Task HandleSuccessfulPostAsync(UniqueId uid, ReceivedMailRequest request, int statusCode, string responseBody, CancellationToken cancellationToken)
+    private async Task HandleSuccessfulPostAsync(ReceivedMailId mailId, ReceivedMailRequest request, int statusCode, string responseBody, CancellationToken cancellationToken)
     {
         LogApiSuccess(request.MessageId, statusCode, responseBody);
-        await MoveToProcessedMailboxAsync(uid, request.MessageId, cancellationToken);
+        await MoveToProcessedMailboxAsync(mailId, request.MessageId, cancellationToken);
     }
 
     /// <summary>
@@ -131,8 +130,8 @@ internal sealed class ApiQueueConsumer(
     /// <summary>
     /// 処理済みメールを設定されたメールボックスへ移動します。
     /// </summary>
-    private async Task MoveToProcessedMailboxAsync(UniqueId uid, string messageId, CancellationToken cancellationToken)
+    private async Task MoveToProcessedMailboxAsync(ReceivedMailId mailId, string messageId, CancellationToken cancellationToken)
     {
-        await receivedMailFolderService.MoveToProcessedMailboxAsync(uid, messageId, cancellationToken);
+        await receivedMailFolderService.MoveToProcessedMailboxAsync(mailId, messageId, cancellationToken);
     }
 }

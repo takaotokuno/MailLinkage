@@ -1,8 +1,8 @@
-using MailKit;
+using MailBatch.Console.Models;
 
 namespace MailBatch.Console.BatchProcessing;
 
 internal interface IMailSearchService
 {
-    Task<IReadOnlyList<UniqueId>> SearchTargetMessagesAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<ReceivedMailId>> SearchTargetMessagesAsync(CancellationToken cancellationToken = default);
 }

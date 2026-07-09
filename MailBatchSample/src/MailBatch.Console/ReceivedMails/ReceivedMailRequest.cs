@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
-using MailKit;
+
+using MailBatch.Console.Models;
 
 namespace MailBatch.Console.ReceivedMails;
 
@@ -15,7 +16,7 @@ internal sealed record ReceivedMailRequest(
 
     // API に送るリクエスト本文には含めない、内部管理用の値
     [JsonIgnore]
-    public UniqueId Uid { get; init; }
+    public ReceivedMailId MailId { get; init; }
 
     public void Validate()
     {

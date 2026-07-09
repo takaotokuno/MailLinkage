@@ -2,14 +2,13 @@ using System.Threading.Channels;
 using MailBatch.Console.ReceivedMails;
 using MailBatch.Console.NotificationMails;
 using MailBatch.Console.Models;
-using MailKit;
 using Microsoft.Extensions.Logging;
 
 namespace MailBatch.Console.BatchProcessing;
 
 internal interface IMailFetchQueueProducer
 {
-    Task<ProcessResult> ProduceAsync(IReadOnlyList<UniqueId> targetUids, CancellationToken cancellationToken = default);
+    Task<ProcessResult> ProduceAsync(IReadOnlyList<ReceivedMailId> targetMailIds, CancellationToken cancellationToken = default);
 }
 
 internal sealed class MailFetchQueueProducer(
@@ -22,13 +21,13 @@ internal sealed class MailFetchQueueProducer(
     /// <summary>
     /// メールを取得し、API送信用データへ加工したうえで内部キューへ追加します。
     /// </summary>
-    public async Task<ProcessResult> ProduceAsync(IReadOnlyList<UniqueId> targetUids, CancellationToken cancellationToken = default)
+    public async Task<ProcessResult> ProduceAsync(IReadOnlyList<ReceivedMailId> targetMailIds, CancellationToken cancellationToken = default)
     {
         ProcessResultAccumulator result = new();
 
-        foreach (UniqueId uid in targetUids)
+        foreach (ReceivedMailId mailId in targetMailIds)
         {
-            await ProduceSingleAsync(uid, result, cancellationToken);
+            await ProduceSingleAsync(mailId, result, cancellationToken);
         }
 
         writer.Complete();
@@ -41,13 +40,13 @@ internal sealed class MailFetchQueueProducer(
     }
 
     /// <summary>
-    /// 指定されたUIDのメールを1件処理し、処理結果を集計します。
+    /// 指定された受信メールIDのメールを1件処理し、処理結果を集計します。
     /// </summary>
-    private async Task ProduceSingleAsync(UniqueId uid, ProcessResultAccumulator result, CancellationToken cancellationToken)
+    private async Task ProduceSingleAsync(ReceivedMailId mailId, ProcessResultAccumulator result, CancellationToken cancellationToken)
     {
         try
         {
-            ReceivedMailRequest request = await CreateRequestAsync(uid, cancellationToken);
+            ReceivedMailRequest request = await CreateRequestAsync(mailId, cancellationToken);
 
             await ValidateRequestAsync(request, cancellationToken);
             await QueueRequestAsync(request, cancellationToken);
@@ -69,17 +68,17 @@ internal sealed class MailFetchQueueProducer(
             result.IncrementFailure();
             logger.LogError(
                 ex,
-                "Failed to fetch, transform, validate, or queue message. Uid={Uid}",
-                uid);
+                "Failed to fetch, transform, validate, or queue message. MailId={MailId}",
+                mailId);
         }
     }
 
     /// <summary>
-    /// 指定されたUIDのメール本文と内部受信日時を取得し、受信メールリクエストを作成します。
+    /// 指定された受信メールIDのメール本文と内部受信日時を取得し、受信メールリクエストを作成します。
     /// </summary>
-    private async Task<ReceivedMailRequest> CreateRequestAsync(UniqueId uid, CancellationToken cancellationToken)
+    private async Task<ReceivedMailRequest> CreateRequestAsync(ReceivedMailId mailId, CancellationToken cancellationToken)
     {
-        return await receivedMailFolderService.CreateRequestAsync(uid, cancellationToken);
+        return await receivedMailFolderService.CreateRequestAsync(mailId, cancellationToken);
     }
 
     /// <summary>

@@ -1,4 +1,5 @@
 using MailBatch.Console.ReceivedMails;
+using MailBatch.Console.Models;
 using MailBatch.Console.Options;
 using MailBatch.Console.BatchProcessing;
 using MailKit;
@@ -92,23 +93,24 @@ internal sealed class ReceivedMailFolderService(
     }
 
     /// <summary>
-    /// 検索条件に一致する処理対象メールのUID一覧を取得します。
+    /// 検索条件に一致する処理対象メールの受信メールID一覧を取得します。
     /// </summary>
-    public async Task<IReadOnlyList<UniqueId>> SearchTargetMessagesAsync(SearchQuery query, int maxMessages, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<ReceivedMailId>> SearchTargetMessagesAsync(MailSearchCondition condition, int maxMessages, CancellationToken cancellationToken = default)
     {
         await imapLock.WaitAsync(cancellationToken);
         try
         {
             IMailFolder folder = GetOpenedReceiveFolder();
+            SearchQuery query = MailKitSearchQueryMapper.ToSearchQuery(condition);
             IList<UniqueId> uids = await folder.SearchAsync(query, cancellationToken);
-            List<UniqueId> targetUids = uids.Take(maxMessages).ToList();
+            List<ReceivedMailId> targetMailIds = uids.Take(maxMessages).Select(MailKitReceivedMailIdMapper.ToReceivedMailId).ToList();
 
             logger.LogInformation(
                 "Found {MessageCount} target messages. Mailbox={Mailbox}",
-                targetUids.Count,
+                targetMailIds.Count,
                 options.Imap.Mailbox);
 
-            return targetUids;
+            return targetMailIds;
         }
         finally
         {
@@ -117,10 +119,12 @@ internal sealed class ReceivedMailFolderService(
     }
 
     /// <summary>
-    /// 指定されたUIDのメール本文と内部受信日時を取得し、受信メールリクエストを作成します。
+    /// 指定された受信メールIDのメール本文と内部受信日時を取得し、受信メールリクエストを作成します。
     /// </summary>
-    public async Task<ReceivedMailRequest> CreateRequestAsync(UniqueId uid, CancellationToken cancellationToken = default)
+    public async Task<ReceivedMailRequest> CreateRequestAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
     {
+        UniqueId uid = MailKitReceivedMailIdMapper.ToUniqueId(mailId);
+
         await imapLock.WaitAsync(cancellationToken);
         try
         {
@@ -132,7 +136,7 @@ internal sealed class ReceivedMailFolderService(
                 message,
                 summary.FirstOrDefault()?.InternalDate);
 
-            return request with { Uid = uid };
+            return request with { MailId = mailId };
         }
         finally
         {
@@ -143,8 +147,10 @@ internal sealed class ReceivedMailFolderService(
     /// <summary>
     /// 処理済みメールを設定されたメールボックスへ移動します。
     /// </summary>
-    public async Task MoveToProcessedMailboxAsync(UniqueId uid, string messageId, CancellationToken cancellationToken = default)
+    public async Task MoveToProcessedMailboxAsync(ReceivedMailId mailId, string messageId, CancellationToken cancellationToken = default)
     {
+        UniqueId uid = MailKitReceivedMailIdMapper.ToUniqueId(mailId);
+
         await imapLock.WaitAsync(cancellationToken);
         try
         {

@@ -1,6 +1,6 @@
 using System.Text.Json;
 using MailBatch.Console.ReceivedMails;
-using MailKit;
+using MailBatch.Console.Models;
 using Xunit;
 
 namespace MailBatch.Console.Tests.ReceivedMails;
@@ -34,13 +34,13 @@ public sealed class ReceivedMailRequestTests
     }
 
     [Fact]
-    public void Serialize_DoesNotIncludeInternalUid()
+    public void Serialize_DoesNotIncludeInternalMailId()
     {
-        ReceivedMailRequest request = CreateRequest("subject", "body") with { Uid = new UniqueId(123) };
+        ReceivedMailRequest request = CreateRequest("subject", "body") with { MailId = new ReceivedMailId(123) };
 
         string json = JsonSerializer.Serialize(request);
 
-        Assert.DoesNotContain("Uid", json, StringComparison.Ordinal);
+        Assert.DoesNotContain("MailId", json, StringComparison.Ordinal);
     }
 
     private static ReceivedMailRequest CreateRequest(string subject, string? body)

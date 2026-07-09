@@ -1,6 +1,5 @@
 using MailBatch.Console.ReceivedMails;
-using MailKit;
-using MailKit.Search;
+using MailBatch.Console.Models;
 
 namespace MailBatch.Console.BatchProcessing;
 
@@ -20,17 +19,17 @@ internal interface IReceivedMailFolderService : IAsyncDisposable
     Task DisconnectAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 検索条件に一致する処理対象メールのUID一覧を取得します。
+    /// 検索条件に一致する処理対象メールの受信メールID一覧を取得します。
     /// </summary>
-    Task<IReadOnlyList<UniqueId>> SearchTargetMessagesAsync(SearchQuery query, int maxMessages, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<ReceivedMailId>> SearchTargetMessagesAsync(MailSearchCondition condition, int maxMessages, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 指定されたUIDのメール本文と内部受信日時を取得し、受信メールリクエストを作成します。
+    /// 指定された受信メールIDのメール本文と内部受信日時を取得し、受信メールリクエストを作成します。
     /// </summary>
-    Task<ReceivedMailRequest> CreateRequestAsync(UniqueId uid, CancellationToken cancellationToken = default);
+    Task<ReceivedMailRequest> CreateRequestAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 処理済みメールを設定されたメールボックスへ移動します。
     /// </summary>
-    Task MoveToProcessedMailboxAsync(UniqueId uid, string messageId, CancellationToken cancellationToken = default);
+    Task MoveToProcessedMailboxAsync(ReceivedMailId mailId, string messageId, CancellationToken cancellationToken = default);
 }
