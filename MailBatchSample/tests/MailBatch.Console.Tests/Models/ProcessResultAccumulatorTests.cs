@@ -1,4 +1,4 @@
-using MailBatch.Console.Models;
+using MailBatch.Console.BatchProcessing;
 using Xunit;
 
 namespace MailBatch.Console.Tests.Models;

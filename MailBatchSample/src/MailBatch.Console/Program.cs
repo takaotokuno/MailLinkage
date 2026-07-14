@@ -1,10 +1,15 @@
+using MailBatch.Console.Api;
 using MailBatch.Console.BatchProcessing;
 using MailBatch.Console.Configuration;
-using MailBatch.Console.Infrastructure;
 using MailBatch.Console.NotificationMails;
 using MailBatch.Console.Options;
-using MailBatch.Console.Models;
-using MailBatch.Console.ReceivedMails;
+using MailBatch.Console.Pipeline;
+using MailBatch.Console.ReceivedMails.Fetching;
+using MailBatch.Console.ReceivedMails.Folders;
+using MailBatch.Console.ReceivedMails.Imap;
+using MailBatch.Console.ReceivedMails.MailKit;
+using MailBatch.Console.ReceivedMails.Processing;
+using MailBatch.Console.Service;
 using Polly;
 using Polly.Extensions.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,15 +20,17 @@ int exitCode = 0;
 string runId = Guid.NewGuid().ToString();
 using CancellationTokenSource cancellationTokenSource = new();
 
+// Ctrl + C を入力した場合の挙動を設定する
+// DB接続等、外部接続が開いたままプログラムが終了することを防ぐため
 Console.CancelKeyPress += (_, eventArgs) =>
 {
-    eventArgs.Cancel = true;
-    cancellationTokenSource.Cancel();
+    eventArgs.Cancel = true; // デフォルトの処理（プログラムを即終了）をキャンセル
+    cancellationTokenSource.Cancel(); // キャンセル要求を発行
 };
 
 try
 {
-    AppConfiguration.LoadedConfiguration loadedConfiguration = AppConfiguration.Load(args);
+    LoadedConfiguration loadedConfiguration = AppConfiguration.Load(args);
     AppOptions options = loadedConfiguration.Options;
 
     Log.Logger = new LoggerConfiguration()
@@ -43,18 +50,16 @@ try
         .AddTransient<MailNotificationFactory>()
         .AddScoped<IImapConnection, ImapConnection>()
         .AddScoped<IMailFolderProvider, MailFolderProvider>()
-        .AddScoped<IReceivedMailSearcher, ReceivedMailSearcher>()
+        .AddScoped<IMailKitSearcher, MailKitSearcher>()
         .AddScoped<IReceivedMailReader, ReceivedMailReader>()
         .AddScoped<IProcessedMailMover, ProcessedMailMover>()
         .AddScoped<IReceivedMailMapper, ReceivedMailMapper>()
-        .AddScoped<IReceivedMailFolderService, ReceivedMailFolderService>()
-        .AddTransient<IMailSearchService, MailSearchService>()
+        .AddScoped<IReceivedMailSession, ReceivedMailSession>()
         .AddTransient<IReceivedMailQueueFactory, ReceivedMailQueueFactory>()
         .AddTransient<IReceivedMailPipelineComponentFactory, ReceivedMailPipelineComponentFactory>()
         .AddTransient<IReceivedMailPipeline, ReceivedMailPipeline>()
-        .AddTransient<IExitCodePolicy, ExitCodePolicy>()
         .AddTransient<IRunStatusNotifier, RunStatusNotifier>()
-        .AddHttpClient<IApiClient, ReceivedMailApiClient>(client =>
+        .AddHttpClient<IApiClient, ApiClient>(client =>
         {
             client.BaseAddress = options.Api.BaseUrl;
             client.Timeout = TimeSpan.FromSeconds(options.Api.TimeoutSeconds);
@@ -86,6 +91,7 @@ catch (Exception ex)
 }
 finally
 {
+    // メモリ上に残っているログを書き出してロガーを終了する
     await Log.CloseAndFlushAsync();
 }
 

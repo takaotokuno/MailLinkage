@@ -1,5 +1,5 @@
 using MailBatch.Console.Infrastructure;
-using MailBatch.Console.Models;
+using MailBatch.Console.ReceivedMails;
 using MailKit;
 using Xunit;
 

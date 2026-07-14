@@ -1,5 +1,9 @@
-using MailBatch.Console.Models;
+using MailBatch.Console.NotificationMails;
 using MailBatch.Console.Options;
+using MailBatch.Console.Pipeline;
+using MailBatch.Console.ReceivedMails;
+using MailBatch.Console.ReceivedMails.Searching;
+using MailBatch.Console.ReceivedMails.Processing;
 using Microsoft.Extensions.Logging;
 
 namespace MailBatch.Console.BatchProcessing;
@@ -8,11 +12,9 @@ internal sealed class BatchRunner(
     AppOptions options,
     BatchRunContext runContext,
     ILogger<BatchRunner> logger,
-    IMailSearchService mailSearchService,
     IReceivedMailPipeline receivedMailPipeline,
-    IExitCodePolicy exitCodePolicy,
     IRunStatusNotifier runStatusNotifier,
-    IReceivedMailFolderService receivedMailFolderService)
+    IReceivedMailSession receivedMailSession)
 {
     /// <summary>
     /// メール取得からAPI送信までのバッチ処理全体を実行し、終了コードを返します。
@@ -25,15 +27,15 @@ internal sealed class BatchRunner(
 
         try
         {
-            await receivedMailFolderService.ConnectAsync(cancellationToken);
+            await receivedMailSession.ConnectAsync(cancellationToken);
             result = await RunUseCaseAsync(cancellationToken);
         }
         finally
         {
-            await receivedMailFolderService.DisconnectAsync(CancellationToken.None);
+            await receivedMailSession.DisconnectAsync(CancellationToken.None);
         }
 
-        int exitCode = exitCodePolicy.GetExitCode(result);
+        int exitCode = result.ConvertToExitCode();
 
         await runStatusNotifier.NotifyAsync(result, exitCode, cancellationToken);
         LogFinish(result);
@@ -43,7 +45,11 @@ internal sealed class BatchRunner(
 
     private async Task<ProcessResult> RunUseCaseAsync(CancellationToken cancellationToken)
     {
-        IReadOnlyList<ReceivedMailId> targetMailIds = await mailSearchService.SearchTargetMessagesAsync(cancellationToken);
+        MailSearchCondition condition = MailSearchCondition.FromOptions(options.MailSearch);
+        IReadOnlyList<ReceivedMailId> targetMailIds = await receivedMailSession.SearchTargetMessagesAsync(
+            condition,
+            options.MailSearch.MaxMessages,
+            cancellationToken);
         return await receivedMailPipeline.ProcessAsync(targetMailIds, cancellationToken);
     }
 

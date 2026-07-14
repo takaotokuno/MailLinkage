@@ -1,6 +1,5 @@
 using System.Text.Json;
 using MailBatch.Console.ReceivedMails;
-using MailBatch.Console.Models;
 using Xunit;
 
 namespace MailBatch.Console.Tests.ReceivedMails;

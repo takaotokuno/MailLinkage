@@ -1,6 +1,5 @@
 using MailReceiver.Api.Contracts;
 using MailReceiver.Api.Data;
-using MailReceiver.Api.Models;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.Sqlite;
