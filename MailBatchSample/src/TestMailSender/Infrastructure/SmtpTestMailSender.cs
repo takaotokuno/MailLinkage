@@ -22,7 +22,7 @@ internal sealed class SmtpTestMailSender : ITestMailSender
         await smtpClient.ConnectAsync(
             options.Host,
             options.Port,
-            MailKit.Security.SecureSocketOptions.SslOnConnect,
+            SmtpSecurity.ToSecureSocketOptions(useSsl: true),
             cancellationToken);
 
         if (!string.IsNullOrWhiteSpace(options.UserName))

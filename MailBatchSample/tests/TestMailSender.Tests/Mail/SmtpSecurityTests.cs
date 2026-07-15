@@ -1,4 +1,5 @@
 using MailKit.Security;
+using TestMailSender.Infrastructure;
 using Xunit;
 
 namespace TestMailSender.Tests.Mail;
