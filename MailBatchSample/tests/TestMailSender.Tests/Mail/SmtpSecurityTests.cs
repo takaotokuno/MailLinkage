@@ -1,6 +1,5 @@
-using Xunit;
 using MailKit.Security;
-using TestMailSender.Mail;
+using Xunit;
 
 namespace TestMailSender.Tests.Mail;
 

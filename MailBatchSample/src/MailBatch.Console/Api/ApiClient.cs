@@ -10,8 +10,5 @@ internal interface IApiClient
 
 internal sealed class ApiClient(HttpClient httpClient, AppOptions options) : IApiClient
 {
-    public Task<HttpResponseMessage> PostReceivedMailAsync(ApiRequest request, CancellationToken cancellationToken = default)
-    {
-        return httpClient.PostAsJsonAsync(options.Api.Endpoint, request, cancellationToken);
-    }
+    public Task<HttpResponseMessage> PostReceivedMailAsync(ApiRequest request, CancellationToken cancellationToken = default) => httpClient.PostAsJsonAsync(options.Api.Endpoint, request, cancellationToken);
 }

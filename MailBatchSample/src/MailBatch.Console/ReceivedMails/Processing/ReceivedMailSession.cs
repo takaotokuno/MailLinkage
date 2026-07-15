@@ -48,7 +48,7 @@ internal sealed class ReceivedMailSession(
         }
         finally
         {
-            imapLock.Release();
+            _ = imapLock.Release();
         }
     }
 
@@ -65,7 +65,7 @@ internal sealed class ReceivedMailSession(
         }
         finally
         {
-            imapLock.Release();
+            _ = imapLock.Release();
         }
     }
 
@@ -81,14 +81,14 @@ internal sealed class ReceivedMailSession(
         }
         finally
         {
-            imapLock.Release();
+            _ = imapLock.Release();
         }
     }
 
     /// <summary>
     /// 指定された受信メールIDのメール本文と内部受信日時を取得し、受信メールリクエストを作成します。
     /// </summary>
-    public async Task<ReceivedMailContent> CreateRequestAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
+    public async Task<ReceivedMail> CreateRequestAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
     {
         await imapLock.WaitAsync(cancellationToken);
         try
@@ -97,23 +97,23 @@ internal sealed class ReceivedMailSession(
         }
         finally
         {
-            imapLock.Release();
+            _ = imapLock.Release();
         }
     }
 
     /// <summary>
     /// 処理済みメールを設定されたメールボックスへ移動します。
     /// </summary>
-    public async Task MoveToProcessedMailboxAsync(ReceivedMailId mailId, string messageId, CancellationToken cancellationToken = default)
+    public async Task MoveToProcessedMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
     {
         await imapLock.WaitAsync(cancellationToken);
         try
         {
-            await processedMailMover.MoveToProcessedMailboxAsync(mailId, messageId, cancellationToken);
+            await processedMailMover.MoveToProcessedMailboxAsync(mailId, cancellationToken);
         }
         finally
         {
-            imapLock.Release();
+            _ = imapLock.Release();
         }
     }
 

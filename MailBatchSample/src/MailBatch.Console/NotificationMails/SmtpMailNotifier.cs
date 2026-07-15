@@ -13,10 +13,7 @@ internal sealed class SmtpMailNotifier(
     /// <summary>
     /// SMTPサーバー経由で、指定された宛先へ通知メールを送信します。
     /// </summary>
-    public Task SendAsync(MailNotification notification, CancellationToken cancellationToken = default)
-    {
-        return SendAsync([notification], cancellationToken);
-    }
+    public Task SendAsync(MailNotification notification, CancellationToken cancellationToken = default) => SendAsync([notification], cancellationToken);
 
     /// <summary>
     /// SMTPサーバー経由で、指定された複数の通知メールを送信します。
@@ -34,7 +31,7 @@ internal sealed class SmtpMailNotifier(
         await smtpClient.ConnectAsync(
             options.Notification.SmtpHost,
             options.Notification.SmtpPort,
-            options.Notification.UseSsl ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.StartTlsWhenAvailable,
+            SecureSocketOptions.SslOnConnect,
             cancellationToken);
 
         if (!string.IsNullOrWhiteSpace(options.Notification.UserName))
@@ -48,7 +45,7 @@ internal sealed class SmtpMailNotifier(
         foreach (MailNotification notification in notifications)
         {
             MimeMessage message = CreateMessage(notification);
-            await smtpClient.SendAsync(message, cancellationToken);
+            _ = await smtpClient.SendAsync(message, cancellationToken);
 
             logger.LogInformation(
                 "Notification mail sent. To={NotificationTo}",

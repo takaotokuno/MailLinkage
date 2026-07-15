@@ -2,8 +2,8 @@ using MailBatch.Console.NotificationMails;
 using MailBatch.Console.Options;
 using MailBatch.Console.Pipeline;
 using MailBatch.Console.ReceivedMails;
-using MailBatch.Console.ReceivedMails.Searching;
 using MailBatch.Console.ReceivedMails.Processing;
+using MailBatch.Console.ReceivedMails.Searching;
 using Microsoft.Extensions.Logging;
 
 namespace MailBatch.Console.BatchProcessing;
@@ -45,7 +45,7 @@ internal sealed class BatchRunner(
 
     private async Task<ProcessResult> RunUseCaseAsync(CancellationToken cancellationToken)
     {
-        MailSearchCondition condition = MailSearchCondition.FromOptions(options.MailSearch);
+        MailSearchCondition condition = MailSearchCondition.FromOptions(options.MailSearch, DateTime.Now);
         IReadOnlyList<ReceivedMailId> targetMailIds = await receivedMailSession.SearchTargetMessagesAsync(
             condition,
             options.MailSearch.MaxMessages,

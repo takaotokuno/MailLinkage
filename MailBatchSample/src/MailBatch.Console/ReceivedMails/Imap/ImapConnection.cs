@@ -10,9 +10,22 @@ internal sealed class ImapConnection(
 {
     private ImapClient? imapClient;
 
-    public ImapClient Client => imapClient ?? throw new InvalidOperationException("IMAP client is not connected. Call ConnectAsync before using the client.");
+    public ImapClient Client
+    {
+        get
+        {
+            return imapClient
+        ?? throw new InvalidOperationException("IMAP client is not connected. Call ConnectAsync before using the client.");
+        }
+    }
 
-    public bool IsConnected => imapClient?.IsConnected == true;
+    public bool IsConnected
+    {
+        get
+        {
+            return imapClient?.IsConnected == true;
+        }
+    }
 
     public async Task ConnectAsync(CancellationToken cancellationToken = default)
     {
@@ -35,6 +48,7 @@ internal sealed class ImapConnection(
             options.Imap.Port,
             options.Imap.GetSecureSocketOptions(),
             cancellationToken);
+
         await imapClient.AuthenticateAsync(options.Imap.UserName, options.Imap.Password, cancellationToken);
     }
 
@@ -50,8 +64,5 @@ internal sealed class ImapConnection(
         imapClient = null;
     }
 
-    public async ValueTask DisposeAsync()
-    {
-        await DisconnectAsync();
-    }
+    public async ValueTask DisposeAsync() => await DisconnectAsync();
 }

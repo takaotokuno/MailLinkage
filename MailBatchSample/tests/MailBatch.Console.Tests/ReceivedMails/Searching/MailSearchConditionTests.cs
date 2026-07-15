@@ -1,4 +1,3 @@
-using MailBatch.Console.ReceivedMails.Searching;
 using MailBatch.Console.Options;
 using Xunit;
 

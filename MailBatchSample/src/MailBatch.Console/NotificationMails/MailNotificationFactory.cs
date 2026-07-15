@@ -1,6 +1,6 @@
 using MailBatch.Console.BatchProcessing;
-using MailBatch.Console.ReceivedMails.Fetching;
 using MailBatch.Console.Options;
+using MailBatch.Console.ReceivedMails;
 
 namespace MailBatch.Console.NotificationMails;
 
@@ -11,7 +11,8 @@ internal sealed class MailNotificationFactory(AppOptions options, BatchRunContex
     /// </summary>
     public MailNotification CreateRunStatusNotification(ProcessResult result, int exitCode)
     {
-        MailNotificationTemplateOptions template = options.Notification.GetTemplate(MailNotificationOptions.RunStatusTemplateName);
+        MailNotificationTemplateOptions template
+            = options.Notification.GetTemplate(MailNotificationOptions.RunStatusTemplateName);
 
         return new MailNotification(
             options.Notification.AdminAddress,
@@ -23,16 +24,21 @@ internal sealed class MailNotificationFactory(AppOptions options, BatchRunContex
     /// バリデーションエラー通知テンプレートからメール送信元宛て通知を作成します。
     /// </summary>
     public MailNotification CreateValidationErrorNotification(
-        ReceivedMailContent content,
+        ReceivedMail mail,
         IReadOnlyList<string> validationErrors)
     {
-        MailNotificationTemplateOptions template = options.Notification.GetTemplate(MailNotificationOptions.ValidationErrorTemplateName);
-        string validationErrorsText = string.Join(Environment.NewLine, validationErrors.Select(error => $"- {error}"));
+        MailNotificationTemplateOptions template
+            = options.Notification.GetTemplate(MailNotificationOptions.ValidationErrorTemplateName);
+
+        string validationErrorsText = string.Join(Environment.NewLine, validationErrors.Select(error =>
+        {
+            return $"- {error}";
+        }));
 
         return new MailNotification(
-            content.Sender,
-            ApplyValidationErrorTemplate(template.Subject, content, validationErrorsText),
-            ApplyValidationErrorTemplate(template.Body, content, validationErrorsText));
+            mail.Sender,
+            ApplyValidationErrorTemplate(template.Subject, mail, validationErrorsText),
+            ApplyValidationErrorTemplate(template.Body, mail, validationErrorsText));
     }
 
     private string ApplyRunStatusTemplate(string template, ProcessResult result, int exitCode)
@@ -50,23 +56,20 @@ internal sealed class MailNotificationFactory(AppOptions options, BatchRunContex
 
     private static string ApplyValidationErrorTemplate(
         string template,
-        ReceivedMailContent content,
+        ReceivedMail mail,
         string validationErrors)
     {
         return template
-            .Replace("{MessageId}", content.MailId.ToString(), StringComparison.Ordinal)
-            .Replace("{Subject}", CreatePreview(content.Subject), StringComparison.Ordinal)
+            .Replace("{MailId}", mail.MailId.ToString(), StringComparison.Ordinal)
+            .Replace("{Subject}", CreatePreview(mail.Subject), StringComparison.Ordinal)
             .Replace("{ValidationErrors}", validationErrors, StringComparison.Ordinal);
     }
 
     private static string CreatePreview(string value)
     {
-        const int maxPreviewLength = 200;
-        return value.Length <= maxPreviewLength ? value : $"{value[..maxPreviewLength]}...";
+        const int MAX_PREVIEW_LENGTH = 200;
+        return value.Length <= MAX_PREVIEW_LENGTH ? value : $"{value[..MAX_PREVIEW_LENGTH]}...";
     }
 
-    private static string ToRunStatus(int exitCode)
-    {
-        return exitCode == 0 ? "succeeded" : "failed";
-    }
+    private static string ToRunStatus(int exitCode) => exitCode == 0 ? "succeeded" : "failed";
 }

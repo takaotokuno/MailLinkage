@@ -1,7 +1,5 @@
-using Xunit;
-using MailBatch.Console.Api;
-using MailBatch.Console.ReceivedMails.Fetching;
 using MimeKit;
+using Xunit;
 
 namespace MailBatch.Console.Tests.ReceivedMails.Fetching;
 
@@ -64,7 +62,7 @@ public sealed class ReceivedMailMapperTests
     {
         MimeMessage message = new();
         message.From.Add(MailboxAddress.Parse("sender@example.com"));
-        message.Headers.Remove(HeaderId.MessageId);
+        _ = message.Headers.Remove(HeaderId.MessageId);
 
         ApiRequest request = new ReceivedMailMapper().ToRequest(message, DateTimeOffset.UnixEpoch);
 

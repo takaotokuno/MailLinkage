@@ -1,18 +1,18 @@
+using System.Threading.Channels;
 using MailBatch.Console.Api;
-using MailBatch.Console.BatchProcessing;
 using MailBatch.Console.NotificationMails;
 using MailBatch.Console.Options;
+using MailBatch.Console.ReceivedMails;
 using MailBatch.Console.ReceivedMails.Processing;
 using Microsoft.Extensions.Logging;
-using System.Threading.Channels;
 
 namespace MailBatch.Console.Pipeline;
 
 internal interface IReceivedMailPipelineComponentFactory
 {
-    IMailFetchQueueProducer CreateProducer(ChannelWriter<ApiRequest> writer);
+    IMailFetchQueueProducer CreateProducer(ChannelWriter<MailLinkageRequest> writer);
 
-    IApiQueueConsumer CreateConsumer(ChannelReader<ApiRequest> reader);
+    IRequestQueueConsumer CreateConsumer(ChannelReader<MailLinkageRequest> reader);
 }
 
 internal sealed class ReceivedMailPipelineComponentFactory(
@@ -22,9 +22,9 @@ internal sealed class ReceivedMailPipelineComponentFactory(
     IMailNotifier mailNotifier,
     MailNotificationFactory mailNotificationFactory,
     ILogger<MailFetchQueueProducer> producerLogger,
-    ILogger<ApiQueueConsumer> consumerLogger) : IReceivedMailPipelineComponentFactory
+    ILogger<MailLinkageRequest> consumerLogger) : IReceivedMailPipelineComponentFactory
 {
-    public IMailFetchQueueProducer CreateProducer(ChannelWriter<ApiRequest> writer)
+    public IMailFetchQueueProducer CreateProducer(ChannelWriter<MailLinkageRequest> writer)
     {
         return new MailFetchQueueProducer(
             receivedMailSession,
@@ -34,9 +34,9 @@ internal sealed class ReceivedMailPipelineComponentFactory(
             producerLogger);
     }
 
-    public IApiQueueConsumer CreateConsumer(ChannelReader<ApiRequest> reader)
+    public IRequestQueueConsumer CreateConsumer(ChannelReader<MailLinkageRequest> reader)
     {
-        return new ApiQueueConsumer(
+        return new RequestQueueConsumer(
             options,
             receivedMailSession,
             apiClient,

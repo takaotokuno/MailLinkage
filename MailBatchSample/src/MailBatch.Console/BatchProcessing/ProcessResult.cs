@@ -5,10 +5,7 @@ namespace MailBatch.Console.BatchProcessing;
 /// </summary>
 internal sealed record ProcessResult(int Total, int Succeeded = 0, int Failed = 0)
 {
-    public int ConvertToExitCode()
-    {
-        return Failed > 0 ? 2 : 0;
-    }
+    public int ConvertToExitCode() => Failed > 0 ? 2 : 0;
 }
 
 /// <summary>
@@ -18,22 +15,19 @@ internal sealed class ProcessResultAccumulator(int total = 0)
 {
     public int Total { get; private set; } = total;
 
-    public int Succeeded { get; private set; }
-
-    public int Failed { get; private set; }
-
-    public void IncrementSuccess()
+    public int Succeeded
     {
-        Succeeded++;
+        get; private set;
     }
 
-    public void IncrementFailure()
+    public int Failed
     {
-        Failed++;
+        get; private set;
     }
 
-    public ProcessResult ToResult()
-    {
-        return new ProcessResult(Total, Succeeded, Failed);
-    }
+    public void IncrementSuccess() => Succeeded++;
+
+    public void IncrementFailure() => Failed++;
+
+    public ProcessResult ToResult() => new(Total, Succeeded, Failed);
 }

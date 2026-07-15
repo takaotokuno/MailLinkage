@@ -7,8 +7,8 @@ public sealed class ApiResponseSummaryTests
 {
     // APIレスポンス本文に含まれる保存済みIDを、大文字小文字に依存せず抽出できることを確認する。
     [Theory]
-    [InlineData("{\"id\":123}", "123")]
-    [InlineData("{\"ID\" : 456, \"messageId\":\"<mail@example.com>\"}", "456")]
+    [InlineData(/*lang=json,strict*/ "{\"id\":123}", "123")]
+    [InlineData(/*lang=json,strict*/ "{\"ID\" : 456, \"messageId\":\"<mail@example.com>\"}", "456")]
     public void ExtractSavedId_ReturnsIdValueWhenResponseContainsId(string responseBody, string expectedId)
     {
         string? savedId = ApiResponseSummary.ExtractSavedId(responseBody);
@@ -20,7 +20,7 @@ public sealed class ApiResponseSummaryTests
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
-    [InlineData("{\"message\":\"created\"}")]
+    [InlineData(/*lang=json,strict*/ "{\"message\":\"created\"}")]
     public void ExtractSavedId_ReturnsNullWhenResponseDoesNotContainId(string responseBody)
     {
         string? savedId = ApiResponseSummary.ExtractSavedId(responseBody);

@@ -1,6 +1,6 @@
-using Xunit;
 using TestMailSender.Mail;
 using TestMailSender.Options;
+using Xunit;
 
 namespace TestMailSender.Tests.Mail;
 
@@ -53,7 +53,10 @@ public sealed class MailMessageFactoryTests
     {
         AppOptions options = CreateOptions("custom", subject: null);
 
-        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => MailMessageFactory.Create(options));
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+        {
+            return MailMessageFactory.Create(options);
+        });
 
         Assert.Equal("Mail:Subject is required when Mail:Mode is custom.", exception.Message);
     }

@@ -7,7 +7,10 @@ internal sealed class MailOptions
     public string To { get; init; } = string.Empty;
     public string TargetSubject { get; init; } = string.Empty;
     public string NonTargetSubject { get; init; } = string.Empty;
-    public string? Subject { get; init; }
+    public string? Subject
+    {
+        get; init;
+    }
     public string Body { get; init; } = string.Empty;
     public string DuplicateMessageId { get; init; } = string.Empty;
 }

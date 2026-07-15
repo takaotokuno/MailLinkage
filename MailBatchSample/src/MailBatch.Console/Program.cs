@@ -9,11 +9,10 @@ using MailBatch.Console.ReceivedMails.Folders;
 using MailBatch.Console.ReceivedMails.Imap;
 using MailBatch.Console.ReceivedMails.MailKit;
 using MailBatch.Console.ReceivedMails.Processing;
-using MailBatch.Console.Service;
-using Polly;
-using Polly.Extensions.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Polly;
+using Polly.Extensions.Http;
 using Serilog;
 
 int exitCode = 0;
@@ -43,8 +42,8 @@ try
         .AddSingleton(new BatchRunContext(runId))
         .AddLogging(builder =>
         {
-            builder.ClearProviders();
-            builder.AddSerilog(Log.Logger, dispose: false);
+            _ = builder.ClearProviders();
+            _ = builder.AddSerilog(Log.Logger, dispose: false);
         })
         .AddTransient<IMailNotifier, SmtpMailNotifier>()
         .AddTransient<MailNotificationFactory>()
@@ -53,7 +52,6 @@ try
         .AddScoped<IMailKitSearcher, MailKitSearcher>()
         .AddScoped<IReceivedMailReader, ReceivedMailReader>()
         .AddScoped<IProcessedMailMover, ProcessedMailMover>()
-        .AddScoped<IReceivedMailMapper, ReceivedMailMapper>()
         .AddScoped<IReceivedMailSession, ReceivedMailSession>()
         .AddTransient<IReceivedMailQueueFactory, ReceivedMailQueueFactory>()
         .AddTransient<IReceivedMailPipelineComponentFactory, ReceivedMailPipelineComponentFactory>()
@@ -104,5 +102,8 @@ static IAsyncPolicy<HttpResponseMessage> CreateApiRetryPolicy(ApiOptions apiOpti
         .HandleTransientHttpError()
         .WaitAndRetryAsync(
             apiOptions.RetryCount,
-            retryAttempt => TimeSpan.FromSeconds(apiOptions.RetryDelaySeconds * Math.Pow(2, retryAttempt - 1)));
+            retryAttempt =>
+            {
+                return TimeSpan.FromSeconds(apiOptions.RetryDelaySeconds * Math.Pow(2, retryAttempt - 1));
+            });
 }

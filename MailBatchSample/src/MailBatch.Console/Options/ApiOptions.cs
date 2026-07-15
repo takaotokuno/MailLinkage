@@ -2,7 +2,10 @@ namespace MailBatch.Console.Options;
 
 internal sealed class ApiOptions
 {
-    public Uri? BaseUrl { get; init; }
+    public Uri? BaseUrl
+    {
+        get; init;
+    }
     public string Endpoint { get; init; } = "/api/received-mails";
     public int TimeoutSeconds { get; init; } = 30;
     public int RetryCount { get; init; } = 3;
@@ -22,5 +25,4 @@ internal sealed class ApiOptions
             throw new InvalidOperationException("Api:BaseUrl must be an absolute URI.");
         }
     }
-
 }

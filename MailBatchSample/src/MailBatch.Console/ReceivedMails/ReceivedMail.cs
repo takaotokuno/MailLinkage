@@ -1,6 +1,6 @@
-namespace MailBatch.Console.ReceivedMails.Fetching;
+namespace MailBatch.Console.ReceivedMails;
 
-internal sealed record ReceivedMailContent(
+internal sealed record ReceivedMail(
     ReceivedMailId MailId,
     string Sender,
     string Subject,

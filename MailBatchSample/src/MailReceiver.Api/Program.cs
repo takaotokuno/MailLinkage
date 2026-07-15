@@ -27,8 +27,8 @@ app.Run();
 /// </summary>
 static void ConfigureLogging(ILoggingBuilder logging)
 {
-    logging.ClearProviders();
-    logging.AddJsonConsole();
+    _ = logging.ClearProviders();
+    _ = logging.AddJsonConsole();
 }
 
 /// <summary>
@@ -36,8 +36,11 @@ static void ConfigureLogging(ILoggingBuilder logging)
 /// </summary>
 static void ConfigureServices(IServiceCollection services, IConfiguration configuration)
 {
-    services.AddProblemDetails();
-    services.AddDbContext<MailReceiverDbContext>(options => ConfigureSqlite(options, configuration));
+    _ = services.AddProblemDetails();
+    _ = services.AddDbContext<MailReceiverDbContext>(options =>
+    {
+        ConfigureSqlite(options, configuration);
+    });
 }
 
 /// <summary>
@@ -48,7 +51,7 @@ static void ConfigureSqlite(DbContextOptionsBuilder options, IConfiguration conf
     string connectionString = configuration.GetConnectionString("MailReceiver")
         ?? throw new InvalidOperationException("ConnectionStrings:MailReceiver is not configured.");
 
-    options.UseSqlite(connectionString);
+    _ = options.UseSqlite(connectionString);
 }
 
 /// <summary>
@@ -56,7 +59,7 @@ static void ConfigureSqlite(DbContextOptionsBuilder options, IConfiguration conf
 /// </summary>
 static void ConfigureMiddleware(WebApplication app)
 {
-    app.UseExceptionHandler();
+    _ = app.UseExceptionHandler();
 }
 
 /// <summary>
@@ -73,7 +76,7 @@ static void MapEndpoints(WebApplication app)
 /// </summary>
 static void MapHealthCheckEndpoint(WebApplication app)
 {
-    app.MapGet("/health", () => Results.Ok(new { status = "Healthy" }))
+    _ = app.MapGet("/health", () => Results.Ok(new { status = "Healthy" }))
         .WithName("HealthCheck");
 }
 
@@ -95,7 +98,7 @@ static void MapReceivedMailEndpoints(WebApplication app)
 /// </summary>
 static void MapCreateReceivedMailEndpoint(RouteGroupBuilder receivedMails)
 {
-    receivedMails.MapPost(string.Empty, CreateReceivedMailAsync)
+    _ = receivedMails.MapPost(string.Empty, CreateReceivedMailAsync)
         .WithName("CreateReceivedMail")
         .Produces<ReceivedMailResponse>(StatusCodes.Status201Created)
         .ProducesValidationProblem()
@@ -107,7 +110,7 @@ static void MapCreateReceivedMailEndpoint(RouteGroupBuilder receivedMails)
 /// </summary>
 static void MapListReceivedMailsEndpoint(RouteGroupBuilder receivedMails)
 {
-    receivedMails.MapGet(string.Empty, ListReceivedMailsAsync)
+    _ = receivedMails.MapGet(string.Empty, ListReceivedMailsAsync)
         .WithName("ListReceivedMails")
         .Produces<IReadOnlyList<ReceivedMailResponse>>();
 }
@@ -117,7 +120,7 @@ static void MapListReceivedMailsEndpoint(RouteGroupBuilder receivedMails)
 /// </summary>
 static void MapGetReceivedMailByIdEndpoint(RouteGroupBuilder receivedMails)
 {
-    receivedMails.MapGet("/{id:long}", GetReceivedMailByIdAsync)
+    _ = receivedMails.MapGet("/{id:long}", GetReceivedMailByIdAsync)
         .WithName("GetReceivedMailById")
         .Produces<ReceivedMailResponse>()
         .ProducesProblem(StatusCodes.Status404NotFound);
@@ -154,17 +157,14 @@ static async Task<Results<Ok<ReceivedMailResponse>, NotFound<ProblemDetails>>> G
         .AsNoTracking()
         .FirstOrDefaultAsync(candidate => candidate.Id == id, cancellationToken);
 
-    if (mail is null)
-    {
-        return TypedResults.NotFound(new ProblemDetails
+    return mail is null
+        ? (Results<Ok<ReceivedMailResponse>, NotFound<ProblemDetails>>)TypedResults.NotFound(new ProblemDetails
         {
             Title = "Received mail was not found.",
             Detail = $"Received mail id '{id}' does not exist.",
             Status = StatusCodes.Status404NotFound
-        });
-    }
-
-    return TypedResults.Ok(ToResponse(mail));
+        })
+        : TypedResults.Ok(ToResponse(mail));
 }
 
 /// <summary>
@@ -206,7 +206,7 @@ static async Task<Results<CreatedAtRoute<ReceivedMailResponse>, ValidationProble
 
     try
     {
-        await dbContext.SaveChangesAsync(cancellationToken);
+        _ = await dbContext.SaveChangesAsync(cancellationToken);
     }
     catch (DbUpdateException exception) when (IsUniqueConstraintViolation(exception))
     {
@@ -224,7 +224,10 @@ static async Task<Results<CreatedAtRoute<ReceivedMailResponse>, ValidationProble
     return TypedResults.CreatedAtRoute(
         ToResponse(receivedMail),
         "GetReceivedMailById",
-        new { id = receivedMail.Id });
+        new
+        {
+            id = receivedMail.Id
+        });
 }
 
 /// <summary>
@@ -302,23 +305,30 @@ static bool IsPlausibleEmailAddress(string value)
 /// <summary>
 /// データベース更新例外がSQLiteの一意制約違反かどうかを判定します。
 /// </summary>
-static bool IsUniqueConstraintViolation(DbUpdateException exception) =>
-    exception.InnerException is SqliteException { SqliteErrorCode: 19 };
+static bool IsUniqueConstraintViolation(DbUpdateException exception)
+{
+    return exception.InnerException is SqliteException { SqliteErrorCode: 19 };
+}
 
 /// <summary>
 /// messageId重複時に返すProblemDetailsを作成します。
 /// </summary>
-static ProblemDetails CreateDuplicateProblemDetails(string messageId) => new()
+static ProblemDetails CreateDuplicateProblemDetails(string messageId)
 {
-    Title = "Received mail already exists.",
-    Detail = $"A received mail with messageId '{messageId}' already exists.",
-    Status = StatusCodes.Status409Conflict
-};
+    return new()
+    {
+        Title = "Received mail already exists.",
+        Detail = $"A received mail with messageId '{messageId}' already exists.",
+        Status = StatusCodes.Status409Conflict
+    };
+}
 
 /// <summary>
 /// 受信メールエンティティをAPIレスポンスに変換します。
 /// </summary>
-static ReceivedMailResponse ToResponse(ReceivedMail mail) => new(
+static ReceivedMailResponse ToResponse(ReceivedMail mail)
+{
+    return new(
     mail.Id,
     mail.MessageId,
     mail.Sender,
@@ -326,6 +336,7 @@ static ReceivedMailResponse ToResponse(ReceivedMail mail) => new(
     mail.Body,
     mail.ReceivedAt,
     mail.CreatedAt);
+}
 
 /// <summary>
 /// アプリケーション起動時にMailReceiverデータベースを初期化します。
@@ -341,7 +352,7 @@ static async Task InitializeDatabaseAsync(WebApplication app)
     EnsureSqliteDirectoryExists(connectionString, logger);
 
     MailReceiverDbContext dbContext = scope.ServiceProvider.GetRequiredService<MailReceiverDbContext>();
-    await dbContext.Database.EnsureCreatedAsync();
+    _ = await dbContext.Database.EnsureCreatedAsync();
     logger.LogInformation("MailReceiver database was initialized.");
 }
 
@@ -362,6 +373,6 @@ static void EnsureSqliteDirectoryExists(string connectionString, ILogger logger)
         return;
     }
 
-    Directory.CreateDirectory(directory);
+    _ = Directory.CreateDirectory(directory);
     logger.LogInformation("SQLite database directory was created. Directory: {Directory}", directory);
 }

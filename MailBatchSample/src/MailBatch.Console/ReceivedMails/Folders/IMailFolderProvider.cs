@@ -4,9 +4,15 @@ namespace MailBatch.Console.ReceivedMails.Folders;
 
 internal interface IMailFolderProvider
 {
-    IMailFolder? ReceiveFolder { get; }
+    IMailFolder? ReceiveFolder
+    {
+        get;
+    }
 
-    IMailFolder? ProcessedFolder { get; }
+    IMailFolder? ProcessedFolder
+    {
+        get;
+    }
 
     Task PrepareFoldersAsync(CancellationToken cancellationToken = default);
 

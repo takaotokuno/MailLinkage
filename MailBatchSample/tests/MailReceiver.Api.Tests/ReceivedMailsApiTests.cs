@@ -1,10 +1,10 @@
-using Xunit;
 using System.Net;
 using System.Net.Http.Json;
 using MailReceiver.Api.Contracts;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
+using Xunit;
 
 namespace MailReceiver.Api.Tests;
 
@@ -18,9 +18,9 @@ public sealed class ReceivedMailsApiTests : IAsyncLifetime
         _factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
-                builder.ConfigureAppConfiguration((_, configuration) =>
+                _ = builder.ConfigureAppConfiguration((_, configuration) =>
                 {
-                    configuration.AddInMemoryCollection(new Dictionary<string, string?>
+                    _ = configuration.AddInMemoryCollection(new Dictionary<string, string?>
                     {
                         ["ConnectionStrings:MailReceiver"] = $"Data Source={_databasePath}"
                     });
@@ -51,7 +51,7 @@ public sealed class ReceivedMailsApiTests : IAsyncLifetime
 
         using HttpResponseMessage response = await client.GetAsync("/health");
 
-        response.EnsureSuccessStatusCode();
+        _ = response.EnsureSuccessStatusCode();
         Dictionary<string, string>? content = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>();
         Assert.Equal("Healthy", content?["status"]);
     }

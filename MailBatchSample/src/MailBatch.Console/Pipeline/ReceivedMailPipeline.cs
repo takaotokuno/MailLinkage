@@ -1,9 +1,7 @@
-using MailBatch.Console.Api;
+using System.Threading.Channels;
 using MailBatch.Console.BatchProcessing;
 using MailBatch.Console.ReceivedMails;
-using MailBatch.Console.Service;
 using Microsoft.Extensions.Logging;
-using System.Threading.Channels;
 
 namespace MailBatch.Console.Pipeline;
 
@@ -24,9 +22,9 @@ internal sealed class ReceivedMailPipeline(
             return new ProcessResult(Total: 0);
         }
 
-        Channel<ApiRequest> queue = queueFactory.Create();
+        Channel<MailLinkageRequest> queue = queueFactory.Create();
         IMailFetchQueueProducer producer = componentFactory.CreateProducer(queue.Writer);
-        IApiQueueConsumer consumer = componentFactory.CreateConsumer(queue.Reader);
+        IRequestQueueConsumer consumer = componentFactory.CreateConsumer(queue.Reader);
 
         Task<ProcessResult> producerTask = producer.ProduceAsync(targetMailIds, cancellationToken);
         Task<ProcessResult> consumerTask = consumer.ConsumeAsync(cancellationToken);

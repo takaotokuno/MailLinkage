@@ -36,7 +36,10 @@ public sealed class ApiRequestTests
     [Fact]
     public void Serialize_DoesNotIncludeInternalMailId()
     {
-        ApiRequest request = CreateRequest("subject", "body") with { MailId = new ReceivedMailId(123) };
+        ReceivedMailRequest request = CreateRequest("subject", "body") with
+        {
+            MailId = new ReceivedMailId(123)
+        };
 
         string json = JsonSerializer.Serialize(request);
 

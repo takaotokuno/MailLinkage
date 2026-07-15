@@ -4,9 +4,15 @@ namespace MailBatch.Console.ReceivedMails.Imap;
 
 internal interface IImapConnection : IAsyncDisposable
 {
-    ImapClient Client { get; }
+    ImapClient Client
+    {
+        get;
+    }
 
-    bool IsConnected { get; }
+    bool IsConnected
+    {
+        get;
+    }
 
     Task ConnectAsync(CancellationToken cancellationToken = default);
 

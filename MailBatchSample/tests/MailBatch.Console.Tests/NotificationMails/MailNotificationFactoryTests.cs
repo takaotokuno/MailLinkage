@@ -1,7 +1,5 @@
-using MailBatch.Console.ReceivedMails;
-using MailBatch.Console.ReceivedMails.Fetching;
-using MailBatch.Console.NotificationMails;
 using MailBatch.Console.BatchProcessing;
+using MailBatch.Console.NotificationMails;
 using MailBatch.Console.Options;
 using Xunit;
 

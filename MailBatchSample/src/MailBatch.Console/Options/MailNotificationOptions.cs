@@ -7,9 +7,14 @@ internal sealed class MailNotificationOptions
 
     public string SmtpHost { get; init; } = string.Empty;
     public int SmtpPort { get; init; } = 25;
-    public bool UseSsl { get; init; }
-    public string? UserName { get; init; }
-    public string? Password { get; init; }
+    public string? UserName
+    {
+        get; init;
+    }
+    public string? Password
+    {
+        get; init;
+    }
     public string From { get; init; } = string.Empty;
     public string AdminAddress { get; init; } = string.Empty;
     public List<MailNotificationTemplateOptions> Templates { get; init; } = [];
@@ -25,13 +30,11 @@ internal sealed class MailNotificationOptions
         OptionValidation.Require(AdminAddress, "Notification:AdminAddress");
         OptionValidation.RequireNotEmpty(Templates, "Notification:Templates");
 
-        for (int index = 0; index < Templates.Count; index++)
+        for (int idx = 0; idx < Templates.Count; idx++)
         {
-            MailNotificationTemplateOptions template = Templates[index];
-            string path = $"Notification:Templates:{index}";
-            OptionValidation.Require(template.Name, $"{path}:Name");
-            OptionValidation.Require(template.Subject, $"{path}:Subject");
-            OptionValidation.Require(template.Body, $"{path}:Body");
+            MailNotificationTemplateOptions template = Templates[idx];
+            string path = $"Notification:Templates:{idx}";
+            template.Validate(path);
         }
 
         RequireTemplate(RunStatusTemplateName);
@@ -40,21 +43,20 @@ internal sealed class MailNotificationOptions
 
     public MailNotificationTemplateOptions GetTemplate(string name)
     {
-        return Templates.First(template => string.Equals(template.Name, name, StringComparison.OrdinalIgnoreCase));
+        return Templates.First(template =>
+        {
+            return string.Equals(template.Name, name, StringComparison.OrdinalIgnoreCase);
+        });
     }
 
     private void RequireTemplate(string name)
     {
-        if (!Templates.Any(template => string.Equals(template.Name, name, StringComparison.OrdinalIgnoreCase)))
+        if (!Templates.Any(template =>
+        {
+            return string.Equals(template.Name, name, StringComparison.OrdinalIgnoreCase);
+        }))
         {
             throw new InvalidOperationException($"Notification:Templates requires a template named '{name}'.");
         }
     }
-}
-
-internal sealed class MailNotificationTemplateOptions
-{
-    public string Name { get; init; } = string.Empty;
-    public string Subject { get; init; } = string.Empty;
-    public string Body { get; init; } = string.Empty;
 }

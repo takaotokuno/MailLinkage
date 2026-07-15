@@ -1,4 +1,3 @@
-using MailBatch.Console.ReceivedMails.Fetching;
 using MailBatch.Console.ReceivedMails.Searching;
 
 namespace MailBatch.Console.ReceivedMails.Processing;
@@ -26,10 +25,10 @@ internal interface IReceivedMailSession : IAsyncDisposable
     /// <summary>
     /// 指定された受信メールIDのメール本文と内部受信日時を取得し、受信メールリクエストを作成します。
     /// </summary>
-    Task<ReceivedMailContent> CreateRequestAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default);
+    Task<ReceivedMail> CreateRequestAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 処理済みメールを設定されたメールボックスへ移動します。
     /// </summary>
-    Task MoveToProcessedMailboxAsync(ReceivedMailId mailId, string messageId, CancellationToken cancellationToken = default);
+    Task MoveToProcessedMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default);
 }

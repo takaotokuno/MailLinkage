@@ -1,6 +1,4 @@
 using System.Globalization;
-using MailBatch.Console.ReceivedMails.MailKit;
-using MailBatch.Console.ReceivedMails.Searching;
 using MailKit.Search;
 using Xunit;
 
@@ -35,7 +33,7 @@ public sealed class MailKitSearchQueryMapperTests
 
     private static IReadOnlyCollection<string> GetSearchTerms(SearchQuery query)
     {
-        List<string> terms = new();
+        List<string> terms = [];
         Visit(query, q =>
         {
             string? term = q.GetType().GetProperty("Term")?.GetValue(q)?.ToString();
@@ -50,7 +48,7 @@ public sealed class MailKitSearchQueryMapperTests
 
     private static IReadOnlyCollection<string> GetSearchValues(SearchQuery query)
     {
-        List<string> values = new();
+        List<string> values = [];
         Visit(query, q =>
         {
             foreach (System.Reflection.PropertyInfo property in q.GetType().GetProperties())

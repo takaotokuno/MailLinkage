@@ -1,4 +1,3 @@
-using MailBatch.Console.ReceivedMails.MailKit;
 using MailBatch.Console.ReceivedMails;
 using MailKit;
 using Xunit;

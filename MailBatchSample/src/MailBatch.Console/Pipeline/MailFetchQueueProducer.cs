@@ -1,12 +1,12 @@
-using MailBatch.Console.Api;
-using MailBatch.Console.ReceivedMails;
-using MailBatch.Console.NotificationMails;
-using Microsoft.Extensions.Logging;
 using System.Threading.Channels;
-using MailBatch.Console.ReceivedMails.Processing;
+using MailBatch.Console.BatchProcessing;
+using MailBatch.Console.NotificationMails;
+using MailBatch.Console.ReceivedMails;
 using MailBatch.Console.ReceivedMails.Fetching;
+using MailBatch.Console.ReceivedMails.Processing;
+using Microsoft.Extensions.Logging;
 
-namespace MailBatch.Console.BatchProcessing;
+namespace MailBatch.Console.Pipeline;
 
 internal interface IMailFetchQueueProducer
 {
@@ -15,7 +15,7 @@ internal interface IMailFetchQueueProducer
 
 internal sealed class MailFetchQueueProducer(
     IReceivedMailSession receivedMailSession,
-    ChannelWriter<ApiRequest> writer,
+    ChannelWriter<MailLinkageRequest> writer,
     IMailNotifier mailNotifier,
     MailNotificationFactory mailNotificationFactory,
     ILogger<MailFetchQueueProducer> logger) : IMailFetchQueueProducer
@@ -48,22 +48,19 @@ internal sealed class MailFetchQueueProducer(
     {
         try
         {
-            ReceivedMailContent content = await receivedMailSession.CreateRequestAsync(mailId, cancellationToken);
+            ReceivedMail mail = await receivedMailSession.CreateRequestAsync(mailId, cancellationToken);
 
-            await ValidateRequestAsync(content, cancellationToken);
-            await QueueRequestAsync(content, cancellationToken);
+            ExtractedMailItem item = await ValidateAndExtractAsync(mail, cancellationToken);
+
+            await QueueRequestAsync(item, cancellationToken);
 
             result.IncrementSuccess();
 
             logger.LogInformation(
                 "Queued API request. MessageId={MessageId}, QueueCount={QueueCount}, BodyLength={BodyLength}",
-                content.MailId,
+                mail.MailId,
                 result.Succeeded,
-                content.Body?.Length ?? 0);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
+                mail.Body?.Length ?? 0);
         }
         catch (Exception ex)
         {
@@ -76,60 +73,78 @@ internal sealed class MailFetchQueueProducer(
     }
 
     /// <summary>
-    /// 受信メールリクエストを検証し、エラーがある場合は通知を行います。
+    /// 受信メールを検証して連携項目を抽出します。
+    /// エラーがある場合は、すべてのエラーをまとめて通知します。
     /// </summary>
-    private async Task ValidateRequestAsync(ReceivedMailContent content, CancellationToken cancellationToken)
+    private async Task<ExtractedMailItem> ValidateAndExtractAsync(ReceivedMail mail, CancellationToken cancellationToken)
     {
+        List<string> errors = [];
+        ExtractedMailItem? mailItem = null;
+
         try
         {
-            content.Validate();
+            mail.Validate();
         }
         catch (ReceivedMailContentValidationException ex)
         {
-            await NotifyValidationErrorAsync(content, ex.Errors, cancellationToken);
+            errors.AddRange(ex.Errors);
+        }
+
+        try
+        {
+            mailItem = MailItemExtractor.Extract(mail);
+        }
+        catch (MailExtractionException ex)
+        {
+            errors.AddRange(ex.Errors);
+        }
+
+        if (errors.Count > 0)
+        {
+            await NotifyValidationErrorAsync(mail, errors, cancellationToken);
 
             logger.LogWarning(
                 "Validation failed for received mail request. MessageId={MessageId}, Errors={ValidationErrors}",
-                content.MailId,
-                string.Join("; ", ex.Errors));
+                mail.MailId,
+                string.Join("; ", errors));
 
-            throw;
+            throw new ReceivedMailProcessingException(errors);
         }
+
+        return mailItem
+            ?? throw new InvalidOperationException("Mail extraction completed without errors but returned no item.");
     }
 
     /// <summary>
     /// 検証済みの受信メールリクエストを内部キューへ追加します。
     /// </summary>
-    private async Task QueueRequestAsync(ReceivedMailContent content, CancellationToken cancellationToken)
+    private async Task QueueRequestAsync(ExtractedMailItem item, CancellationToken cancellationToken)
     {
-        ApiRequest request = new(
-            MessageId: content.MailId.ToString(),
-            Sender: content.Sender,
-            Subject: content.Subject,
-            Body: content.Body,
-            ReceivedAt: DateTimeOffset.UtcNow)
-        {
-            MailId = content.MailId
-        };
-
+        MailLinkageRequest request = new(item.MailId, item.Key, string.Empty);
         await writer.WriteAsync(request, cancellationToken);
     }
 
     /// <summary>
     /// バリデーションエラーの内容をメール送信元へ通知します。
     /// </summary>
-    private async Task NotifyValidationErrorAsync(ReceivedMailContent content, IReadOnlyList<string> validationErrors, CancellationToken cancellationToken)
+    private async Task NotifyValidationErrorAsync(ReceivedMail mail, IReadOnlyList<string> validationErrors, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(content.Sender))
+        if (string.IsNullOrWhiteSpace(mail.Sender))
         {
             logger.LogWarning(
                 "Cannot send validation error notification because sender is empty. MessageId={MessageId}",
-                content.MailId);
+                mail.MailId);
             return;
         }
 
-        MailNotification notification = mailNotificationFactory.CreateValidationErrorNotification(content, validationErrors);
+        MailNotification notification = mailNotificationFactory.CreateValidationErrorNotification(mail, validationErrors);
 
         await mailNotifier.SendAsync(notification, cancellationToken);
+    }
+
+    private class ReceivedMailProcessingException(IReadOnlyCollection<string> errors)
+        : Exception(string.Join(Environment.NewLine, errors))
+    {
+        public IReadOnlyList<string> Errors { get; } = errors.ToArray();
     }
 }

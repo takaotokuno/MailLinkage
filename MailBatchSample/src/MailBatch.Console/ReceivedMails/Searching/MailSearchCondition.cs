@@ -10,21 +10,15 @@ internal sealed record MailSearchCondition(
     string? From,
     DateTime? DeliveredAfter)
 {
-    public static MailSearchCondition FromOptions(
-        MailSearchOptions options)
+    public static MailSearchCondition FromOptions(MailSearchOptions options, DateTime utcNow)
     {
         DateTime? deliveredAfter = options.SinceDays is > 0
-            ? DateTime.UtcNow.Date.AddDays(-options.SinceDays.Value)
+            ? utcNow.Date.AddDays(-options.SinceDays.Value)
             : null;
 
         return new MailSearchCondition(
-            Normalize(options.SubjectContains),
-            Normalize(options.From),
+            options.SubjectContains,
+            options.From,
             deliveredAfter);
-    }
-
-    private static string? Normalize(string? value)
-    {
-        return string.IsNullOrWhiteSpace(value) ? null : value;
     }
 }

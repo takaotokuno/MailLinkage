@@ -1,18 +1,18 @@
-using MailBatch.Console.Api;
 using System.Threading.Channels;
+using MailBatch.Console.ReceivedMails;
 
-namespace MailBatch.Console.Service;
+namespace MailBatch.Console.Pipeline;
 
 internal interface IReceivedMailQueueFactory
 {
-    Channel<ApiRequest> Create();
+    Channel<MailLinkageRequest> Create();
 }
 
 internal sealed class ReceivedMailQueueFactory : IReceivedMailQueueFactory
 {
-    public Channel<ApiRequest> Create()
+    public Channel<MailLinkageRequest> Create()
     {
-        return Channel.CreateUnbounded<ApiRequest>(new UnboundedChannelOptions
+        return Channel.CreateUnbounded<MailLinkageRequest>(new UnboundedChannelOptions
         {
             SingleReader = true,
             SingleWriter = true

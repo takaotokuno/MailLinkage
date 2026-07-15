@@ -10,15 +10,24 @@ internal sealed class MailFolderProvider(
     IImapConnection imapConnection,
     ILogger<MailFolderProvider> logger) : IMailFolderProvider
 {
-    public IMailFolder? ReceiveFolder { get; private set; }
-
-    public IMailFolder? ProcessedFolder { get; private set; }
-
-    public async Task PrepareFoldersAsync(CancellationToken cancellationToken = default)
+    public IMailFolder? ReceiveFolder
     {
-        ReceiveFolder = await GetOrCreateFolderAsync(options.Imap.Mailbox, cancellationToken);
-        await ReceiveFolder.OpenAsync(FolderAccess.ReadWrite, cancellationToken);
-        ProcessedFolder = await GetOrCreateProcessedFolderAsync(cancellationToken);
+        get; private set;
+    }
+
+    public IMailFolder? ProcessedFolder
+    {
+        get; private set;
+    }
+
+    public async Task PrepareFoldersAsync(
+        CancellationToken cancellationToken = default)
+    {
+        ReceiveFolder = await GetOrCreateReceiveFolderAsync(cancellationToken);
+
+        _ = await ReceiveFolder.OpenAsync(FolderAccess.ReadWrite, cancellationToken);
+
+        ProcessedFolder = await GetOrCreateProcessedSubfolderAsync(ReceiveFolder, cancellationToken);
 
         logger.LogInformation(
             "Prepared IMAP folders. Mailbox={Mailbox}, ProcessedMailbox={ProcessedMailbox}",
@@ -28,18 +37,24 @@ internal sealed class MailFolderProvider(
 
     public IMailFolder GetOpenedReceiveFolder()
     {
-        if (ReceiveFolder?.IsOpen != true)
-        {
-            throw new InvalidOperationException("Receive mailbox is not open. Call ConnectAsync before operating mail folders.");
-        }
-
-        return ReceiveFolder;
+        return ReceiveFolder?.IsOpen != true
+            ? throw new InvalidOperationException(
+                "Receive mailbox is not open. Call PrepareFoldersAsync before operating mail folders.")
+            : ReceiveFolder;
     }
 
-    public async Task<IMailFolder> GetOrCreateProcessedFolderAsync(CancellationToken cancellationToken = default)
+    public async Task<IMailFolder> GetOrCreateProcessedFolderAsync(
+        CancellationToken cancellationToken = default)
     {
-        IMailFolder receiveFolder = GetOpenedReceiveFolder();
-        ProcessedFolder ??= await GetOrCreateProcessedMailboxAsync(receiveFolder, cancellationToken);
+        if (ProcessedFolder is null)
+        {
+            IMailFolder receiveFolder = GetOpenedReceiveFolder();
+
+            ProcessedFolder = await GetOrCreateProcessedSubfolderAsync(
+                receiveFolder,
+                cancellationToken);
+        }
+
         return ProcessedFolder;
     }
 
@@ -49,33 +64,71 @@ internal sealed class MailFolderProvider(
         ProcessedFolder = null;
     }
 
-    private async Task<IMailFolder> GetOrCreateFolderAsync(string folderName, CancellationToken cancellationToken)
+    private async Task<IMailFolder> GetOrCreateReceiveFolderAsync(
+        CancellationToken cancellationToken)
     {
+        string folderName = options.Imap.Mailbox;
+
         try
         {
-            return await imapConnection.Client.GetFolderAsync(folderName, cancellationToken);
+            return await imapConnection.Client.GetFolderAsync(
+                folderName,
+                cancellationToken);
         }
         catch (FolderNotFoundException)
         {
-            if (imapConnection.Client.PersonalNamespaces.Count == 0)
-            {
-                throw;
-            }
+            IMailFolder namespaceRoot = GetPersonalNamespaceRoot();
 
-            IMailFolder root = imapConnection.Client.GetFolder(imapConnection.Client.PersonalNamespaces[0]);
-            return await root.CreateAsync(folderName, true, cancellationToken);
+            return await CreateFolderAsync(namespaceRoot, folderName, cancellationToken);
         }
     }
 
-    private async Task<IMailFolder> GetOrCreateProcessedMailboxAsync(IMailFolder folder, CancellationToken cancellationToken)
+    private async Task<IMailFolder> GetOrCreateProcessedSubfolderAsync(
+        IMailFolder receiveFolder,
+        CancellationToken cancellationToken)
     {
+        string folderName = options.Processing.ProcessedMailbox;
+
         try
         {
-            return await folder.GetSubfolderAsync(options.Processing.ProcessedMailbox, cancellationToken);
+            return await receiveFolder.GetSubfolderAsync(
+                folderName,
+                cancellationToken);
         }
         catch (FolderNotFoundException)
         {
-            return await folder.CreateAsync(options.Processing.ProcessedMailbox, true, cancellationToken);
+            return await CreateFolderAsync(
+                receiveFolder,
+                folderName,
+                cancellationToken);
         }
+    }
+
+    private IMailFolder GetPersonalNamespaceRoot()
+    {
+        if (imapConnection.Client.PersonalNamespaces.Count == 0)
+        {
+            throw new InvalidOperationException(
+                "The IMAP server does not expose a personal namespace.");
+        }
+
+        FolderNamespace personalNamespace =
+            imapConnection.Client.PersonalNamespaces[0];
+
+        return imapConnection.Client.GetFolder(personalNamespace);
+    }
+
+    private static async Task<IMailFolder> CreateFolderAsync(
+        IMailFolder parentFolder,
+        string folderName,
+        CancellationToken cancellationToken)
+    {
+        IMailFolder? createdFolder = await parentFolder.CreateAsync(
+            folderName,
+            isMessageFolder: true,
+            cancellationToken);
+
+        // MailKitの契約上、作成失敗時は自動でエラーをスローする。
+        return createdFolder!;
     }
 }
