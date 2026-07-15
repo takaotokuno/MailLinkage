@@ -12,6 +12,9 @@ internal static class ApiRetryPolicyFactory
             .HandleTransientHttpError()
             .WaitAndRetryAsync(
                 apiOptions.RetryCount,
-                retryAttempt => TimeSpan.FromSeconds(apiOptions.RetryDelaySeconds * Math.Pow(2, retryAttempt - 1)));
+                retryAttempt =>
+                {
+                    return TimeSpan.FromSeconds(apiOptions.RetryDelaySeconds * Math.Pow(2, retryAttempt - 1));
+                });
     }
 }

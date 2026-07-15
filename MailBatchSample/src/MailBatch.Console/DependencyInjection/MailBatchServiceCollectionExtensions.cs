@@ -22,7 +22,7 @@ internal static class MailBatchServiceCollectionExtensions
         string runId,
         Serilog.ILogger logger)
     {
-        services
+        _ = services
             .AddMailBatchOptions(options)
             .AddSingleton(new BatchRunContext(runId))
             .AddLogging(builder =>
@@ -77,14 +77,11 @@ internal static class MailBatchServiceCollectionExtensions
             .AddTransient<IReceivedMailPipeline, ReceivedMailPipeline>();
     }
 
-    private static IServiceCollection AddRunStatusServices(this IServiceCollection services)
-    {
-        return services.AddTransient<IRunStatusNotifier, RunStatusNotifier>();
-    }
+    private static IServiceCollection AddRunStatusServices(this IServiceCollection services) => services.AddTransient<IRunStatusNotifier, RunStatusNotifier>();
 
     private static IServiceCollection AddApiClient(this IServiceCollection services, ApiOptions apiOptions)
     {
-        services
+        _ = services
             .AddHttpClient<IApiClient, ApiClient>(client =>
             {
                 client.BaseAddress = apiOptions.BaseUrl;

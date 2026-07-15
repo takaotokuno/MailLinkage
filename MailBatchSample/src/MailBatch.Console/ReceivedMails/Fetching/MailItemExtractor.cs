@@ -22,7 +22,7 @@ internal static partial class MailItemExtractor
             throw new MailExtractionException(errors);
         }
 
-        MatchCollection matches = KeyLineRegex().Matches(mail.Body!);
+        MatchCollection matches = KeyLineRegex().Matches(mail.Body);
         if (matches.Count == 0)
         {
             errors.Add("A key line in the format 'Key: alphanumeric-value' was not found.");
