@@ -18,7 +18,7 @@ public sealed class ReceivedMailsApiTests : IAsyncLifetime
         _factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
-                _ = builder.ConfigureAppConfiguration((_, configuration) =>
+                _ = builder.ConfigureAppConfiguration((context, configuration) =>
                 {
                     _ = configuration.AddInMemoryCollection(new Dictionary<string, string?>
                     {

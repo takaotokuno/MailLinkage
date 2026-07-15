@@ -24,7 +24,10 @@ public sealed class MailItemExtractorTests
     {
         ReceivedMail mail = CreateMail(string.Empty);
 
-        MailExtractionException exception = Assert.Throws<MailExtractionException>(() => MailItemExtractor.Extract(mail));
+        MailExtractionException exception = Assert.Throws<MailExtractionException>(() =>
+        {
+            return MailItemExtractor.Extract(mail);
+        });
 
         Assert.Contains("Mail body must not be empty.", exception.Errors);
     }
@@ -35,7 +38,10 @@ public sealed class MailItemExtractorTests
     {
         ReceivedMail mail = CreateMail("Hello\nNo key here");
 
-        MailExtractionException exception = Assert.Throws<MailExtractionException>(() => MailItemExtractor.Extract(mail));
+        MailExtractionException exception = Assert.Throws<MailExtractionException>(() =>
+        {
+            return MailItemExtractor.Extract(mail);
+        });
 
         Assert.Contains("A key line", exception.Message, StringComparison.Ordinal);
     }
@@ -46,7 +52,10 @@ public sealed class MailItemExtractorTests
     {
         ReceivedMail mail = CreateMail("Key: ABC123\nKey: DEF456");
 
-        MailExtractionException exception = Assert.Throws<MailExtractionException>(() => MailItemExtractor.Extract(mail));
+        MailExtractionException exception = Assert.Throws<MailExtractionException>(() =>
+        {
+            return MailItemExtractor.Extract(mail);
+        });
 
         Assert.Contains("Multiple key lines", exception.Message, StringComparison.Ordinal);
     }

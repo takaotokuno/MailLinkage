@@ -203,7 +203,7 @@ static async Task<Results<CreatedAtRoute<ReceivedMailResponse>, ValidationProble
         CreatedAt = DateTimeOffset.UtcNow
     };
 
-    dbContext.ReceivedMails.Add(receivedMail);
+    _ = dbContext.ReceivedMails.Add(receivedMail);
 
     try
     {
