@@ -33,12 +33,12 @@ internal sealed record ApiRequest(
 
         if (errors.Count > 0)
         {
-            throw new ReceivedMailRequestValidationException(errors);
+            throw new ApiRequestValidationException(errors);
         }
     }
 }
 
-internal sealed class ReceivedMailRequestValidationException(IReadOnlyList<string> errors)
+internal sealed class ApiRequestValidationException(IReadOnlyList<string> errors)
     : Exception(string.Join(Environment.NewLine, errors))
 {
     public IReadOnlyList<string> Errors { get; } = errors;

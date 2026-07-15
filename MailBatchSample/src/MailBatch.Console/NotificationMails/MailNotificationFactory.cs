@@ -1,5 +1,5 @@
 using MailBatch.Console.BatchProcessing;
-using MailBatch.Console.ReceivedMails;
+using MailBatch.Console.ReceivedMails.Fetching;
 using MailBatch.Console.Options;
 
 namespace MailBatch.Console.NotificationMails;
@@ -23,16 +23,16 @@ internal sealed class MailNotificationFactory(AppOptions options, BatchRunContex
     /// バリデーションエラー通知テンプレートからメール送信元宛て通知を作成します。
     /// </summary>
     public MailNotification CreateValidationErrorNotification(
-        ReceivedMailRequest request,
+        ReceivedMailContent content,
         IReadOnlyList<string> validationErrors)
     {
         MailNotificationTemplateOptions template = options.Notification.GetTemplate(MailNotificationOptions.ValidationErrorTemplateName);
         string validationErrorsText = string.Join(Environment.NewLine, validationErrors.Select(error => $"- {error}"));
 
         return new MailNotification(
-            request.Sender,
-            ApplyValidationErrorTemplate(template.Subject, request, validationErrorsText),
-            ApplyValidationErrorTemplate(template.Body, request, validationErrorsText));
+            content.Sender,
+            ApplyValidationErrorTemplate(template.Subject, content, validationErrorsText),
+            ApplyValidationErrorTemplate(template.Body, content, validationErrorsText));
     }
 
     private string ApplyRunStatusTemplate(string template, ProcessResult result, int exitCode)
@@ -50,12 +50,12 @@ internal sealed class MailNotificationFactory(AppOptions options, BatchRunContex
 
     private static string ApplyValidationErrorTemplate(
         string template,
-        ReceivedMailRequest request,
+        ReceivedMailContent content,
         string validationErrors)
     {
         return template
-            .Replace("{MessageId}", request.MessageId, StringComparison.Ordinal)
-            .Replace("{Subject}", CreatePreview(request.Subject), StringComparison.Ordinal)
+            .Replace("{MessageId}", content.MailId.ToString(), StringComparison.Ordinal)
+            .Replace("{Subject}", CreatePreview(content.Subject), StringComparison.Ordinal)
             .Replace("{ValidationErrors}", validationErrors, StringComparison.Ordinal);
     }
 

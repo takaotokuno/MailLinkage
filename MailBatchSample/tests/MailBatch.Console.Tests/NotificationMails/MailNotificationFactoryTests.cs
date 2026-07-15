@@ -1,4 +1,5 @@
 using MailBatch.Console.ReceivedMails;
+using MailBatch.Console.ReceivedMails.Fetching;
 using MailBatch.Console.NotificationMails;
 using MailBatch.Console.BatchProcessing;
 using MailBatch.Console.Options;
@@ -25,19 +26,18 @@ public sealed class MailNotificationFactoryTests
     public void CreateValidationErrorNotification_AppliesValidationErrorTemplate()
     {
         MailNotificationFactory factory = new(CreateOptions(), new BatchRunContext("run-001"));
-        ReceivedMailRequest request = new(
-            MessageId: "<message@example.com>",
+        ReceivedMailContent content = new(
+            MailId: new ReceivedMailId(123),
             Sender: "sender@example.com",
             Subject: new string('s', 201),
-            Body: "body",
-            ReceivedAt: DateTimeOffset.UnixEpoch);
+            Body: "body");
 
         MailNotification notification = factory.CreateValidationErrorNotification(
-            request,
+            content,
             ["first error", "second error"]);
 
         Assert.Equal("sender@example.com", notification.To);
-        Assert.Equal($"Validation <message@example.com> {new string('s', 200)}...", notification.Subject);
+        Assert.Equal($"Validation 123 {new string('s', 200)}...", notification.Subject);
         Assert.Equal($"Errors:{Environment.NewLine}- first error{Environment.NewLine}- second error", notification.Body);
     }
 

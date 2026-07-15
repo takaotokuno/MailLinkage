@@ -1,9 +1,9 @@
-using MailBatch.Console.Infrastructure;
+using MailBatch.Console.ReceivedMails.MailKit;
 using MailBatch.Console.ReceivedMails;
 using MailKit;
 using Xunit;
 
-namespace MailBatch.Console.Tests.Mail;
+namespace MailBatch.Console.Tests.ReceivedMails.MailKit;
 
 public sealed class MailKitReceivedMailIdMapperTests
 {
