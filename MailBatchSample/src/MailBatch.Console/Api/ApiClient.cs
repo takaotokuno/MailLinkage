@@ -11,7 +11,7 @@ internal interface IApiClient
     /// <summary>
     /// 受信メールリクエストをAPIへPOSTします。
     /// </summary>
-    Task<HttpResponseMessage> PostReceivedMailAsync(ApiRequest request, CancellationToken cancellationToken = default);
+    Task<ApiPostResult> PostReceivedMailAsync(ApiRequest request, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -22,5 +22,11 @@ internal sealed class ApiClient(HttpClient httpClient, ApiOptions apiOptions) : 
     /// <summary>
     /// 設定されたエンドポイントへ受信メールリクエストをPOSTします。
     /// </summary>
-    public Task<HttpResponseMessage> PostReceivedMailAsync(ApiRequest request, CancellationToken cancellationToken = default) => httpClient.PostAsJsonAsync(apiOptions.Endpoint, request, cancellationToken);
+    public async Task<ApiPostResult> PostReceivedMailAsync(ApiRequest request, CancellationToken cancellationToken = default)
+    {
+        using HttpResponseMessage response = await httpClient.PostAsJsonAsync(apiOptions.Endpoint, request, cancellationToken);
+        string responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+
+        return new ApiPostResult(response.IsSuccessStatusCode, (int)response.StatusCode, responseBody);
+    }
 }
