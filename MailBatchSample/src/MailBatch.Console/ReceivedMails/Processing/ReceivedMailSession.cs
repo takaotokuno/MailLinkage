@@ -12,7 +12,8 @@ namespace MailBatch.Console.ReceivedMails.Processing;
 /// 受信メールフォルダ操作の排他制御とユースケース向けの調整を担当します。
 /// </summary>
 internal sealed class ReceivedMailSession(
-    AppOptions options,
+    ImapOptions imapOptions,
+    ProcessingOptions processingOptions,
     IImapConnection imapConnection,
     IMailFolderProvider mailFolderProvider,
     IMailKitSearcher mailKitSearcher,
@@ -41,10 +42,10 @@ internal sealed class ReceivedMailSession(
 
             logger.LogInformation(
                 "Connected and prepared IMAP folders. Host={Host}, UserName={UserName}, Mailbox={Mailbox}, ProcessedMailbox={ProcessedMailbox}",
-                options.Imap.Host,
-                options.Imap.UserName,
-                options.Imap.Mailbox,
-                options.Processing.ProcessedMailbox);
+                imapOptions.Host,
+                imapOptions.UserName,
+                imapOptions.Mailbox,
+                processingOptions.ProcessedMailbox);
         }
         finally
         {

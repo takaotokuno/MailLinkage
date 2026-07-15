@@ -9,7 +9,10 @@ using Microsoft.Extensions.Logging;
 namespace MailBatch.Console.BatchProcessing;
 
 internal sealed class BatchRunner(
-    AppOptions options,
+    ImapOptions imapOptions,
+    ApiOptions apiOptions,
+    BatchOptions batchOptions,
+    MailSearchOptions mailSearchOptions,
     BatchRunContext runContext,
     ILogger<BatchRunner> logger,
     IReceivedMailPipeline receivedMailPipeline,
@@ -45,10 +48,10 @@ internal sealed class BatchRunner(
 
     private async Task<ProcessResult> RunUseCaseAsync(CancellationToken cancellationToken)
     {
-        MailSearchCondition condition = MailSearchCondition.FromOptions(options.MailSearch, DateTime.Now);
+        MailSearchCondition condition = MailSearchCondition.FromOptions(mailSearchOptions, DateTime.Now);
         IReadOnlyList<ReceivedMailId> targetMailIds = await receivedMailSession.SearchTargetMessagesAsync(
             condition,
-            options.MailSearch.MaxMessages,
+            mailSearchOptions.MaxMessages,
             cancellationToken);
         return await receivedMailPipeline.ProcessAsync(targetMailIds, cancellationToken);
     }
@@ -61,12 +64,12 @@ internal sealed class BatchRunner(
         logger.LogInformation("Mail batch started. RunId={RunId}", runContext.RunId);
         logger.LogInformation(
             "Configuration loaded. IMAP={ImapHost}:{ImapPort}, Mailbox={Mailbox}, ApiBaseUrl={ApiBaseUrl}, ApiEndpoint={ApiEndpoint}, LogDirectory={LogDirectory}",
-            options.Imap.Host,
-            options.Imap.Port,
-            options.Imap.Mailbox,
-            options.Api.BaseUrl,
-            options.Api.Endpoint,
-            options.Batch.LogDirectory);
+            imapOptions.Host,
+            imapOptions.Port,
+            imapOptions.Mailbox,
+            apiOptions.BaseUrl,
+            apiOptions.Endpoint,
+            batchOptions.LogDirectory);
     }
 
     /// <summary>

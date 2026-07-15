@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 namespace MailBatch.Console.ReceivedMails.Imap;
 
 internal sealed class ImapConnection(
-    AppOptions options,
+    ImapOptions imapOptions,
     ILogger<ImapConnection> logger) : IImapConnection
 {
     private ImapClient? imapClient;
@@ -39,17 +39,17 @@ internal sealed class ImapConnection(
 
         logger.LogInformation(
             "Connecting to IMAP server. Host={Host}, Port={Port}, SecureSocketOption={SecureSocketOption}",
-            options.Imap.Host,
-            options.Imap.Port,
-            options.Imap.SecureSocketOption);
+            imapOptions.Host,
+            imapOptions.Port,
+            imapOptions.SecureSocketOption);
 
         await imapClient.ConnectAsync(
-            options.Imap.Host,
-            options.Imap.Port,
-            options.Imap.GetSecureSocketOptions(),
+            imapOptions.Host,
+            imapOptions.Port,
+            imapOptions.GetSecureSocketOptions(),
             cancellationToken);
 
-        await imapClient.AuthenticateAsync(options.Imap.UserName, options.Imap.Password, cancellationToken);
+        await imapClient.AuthenticateAsync(imapOptions.UserName, imapOptions.Password, cancellationToken);
     }
 
     public async Task DisconnectAsync(CancellationToken cancellationToken = default)

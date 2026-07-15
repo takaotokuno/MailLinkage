@@ -4,7 +4,7 @@ using MailBatch.Console.ReceivedMails;
 
 namespace MailBatch.Console.NotificationMails;
 
-internal sealed class MailNotificationFactory(AppOptions options, BatchRunContext runContext)
+internal sealed class MailNotificationFactory(MailNotificationOptions notificationOptions, BatchRunContext runContext)
 {
     /// <summary>
     /// バッチ実行結果の通知テンプレートから管理者宛て通知を作成します。
@@ -12,10 +12,10 @@ internal sealed class MailNotificationFactory(AppOptions options, BatchRunContex
     public MailNotification CreateRunStatusNotification(ProcessResult result, int exitCode)
     {
         MailNotificationTemplateOptions template
-            = options.Notification.GetTemplate(MailNotificationOptions.RunStatusTemplateName);
+            = notificationOptions.GetTemplate(MailNotificationOptions.RunStatusTemplateName);
 
         return new MailNotification(
-            options.Notification.AdminAddress,
+            notificationOptions.AdminAddress,
             ApplyRunStatusTemplate(template.Subject, result, exitCode),
             ApplyRunStatusTemplate(template.Body, result, exitCode));
     }
@@ -28,7 +28,7 @@ internal sealed class MailNotificationFactory(AppOptions options, BatchRunContex
         IReadOnlyList<string> validationErrors)
     {
         MailNotificationTemplateOptions template
-            = options.Notification.GetTemplate(MailNotificationOptions.ValidationErrorTemplateName);
+            = notificationOptions.GetTemplate(MailNotificationOptions.ValidationErrorTemplateName);
 
         string validationErrorsText = string.Join(Environment.NewLine, validationErrors.Select(error =>
         {

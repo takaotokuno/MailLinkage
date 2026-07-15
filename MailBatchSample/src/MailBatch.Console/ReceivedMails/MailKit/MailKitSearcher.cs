@@ -13,7 +13,7 @@ internal interface IMailKitSearcher
 }
 
 internal sealed class MailKitSearcher(
-    AppOptions options,
+    ImapOptions imapOptions,
     IMailFolderProvider mailFolderProvider,
     ILogger<MailKitSearcher> logger) : IMailKitSearcher
 {
@@ -27,7 +27,7 @@ internal sealed class MailKitSearcher(
         logger.LogInformation(
             "Found {MessageCount} target messages. Mailbox={Mailbox}",
             targetMailIds.Count,
-            options.Imap.Mailbox);
+            imapOptions.Mailbox);
 
         return targetMailIds;
     }
