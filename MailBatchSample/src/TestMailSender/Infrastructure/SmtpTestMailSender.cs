@@ -1,4 +1,5 @@
 using MailKit.Net.Smtp;
+using MailKit.Security;
 using MimeKit;
 using TestMailSender.Options;
 using TestMailSender.Services;
@@ -22,7 +23,7 @@ internal sealed class SmtpTestMailSender : ITestMailSender
         await smtpClient.ConnectAsync(
             options.Host,
             options.Port,
-            SmtpSecurity.ToSecureSocketOptions(useSsl: true),
+            SecureSocketOptions.None,
             cancellationToken);
 
         if (!string.IsNullOrWhiteSpace(options.UserName))
