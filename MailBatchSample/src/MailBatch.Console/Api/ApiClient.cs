@@ -4,6 +4,11 @@ using MailBatch.Console.Options;
 namespace MailBatch.Console.Api;
 
 /// <summary>
+/// 受信メールAPIへリクエストを送信した結果を表します。
+/// </summary>
+internal sealed record ApiPostResult(bool IsSuccess, int StatusCode, string ResponseBody);
+
+/// <summary>
 /// 受信メールAPIへリクエストを送信するクライアント操作を提供します。
 /// </summary>
 internal interface IApiClient
@@ -11,7 +16,7 @@ internal interface IApiClient
     /// <summary>
     /// 受信メールリクエストをAPIへPOSTします。
     /// </summary>
-    Task<HttpResponseMessage> PostReceivedMailAsync(ApiRequest request, CancellationToken cancellationToken = default);
+    Task<ApiPostResult> PostReceivedMailAsync(ApiRequest request, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -22,5 +27,14 @@ internal sealed class ApiClient(HttpClient httpClient, AppOptions options) : IAp
     /// <summary>
     /// 設定されたエンドポイントへ受信メールリクエストをPOSTします。
     /// </summary>
-    public Task<HttpResponseMessage> PostReceivedMailAsync(ApiRequest request, CancellationToken cancellationToken = default) => httpClient.PostAsJsonAsync(options.Api.Endpoint, request, cancellationToken);
+    public async Task<ApiPostResult> PostReceivedMailAsync(ApiRequest request, CancellationToken cancellationToken = default)
+    {
+        using HttpResponseMessage response = await httpClient.PostAsJsonAsync(options.Api.Endpoint, request, cancellationToken);
+        string responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+
+        return new ApiPostResult(
+            response.IsSuccessStatusCode,
+            (int)response.StatusCode,
+            responseBody);
+    }
 }

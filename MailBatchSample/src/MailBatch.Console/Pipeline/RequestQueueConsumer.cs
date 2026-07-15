@@ -1,4 +1,3 @@
-using System.Net;
 using System.Threading.Channels;
 using MailBatch.Console.Api;
 using MailBatch.Console.BatchProcessing;
@@ -62,7 +61,7 @@ internal sealed class RequestQueueConsumer(
         try
         {
             ApiRequest apiRequest = new(request.Message);
-            _ = await PostMessageAsync(apiRequest, cancellationToken);
+            return await PostMessageAsync(apiRequest, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -73,7 +72,6 @@ internal sealed class RequestQueueConsumer(
 
             return false;
         }
-        return true;
     }
 
     /// <summary>
@@ -85,18 +83,16 @@ internal sealed class RequestQueueConsumer(
             "Posting queued API request. Message={Message}",
             request.Message);
 
-        using HttpResponseMessage response = await receivedMailApiClient.PostReceivedMailAsync(request, cancellationToken);
-        HttpStatusCode statusCode = response.StatusCode;
-        string responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+        ApiPostResult result = await receivedMailApiClient.PostReceivedMailAsync(request, cancellationToken);
 
-        if (response.IsSuccessStatusCode)
+        if (result.IsSuccess)
         {
-            LogApiSuccess((int)statusCode, responseBody);
+            LogApiSuccess(result.StatusCode, result.ResponseBody);
             return true;
         }
         else
         {
-            LogApiFailure((int)response.StatusCode, responseBody);
+            LogApiFailure(result.StatusCode, result.ResponseBody);
             return false;
         }
     }
