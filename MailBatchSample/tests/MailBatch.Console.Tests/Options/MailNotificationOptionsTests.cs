@@ -5,6 +5,10 @@ namespace MailBatch.Console.Tests.Options;
 
 public sealed class MailNotificationOptionsTests
 {
+    /// <summary>
+    /// 状態: 通知メール設定に必須項目と必要なテンプレートが設定されている。
+    /// 振る舞い: 期待される結果を返す。
+    /// </summary>
     [Fact]
     public void Validate_WithValidOptions_DoesNotThrow()
     {
@@ -15,6 +19,10 @@ public sealed class MailNotificationOptionsTests
         Assert.Null(exception);
     }
 
+    /// <summary>
+    /// 状態: 通知メール設定の管理者宛先が未設定になっている。
+    /// 振る舞い: 期待される結果を返す。
+    /// </summary>
     [Fact]
     public void Validate_WithMissingAdminAddress_ThrowsInvalidOperationException()
     {
@@ -25,6 +33,10 @@ public sealed class MailNotificationOptionsTests
         Assert.Equal("Notification:AdminAddress is required.", exception.Message);
     }
 
+    /// <summary>
+    /// 状態: 通知メール設定に検証エラー通知テンプレートが含まれていない。
+    /// 振る舞い: 期待される結果を返す。
+    /// </summary>
     [Fact]
     public void Validate_WithMissingValidationErrorTemplate_ThrowsInvalidOperationException()
     {

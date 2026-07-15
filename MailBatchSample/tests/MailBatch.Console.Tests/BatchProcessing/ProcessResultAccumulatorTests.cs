@@ -5,7 +5,10 @@ namespace MailBatch.Console.Tests.BatchProcessing;
 
 public sealed class ProcessResultAccumulatorTests
 {
-    // 成功・失敗の加算結果と初期Totalが、確定結果へ反映されることを確認する。
+    /// <summary>
+    /// 状態: 成功・失敗の加算結果と初期Totalが、確定結果へ反映される。
+    /// 振る舞い: 期待される結果を返す。
+    /// </summary>
     [Fact]
     public void ToResult_ReturnsAccumulatedCountsWithInitialTotal()
     {

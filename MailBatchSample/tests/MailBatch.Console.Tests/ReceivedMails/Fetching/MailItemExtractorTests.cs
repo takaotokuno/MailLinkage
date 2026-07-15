@@ -6,7 +6,10 @@ namespace MailBatch.Console.Tests.ReceivedMails.Fetching;
 
 public sealed class MailItemExtractorTests
 {
-    // 本文に Key 行が 1 件だけある場合に連携対象のキーを抽出できることを確認する。
+    /// <summary>
+    /// 状態: 本文に Key 行が 1 件だけある場合に連携対象のキーを抽出できる。
+    /// 振る舞い: 期待される結果を返す。
+    /// </summary>
     [Fact]
     public void Extract_ReturnsMailItemWhenBodyContainsSingleKeyLine()
     {
@@ -18,7 +21,10 @@ public sealed class MailItemExtractorTests
         Assert.Equal("ABC123", item.Key);
     }
 
-    // 本文が空の場合に抽出エラーになることを確認する。
+    /// <summary>
+    /// 状態: 本文が空の場合に抽出エラーになる。
+    /// 振る舞い: 期待される結果を返す。
+    /// </summary>
     [Fact]
     public void Extract_ThrowsWhenBodyIsEmpty()
     {
@@ -32,7 +38,10 @@ public sealed class MailItemExtractorTests
         Assert.Contains("Mail body must not be empty.", exception.Errors);
     }
 
-    // Key 行がない場合に抽出エラーになることを確認する。
+    /// <summary>
+    /// 状態: Key 行がない場合に抽出エラーになる。
+    /// 振る舞い: 期待される結果を返す。
+    /// </summary>
     [Fact]
     public void Extract_ThrowsWhenKeyLineIsMissing()
     {
@@ -46,7 +55,10 @@ public sealed class MailItemExtractorTests
         Assert.Contains("A key line", exception.Message, StringComparison.Ordinal);
     }
 
-    // Key 行が複数ある場合に抽出エラーになることを確認する。
+    /// <summary>
+    /// 状態: Key 行が複数ある場合に抽出エラーになる。
+    /// 振る舞い: 期待される結果を返す。
+    /// </summary>
     [Fact]
     public void Extract_ThrowsWhenMultipleKeyLinesAreFound()
     {

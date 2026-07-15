@@ -7,7 +7,7 @@ namespace MailBatch.Console.Tests.Options;
 public sealed class OptionsValidationTests
 {
     /// <summary>
-    /// 前提: APIのBaseUrlに相対URIが設定されている。
+    /// 状態: APIのBaseUrlに相対URIが設定されている。
     /// 振る舞い: 絶対URIではないため、Api:BaseUrlの検証エラーを送出する。
     /// </summary>
     [Fact]
@@ -25,7 +25,7 @@ public sealed class OptionsValidationTests
     }
 
     /// <summary>
-    /// 前提: Batchのログ出力先ディレクトリが空白で設定されている。
+    /// 状態: Batchのログ出力先ディレクトリが空白で設定されている。
     /// 振る舞い: 必須項目が未設定のため、Batch:LogDirectoryの検証エラーを送出する。
     /// </summary>
     [Fact]
@@ -39,7 +39,7 @@ public sealed class OptionsValidationTests
     }
 
     /// <summary>
-    /// 前提: IMAP接続に必要な値がすべて設定され、SecureSocketOptionが小文字で指定されている。
+    /// 状態: IMAP接続に必要な値がすべて設定され、SecureSocketOptionが小文字で指定されている。
     /// 振る舞い: 検証エラーを送出せず、大文字小文字を区別せずにSecureSocketOptionsへ変換する。
     /// </summary>
     [Fact]
@@ -54,7 +54,7 @@ public sealed class OptionsValidationTests
     }
 
     /// <summary>
-    /// 前提: IMAP接続設定のSecureSocketOptionに不正な値が設定されている。
+    /// 状態: IMAP接続設定のSecureSocketOptionに不正な値が設定されている。
     /// 振る舞い: MailKitで扱える値ではないため、Imap:SecureSocketOptionの検証エラーを送出する。
     /// </summary>
     [Fact]
@@ -68,7 +68,7 @@ public sealed class OptionsValidationTests
     }
 
     /// <summary>
-    /// 前提: メール検索の最大取得件数に0が設定されている。
+    /// 状態: メール検索の最大取得件数に0が設定されている。
     /// 振る舞い: 正の値ではないため、MailSearch:MaxMessagesの検証エラーを送出する。
     /// </summary>
     [Fact]
@@ -82,7 +82,7 @@ public sealed class OptionsValidationTests
     }
 
     /// <summary>
-    /// 前提: 処理済みメールボックス名が空文字で設定されている。
+    /// 状態: 処理済みメールボックス名が空文字で設定されている。
     /// 振る舞い: 必須項目が未設定のため、Processing:ProcessedMailboxの検証エラーを送出する。
     /// </summary>
     [Fact]
@@ -96,7 +96,7 @@ public sealed class OptionsValidationTests
     }
 
     /// <summary>
-    /// 前提: 通知メールテンプレートの本文が空白で設定されている。
+    /// 状態: 通知メールテンプレートの本文が空白で設定されている。
     /// 振る舞い: テンプレート本文が必須項目のため、Notification:Templates:0:Bodyの検証エラーを送出する。
     /// </summary>
     [Fact]

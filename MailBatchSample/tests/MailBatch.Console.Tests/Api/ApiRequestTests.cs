@@ -6,7 +6,10 @@ namespace MailBatch.Console.Tests.Api;
 
 public sealed class ApiRequestTests
 {
-    // API に送信する JSON が Message のみを含むことを確認する。
+    /// <summary>
+    /// 状態: API に送信する JSON が Message のみを含む。
+    /// 振る舞い: 期待される結果を返す。
+    /// </summary>
     [Fact]
     public void Serialize_IncludesMessageOnly()
     {
