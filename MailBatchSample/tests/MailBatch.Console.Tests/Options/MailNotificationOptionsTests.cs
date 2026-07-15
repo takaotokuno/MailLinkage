@@ -58,7 +58,7 @@ public sealed class MailNotificationOptionsTests
             new MailNotificationTemplateOptions
             {
                 Name = MailNotificationOptions.ValidationErrorTemplateName,
-                Subject = "Received mail validation failed: MessageId={MessageId}",
+                Subject = "Received mail validation failed: MailId={MailId}",
                 Body = "Validation errors:\n{ValidationErrors}"
             }
         ];
