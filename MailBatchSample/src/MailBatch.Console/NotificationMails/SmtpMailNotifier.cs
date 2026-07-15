@@ -38,7 +38,7 @@ internal sealed class SmtpMailNotifier(
         {
             await smtpClient.AuthenticateAsync(
                 options.Notification.UserName,
-                options.Notification.Password,
+                options.Notification.Password!,
                 cancellationToken);
         }
 
