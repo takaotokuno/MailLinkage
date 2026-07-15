@@ -1,12 +1,13 @@
 using System.Net;
 using System.Text.RegularExpressions;
+using MailBatch.Console.Api;
 using MimeKit;
 
 namespace MailBatch.Console.ReceivedMails.Fetching;
 
 internal interface IReceivedMailMapper
 {
-    ReceivedMailRequest ToRequest(MimeMessage message, DateTimeOffset? internalDate);
+    ApiRequest ToRequest(MimeMessage message, DateTimeOffset? internalDate);
 }
 
 internal sealed class ReceivedMailMapper : IReceivedMailMapper
@@ -14,12 +15,12 @@ internal sealed class ReceivedMailMapper : IReceivedMailMapper
     /// <summary>
     /// MIMEメッセージと内部受信日時から、API送信用の受信メールリクエストを生成します。
     /// </summary>
-    public ReceivedMailRequest ToRequest(MimeMessage message, DateTimeOffset? internalDate)
+    public ApiRequest ToRequest(MimeMessage message, DateTimeOffset? internalDate)
     {
         DateTimeOffset receivedAt = internalDate?.ToUniversalTime()
             ?? (message.Date != DateTimeOffset.MinValue ? message.Date.ToUniversalTime() : DateTimeOffset.UtcNow);
 
-        return new ReceivedMailRequest(
+        return new ApiRequest(
             MessageId: GetMessageId(message),
             Sender: message.From.Mailboxes.FirstOrDefault()?.Address ?? message.From.ToString(),
             Subject: message.Subject ?? string.Empty,

@@ -1,17 +1,17 @@
 using System.Globalization;
-using MailBatch.Console.Infrastructure;
-using MailBatch.Console.ReceivedMails;
+using MailBatch.Console.ReceivedMails.MailKit;
+using MailBatch.Console.ReceivedMails.Searching;
 using MailKit.Search;
 using Xunit;
 
-namespace MailBatch.Console.Tests.Infrastructure;
+namespace MailBatch.Console.Tests.ReceivedMails.MailKit;
 
 public sealed class MailKitSearchQueryMapperTests
 {
     [Fact]
     public void ToSearchQuery_ReturnsAllQueryWhenNoFiltersAreConfigured()
     {
-        SearchQuery query = MailKitSearchQueryMapper.ToSearchQuery(MailSearchCondition.All);
+        SearchQuery query = MailKitSearchQueryMapper.ToSearchQuery(new MailSearchCondition(null, null, null));
 
         Assert.Equal(SearchQuery.All, query);
     }

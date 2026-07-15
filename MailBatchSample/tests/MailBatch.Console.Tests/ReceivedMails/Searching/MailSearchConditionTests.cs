@@ -1,17 +1,19 @@
-using MailBatch.Console.ReceivedMails;
+using MailBatch.Console.ReceivedMails.Searching;
 using MailBatch.Console.Options;
 using Xunit;
 
-namespace MailBatch.Console.Tests.ReceivedMails;
+namespace MailBatch.Console.Tests.ReceivedMails.Searching;
 
-public sealed class MailSearchConditionFactoryTests
+public sealed class MailSearchConditionTests
 {
     [Fact]
     public void Create_ReturnsEmptyConditionWhenNoFiltersAreConfigured()
     {
-        MailSearchCondition condition = MailSearchConditionFactory.Create(new MailSearchOptions { SinceDays = null });
+        MailSearchCondition condition = MailSearchCondition.FromOptions(new MailSearchOptions { SinceDays = null });
 
-        Assert.Equal(MailSearchCondition.All, condition);
+        Assert.Null(condition.SubjectContains);
+        Assert.Null(condition.From);
+        Assert.Null(condition.DeliveredAfter);
     }
 
     [Fact]
@@ -25,7 +27,7 @@ public sealed class MailSearchConditionFactoryTests
         };
         DateTime expectedDate = DateTime.UtcNow.Date.AddDays(-3);
 
-        MailSearchCondition condition = MailSearchConditionFactory.Create(options);
+        MailSearchCondition condition = MailSearchCondition.FromOptions(options);
 
         Assert.Equal("Target", condition.SubjectContains);
         Assert.Equal("sender@example.local", condition.From);
@@ -37,8 +39,10 @@ public sealed class MailSearchConditionFactoryTests
     [InlineData(-1)]
     public void Create_IgnoresNonPositiveSinceDays(int sinceDays)
     {
-        MailSearchCondition condition = MailSearchConditionFactory.Create(new MailSearchOptions { SinceDays = sinceDays });
+        MailSearchCondition condition = MailSearchCondition.FromOptions(new MailSearchOptions { SinceDays = sinceDays });
 
-        Assert.Equal(MailSearchCondition.All, condition);
+        Assert.Null(condition.SubjectContains);
+        Assert.Null(condition.From);
+        Assert.Null(condition.DeliveredAfter);
     }
 }

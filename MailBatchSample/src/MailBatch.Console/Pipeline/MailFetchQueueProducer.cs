@@ -102,6 +102,16 @@ internal sealed class MailFetchQueueProducer(
     /// </summary>
     private async Task QueueRequestAsync(ReceivedMailContent content, CancellationToken cancellationToken)
     {
+        ApiRequest request = new(
+            MessageId: content.MailId.ToString(),
+            Sender: content.Sender,
+            Subject: content.Subject,
+            Body: content.Body,
+            ReceivedAt: DateTimeOffset.UtcNow)
+        {
+            MailId = content.MailId
+        };
+
         await writer.WriteAsync(request, cancellationToken);
     }
 

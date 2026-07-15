@@ -1,17 +1,18 @@
 using System.Text.Json;
+using MailBatch.Console.Api;
 using MailBatch.Console.ReceivedMails;
 using Xunit;
 
-namespace MailBatch.Console.Tests.ReceivedMails;
+namespace MailBatch.Console.Tests.Api;
 
-public sealed class ReceivedMailRequestTests
+public sealed class ApiRequestTests
 {
     [Fact]
     public void Validate_DoesNotThrowWhenSubjectAndBodyAreWithinLimits()
     {
-        ReceivedMailRequest request = CreateRequest(
-            subject: new string('s', ReceivedMailRequest.MaxSubjectLength),
-            body: new string('b', ReceivedMailRequest.MaxBodyLength));
+        ApiRequest request = CreateRequest(
+            subject: new string('s', ApiRequest.MaxSubjectLength),
+            body: new string('b', ApiRequest.MaxBodyLength));
 
         Exception? exception = Record.Exception(request.Validate);
 
@@ -21,11 +22,11 @@ public sealed class ReceivedMailRequestTests
     [Fact]
     public void Validate_ThrowsErrorMessagesWhenSubjectAndBodyExceedLimits()
     {
-        ReceivedMailRequest request = CreateRequest(
-            subject: new string('s', ReceivedMailRequest.MaxSubjectLength + 1),
-            body: new string('b', ReceivedMailRequest.MaxBodyLength + 1));
+        ApiRequest request = CreateRequest(
+            subject: new string('s', ApiRequest.MaxSubjectLength + 1),
+            body: new string('b', ApiRequest.MaxBodyLength + 1));
 
-        ReceivedMailRequestValidationException exception = Assert.Throws<ReceivedMailRequestValidationException>(request.Validate);
+        ApiRequestValidationException exception = Assert.Throws<ApiRequestValidationException>(request.Validate);
 
         Assert.Equal(2, exception.Errors.Count);
         Assert.Contains("Subject length", exception.Message, StringComparison.Ordinal);
@@ -35,16 +36,16 @@ public sealed class ReceivedMailRequestTests
     [Fact]
     public void Serialize_DoesNotIncludeInternalMailId()
     {
-        ReceivedMailRequest request = CreateRequest("subject", "body") with { MailId = new ReceivedMailId(123) };
+        ApiRequest request = CreateRequest("subject", "body") with { MailId = new ReceivedMailId(123) };
 
         string json = JsonSerializer.Serialize(request);
 
         Assert.DoesNotContain("MailId", json, StringComparison.Ordinal);
     }
 
-    private static ReceivedMailRequest CreateRequest(string subject, string? body)
+    private static ApiRequest CreateRequest(string subject, string? body)
     {
-        return new ReceivedMailRequest(
+        return new ApiRequest(
             MessageId: "<message@example.com>",
             Sender: "sender@example.com",
             Subject: subject,
