@@ -7,5 +7,5 @@ internal sealed class BatchOptions
     /// <summary>
     /// 必須項目と値の範囲を検証します。
     /// </summary>
-    public void Validate() => OptionValidation.Require(LogDirectory, "Batck:LogDirectory");
+    public void Validate() => OptionValidation.Require(LogDirectory, "Batch:LogDirectory");
 }

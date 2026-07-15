@@ -16,5 +16,5 @@ internal sealed class MailSearchOptions
     /// <summary>
     /// 必須項目と値の範囲を検証します。
     /// </summary>
-    public void Validate() => OptionValidation.RequirePositive(MaxMessages, "Imap:Port");
+    public void Validate() => OptionValidation.RequirePositive(MaxMessages, "MailSearch:MaxMessages");
 }
