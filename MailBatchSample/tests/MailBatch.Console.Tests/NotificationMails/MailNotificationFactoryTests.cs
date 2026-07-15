@@ -8,6 +8,10 @@ namespace MailBatch.Console.Tests.NotificationMails;
 
 public sealed class MailNotificationFactoryTests
 {
+    /// <summary>
+    /// 状態: 実行状態通知テンプレートとバッチ実行結果が設定されている。
+    /// 振る舞い: 期待される結果を返す。
+    /// </summary>
     [Fact]
     public void CreateRunStatusNotification_AppliesRunStatusTemplate()
     {
@@ -21,6 +25,10 @@ public sealed class MailNotificationFactoryTests
         Assert.Equal("Exit=1 Total=3 Succeeded=2 Failed=1", notification.Body);
     }
 
+    /// <summary>
+    /// 状態: 検証エラー通知テンプレートと検証エラーを持つ受信メールが設定されている。
+    /// 振る舞い: 期待される結果を返す。
+    /// </summary>
     [Fact]
     public void CreateValidationErrorNotification_AppliesValidationErrorTemplate()
     {

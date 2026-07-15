@@ -9,7 +9,7 @@ namespace MailBatch.Console.Tests.Api;
 public sealed class ApiClientTests
 {
     /// <summary>
-    /// 前提: APIが成功レスポンスを返すHttpClientと送信先エンドポイントが設定されている。
+    /// 状態: APIが成功レスポンスを返すHttpClientと送信先エンドポイントが設定されている。
     /// 振る舞い: 設定されたエンドポイントへJSONをPOSTし、成功結果としてステータスコードと本文を返す。
     /// </summary>
     [Fact]
@@ -39,7 +39,7 @@ public sealed class ApiClientTests
     }
 
     /// <summary>
-    /// 前提: APIが失敗レスポンスを返すHttpClientと送信先エンドポイントが設定されている。
+    /// 状態: APIが失敗レスポンスを返すHttpClientと送信先エンドポイントが設定されている。
     /// 振る舞い: 失敗結果としてステータスコードとレスポンス本文を返す。
     /// </summary>
     [Fact]

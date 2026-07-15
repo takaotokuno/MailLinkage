@@ -5,7 +5,10 @@ namespace MailBatch.Console.Tests.Api;
 
 public sealed class ApiResponseSummaryTests
 {
-    // APIレスポンス本文に含まれる保存済みIDを、大文字小文字に依存せず抽出できることを確認する。
+    /// <summary>
+    /// 状態: APIレスポンス本文に含まれる保存済みIDを、大文字小文字に依存せず抽出できる。
+    /// 振る舞い: 期待される結果を返す。
+    /// </summary>
     [Theory]
     [InlineData(/*lang=json,strict*/ "{\"id\":123}", "123")]
     [InlineData(/*lang=json,strict*/ "{\"ID\" : 456, \"messageId\":\"<mail@example.com>\"}", "456")]
@@ -16,7 +19,10 @@ public sealed class ApiResponseSummaryTests
         Assert.Equal(expectedId, savedId);
     }
 
-    // APIレスポンス本文が空、またはIDを含まない場合に null を返すことを確認する。
+    /// <summary>
+    /// 状態: APIレスポンス本文が空、またはIDを含まない場合に null を返す。
+    /// 振る舞い: 期待される結果を返す。
+    /// </summary>
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
@@ -28,7 +34,10 @@ public sealed class ApiResponseSummaryTests
         Assert.Null(savedId);
     }
 
-    // レスポンス概要が空白を正規化し、指定された最大長を超える場合は省略記号を付与して切り詰めることを確認する。
+    /// <summary>
+    /// 状態: レスポンス概要が空白を正規化し、指定された最大長を超える場合は省略記号を付与して切り詰める。
+    /// 振る舞い: 期待される結果を返す。
+    /// </summary>
     [Fact]
     public void Summarize_NormalizesWhitespaceAndTruncatesLongText()
     {
@@ -37,7 +46,10 @@ public sealed class ApiResponseSummaryTests
         Assert.Equal("first second...", summary);
     }
 
-    // 空白のみのレスポンス本文は空文字の概要として扱うことを確認する。
+    /// <summary>
+    /// 状態: 空白のみのレスポンス本文は空文字の概要として扱う。
+    /// 振る舞い: 期待される結果を返す。
+    /// </summary>
     [Fact]
     public void Summarize_ReturnsEmptyStringForBlankText()
     {

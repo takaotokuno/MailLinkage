@@ -6,6 +6,10 @@ namespace MailBatch.Console.Tests.ReceivedMails.Searching;
 
 public sealed class MailSearchConditionTests
 {
+    /// <summary>
+    /// 状態: メール検索オプションに検索条件が設定されていない。
+    /// 振る舞い: 期待される結果を返す。
+    /// </summary>
     [Fact]
     public void Create_ReturnsEmptyConditionWhenNoFiltersAreConfigured()
     {
@@ -16,6 +20,10 @@ public sealed class MailSearchConditionTests
         Assert.Null(condition.DeliveredAfter);
     }
 
+    /// <summary>
+    /// 状態: メール検索オプションに件名、差出人、経過日数の条件が設定されている。
+    /// 振る舞い: 期待される結果を返す。
+    /// </summary>
     [Fact]
     public void Create_IncludesSubjectFromAndSinceFiltersWhenConfigured()
     {
@@ -35,6 +43,10 @@ public sealed class MailSearchConditionTests
         Assert.Equal(expectedDate, condition.DeliveredAfter);
     }
 
+    /// <summary>
+    /// 状態: メール検索オプションの経過日数に0以下の値が設定されている。
+    /// 振る舞い: 期待される結果を返す。
+    /// </summary>
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]
