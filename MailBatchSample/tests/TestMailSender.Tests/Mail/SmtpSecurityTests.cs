@@ -6,7 +6,10 @@ namespace TestMailSender.Tests.Mail;
 
 public sealed class SmtpSecurityTests
 {
-    // SSL 使用フラグに応じて SMTP 接続の SecureSocketOptions が正しく選択されることを確認する。
+    /// <summary>
+    /// 状態: SMTP の SSL 利用フラグを指定する。
+    /// 振る舞い: フラグに対応する MailKit のセキュアソケット設定へ変換する。
+    /// </summary>
     [Theory]
     [InlineData(true, SecureSocketOptions.SslOnConnect)]
     [InlineData(false, SecureSocketOptions.StartTlsWhenAvailable)]

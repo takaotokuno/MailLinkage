@@ -7,8 +7,8 @@ namespace MailBatch.Console.Tests.Options;
 public sealed class OptionsValidationTests
 {
     /// <summary>
-    /// 前提: APIのBaseUrlに相対URIが設定されている。
-    /// 振る舞い: 絶対URIではないため、Api:BaseUrlの検証エラーを送出する。
+    /// 状態: API ベース URL に相対 URL を設定する。
+    /// 振る舞い: API オプション検証で InvalidOperationException を投げる。
     /// </summary>
     [Fact]
     public void ApiOptionsValidate_WithRelativeBaseUrl_ThrowsInvalidOperationException()
@@ -25,8 +25,8 @@ public sealed class OptionsValidationTests
     }
 
     /// <summary>
-    /// 前提: Batchのログ出力先ディレクトリが空白で設定されている。
-    /// 振る舞い: 必須項目が未設定のため、Batch:LogDirectoryの検証エラーを送出する。
+    /// 状態: ログ出力ディレクトリに空白を設定する。
+    /// 振る舞い: バッチオプション検証で InvalidOperationException を投げる。
     /// </summary>
     [Fact]
     public void BatchOptionsValidate_WithBlankLogDirectory_ThrowsInvalidOperationException()
@@ -39,8 +39,8 @@ public sealed class OptionsValidationTests
     }
 
     /// <summary>
-    /// 前提: IMAP接続に必要な値がすべて設定され、SecureSocketOptionが小文字で指定されている。
-    /// 振る舞い: 検証エラーを送出せず、大文字小文字を区別せずにSecureSocketOptionsへ変換する。
+    /// 状態: 有効な IMAP オプションに小文字のセキュアソケット設定を指定する。
+    /// 振る舞い: 例外を投げず、大文字小文字を無視して設定を解釈する。
     /// </summary>
     [Fact]
     public void ImapOptionsValidate_WithValidOptions_DoesNotThrowAndParsesSecureSocketOptionIgnoringCase()
@@ -54,8 +54,8 @@ public sealed class OptionsValidationTests
     }
 
     /// <summary>
-    /// 前提: IMAP接続設定のSecureSocketOptionに不正な値が設定されている。
-    /// 振る舞い: MailKitで扱える値ではないため、Imap:SecureSocketOptionの検証エラーを送出する。
+    /// 状態: IMAP オプションに不正なセキュアソケット設定を指定する。
+    /// 振る舞い: 検証で InvalidOperationException を投げる。
     /// </summary>
     [Fact]
     public void ImapOptionsValidate_WithInvalidSecureSocketOption_ThrowsInvalidOperationException()
@@ -68,8 +68,8 @@ public sealed class OptionsValidationTests
     }
 
     /// <summary>
-    /// 前提: メール検索の最大取得件数に0が設定されている。
-    /// 振る舞い: 正の値ではないため、MailSearch:MaxMessagesの検証エラーを送出する。
+    /// 状態: 最大取得件数に 0 以下を設定する。
+    /// 振る舞い: メール検索オプション検証で InvalidOperationException を投げる。
     /// </summary>
     [Fact]
     public void MailSearchOptionsValidate_WithNonPositiveMaxMessages_ThrowsInvalidOperationException()
@@ -82,8 +82,8 @@ public sealed class OptionsValidationTests
     }
 
     /// <summary>
-    /// 前提: 処理済みメールボックス名が空文字で設定されている。
-    /// 振る舞い: 必須項目が未設定のため、Processing:ProcessedMailboxの検証エラーを送出する。
+    /// 状態: 処理済みメールボックスに空文字を設定する。
+    /// 振る舞い: 処理オプション検証で InvalidOperationException を投げる。
     /// </summary>
     [Fact]
     public void ProcessingOptionsValidate_WithBlankProcessedMailbox_ThrowsInvalidOperationException()
@@ -96,8 +96,8 @@ public sealed class OptionsValidationTests
     }
 
     /// <summary>
-    /// 前提: 通知メールテンプレートの本文が空白で設定されている。
-    /// 振る舞い: テンプレート本文が必須項目のため、Notification:Templates:0:Bodyの検証エラーを送出する。
+    /// 状態: 通知テンプレート本文に空白を設定する。
+    /// 振る舞い: 通知テンプレートオプション検証で InvalidOperationException を投げる。
     /// </summary>
     [Fact]
     public void MailNotificationTemplateOptionsValidate_WithBlankBody_ThrowsInvalidOperationException()

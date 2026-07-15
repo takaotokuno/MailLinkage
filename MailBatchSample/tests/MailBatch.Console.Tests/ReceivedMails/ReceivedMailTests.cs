@@ -5,7 +5,10 @@ namespace MailBatch.Console.Tests.ReceivedMails;
 
 public sealed class ReceivedMailTests
 {
-    // 件名と本文が上限以内の場合に検証エラーにならないことを確認する。
+    /// <summary>
+    /// 状態: 件名と本文が上限内の受信メールを用意する。
+    /// 振る舞い: 検証で例外を投げない。
+    /// </summary>
     [Fact]
     public void Validate_DoesNotThrowWhenSubjectAndBodyAreWithinLimits()
     {
@@ -18,7 +21,10 @@ public sealed class ReceivedMailTests
         Assert.Null(exception);
     }
 
-    // 件名と本文が上限を超える場合に、それぞれのエラーメッセージが返ることを確認する。
+    /// <summary>
+    /// 状態: 件名と本文が上限を超える受信メールを用意する。
+    /// 振る舞い: 検証で対象項目のエラーメッセージを投げる。
+    /// </summary>
     [Fact]
     public void Validate_ThrowsErrorMessagesWhenSubjectAndBodyExceedLimits()
     {

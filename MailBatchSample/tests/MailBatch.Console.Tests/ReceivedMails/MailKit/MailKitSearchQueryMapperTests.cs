@@ -8,6 +8,10 @@ namespace MailBatch.Console.Tests.ReceivedMails.MailKit;
 
 public sealed class MailKitSearchQueryMapperTests
 {
+    /// <summary>
+    /// 状態: 件名、送信者、配信日時の検索条件を設定しない。
+    /// 振る舞い: 全件検索クエリを返す。
+    /// </summary>
     [Fact]
     public void ToSearchQuery_ReturnsAllQueryWhenNoFiltersAreConfigured()
     {
@@ -16,6 +20,10 @@ public sealed class MailKitSearchQueryMapperTests
         Assert.Equal(SearchQuery.All, query);
     }
 
+    /// <summary>
+    /// 状態: 件名、送信者、配信日時の検索条件を設定する。
+    /// 振る舞い: 各条件を含む MailKit 検索クエリを返す。
+    /// </summary>
     [Fact]
     public void ToSearchQuery_IncludesSubjectFromAndDeliveredAfterFiltersWhenConfigured()
     {

@@ -43,7 +43,10 @@ public sealed class ReceivedMailsApiTests : IAsyncLifetime
         }
     }
 
-    // ヘルスチェックエンドポイントが正常応答し、状態として Healthy を返すことを確認する。
+    /// <summary>
+    /// 状態: テスト用の受信メール API を起動する。
+    /// 振る舞い: ヘルスチェックが成功し Healthy 状態を返す。
+    /// </summary>
     [Fact]
     public async Task Health_ReturnsHealthyStatus()
     {
@@ -56,7 +59,10 @@ public sealed class ReceivedMailsApiTests : IAsyncLifetime
         Assert.Equal("Healthy", content?["status"]);
     }
 
-    // 受信メール作成 API がメールを保存し、同じ MessageId の重複登録を拒否することを確認する。
+    /// <summary>
+    /// 状態: 有効な受信メール作成リクエストを同じ MessageId で 2 回送信する。
+    /// 振る舞い: 初回は保存され、重複する 2 回目は競合として拒否される。
+    /// </summary>
     [Fact]
     public async Task CreateReceivedMail_PersistsMailAndRejectsDuplicateMessageId()
     {
@@ -81,7 +87,10 @@ public sealed class ReceivedMailsApiTests : IAsyncLifetime
         Assert.Equal(request.Body, mail.Body);
     }
 
-    // 受信メール作成 API が入力値の前後空白を除去し、作成したリソースを ID で取得できることを確認する。
+    /// <summary>
+    /// 状態: 前後空白を含む受信メール作成リクエストを送信する。
+    /// 振る舞い: 値がトリムされ、作成されたリソースを ID で取得できる。
+    /// </summary>
     [Fact]
     public async Task CreateReceivedMail_TrimsValuesAndReturnsCreatedResourceById()
     {
@@ -108,7 +117,10 @@ public sealed class ReceivedMailsApiTests : IAsyncLifetime
         Assert.Equal(new DateTimeOffset(2026, 6, 24, 12, 0, 0, TimeSpan.FromHours(9)), fetchedMail?.ReceivedAt);
     }
 
-    // 空文字の本文が保存時に null として正規化されることを確認する。
+    /// <summary>
+    /// 状態: 本文が空文字の受信メール作成リクエストを送信する。
+    /// 振る舞い: 保存結果の本文が null に正規化される。
+    /// </summary>
     [Fact]
     public async Task CreateReceivedMail_NormalizesEmptyBodyToNull()
     {
@@ -127,7 +139,10 @@ public sealed class ReceivedMailsApiTests : IAsyncLifetime
         Assert.Null(createdMail?.Body);
     }
 
-    // 存在しない受信メール ID を取得しようとした場合に NotFound を返すことを確認する。
+    /// <summary>
+    /// 状態: 存在しない受信メール ID を指定する。
+    /// 振る舞い: 取得 API が NotFound を返す。
+    /// </summary>
     [Fact]
     public async Task GetReceivedMailById_ReturnsNotFoundForUnknownId()
     {
@@ -138,7 +153,10 @@ public sealed class ReceivedMailsApiTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
-    // 不正な受信メール作成リクエストに対して検証エラーの詳細を返すことを確認する。
+    /// <summary>
+    /// 状態: 必須項目や形式が不正な受信メール作成リクエストを送信する。
+    /// 振る舞い: BadRequest と検証エラー詳細が返される。
+    /// </summary>
     [Fact]
     public async Task CreateReceivedMail_ReturnsValidationProblemForInvalidRequest()
     {

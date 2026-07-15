@@ -9,8 +9,8 @@ namespace MailBatch.Console.Tests.Api;
 public sealed class ApiClientTests
 {
     /// <summary>
-    /// 前提: APIが成功レスポンスを返すHttpClientと送信先エンドポイントが設定されている。
-    /// 振る舞い: 設定されたエンドポイントへJSONをPOSTし、成功結果としてステータスコードと本文を返す。
+    /// 状態: API クライアントに正常応答を返す HTTP ハンドラーを設定する。
+    /// 振る舞い: 設定済みエンドポイントへ POST し、成功結果を返す。
     /// </summary>
     [Fact]
     public async Task PostReceivedMailAsync_PostsConfiguredEndpointAndReturnsSuccessResult()
@@ -39,8 +39,8 @@ public sealed class ApiClientTests
     }
 
     /// <summary>
-    /// 前提: APIが失敗レスポンスを返すHttpClientと送信先エンドポイントが設定されている。
-    /// 振る舞い: 失敗結果としてステータスコードとレスポンス本文を返す。
+    /// 状態: API クライアントに失敗応答と本文を返す HTTP ハンドラーを設定する。
+    /// 振る舞い: 失敗結果にステータスコードと応答本文を含める。
     /// </summary>
     [Fact]
     public async Task PostReceivedMailAsync_ReturnsFailureResultWithResponseBody()

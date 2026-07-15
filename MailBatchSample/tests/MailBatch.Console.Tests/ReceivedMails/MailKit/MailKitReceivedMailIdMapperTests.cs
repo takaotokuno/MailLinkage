@@ -7,7 +7,10 @@ namespace MailBatch.Console.Tests.ReceivedMails.MailKit;
 
 public sealed class MailKitReceivedMailIdMapperTests
 {
-    // MailKit の UniqueId をアプリケーション層の値オブジェクトへ変換することを確認する。
+    /// <summary>
+    /// 状態: MailKit の UniqueId を指定する。
+    /// 振る舞い: 同じ数値を持つ ReceivedMailId に変換する。
+    /// </summary>
     [Fact]
     public void ToReceivedMailId_ConvertsFromUniqueId()
     {
@@ -16,7 +19,10 @@ public sealed class MailKitReceivedMailIdMapperTests
         Assert.Equal(new ReceivedMailId(123), mailId);
     }
 
-    // アプリケーション層の値オブジェクトを MailKit の UniqueId へ戻せることを確認する。
+    /// <summary>
+    /// 状態: ReceivedMailId を指定する。
+    /// 振る舞い: 同じ数値を持つ MailKit の UniqueId に変換する。
+    /// </summary>
     [Fact]
     public void ToUniqueId_ConvertsToUniqueId()
     {

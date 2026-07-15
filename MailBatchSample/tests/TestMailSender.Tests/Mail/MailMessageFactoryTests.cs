@@ -6,7 +6,10 @@ namespace TestMailSender.Tests.Mail;
 
 public sealed class MailMessageFactoryTests
 {
-    // 送信モードに応じて設定済みの件名が選択され、差出人・宛先・本文も反映されることを確認する。
+    /// <summary>
+    /// 状態: メール送信モードに対応する件名設定を用意する。
+    /// 振る舞い: 指定モードに対応する件名でメールを作成する。
+    /// </summary>
     [Theory]
     [InlineData("target", "Target subject")]
     [InlineData("nontarget", "Non-target subject")]
@@ -24,7 +27,10 @@ public sealed class MailMessageFactoryTests
         Assert.Equal("mail body", message.TextBody);
     }
 
-    // duplicate モードでは設定済みの重複用 MessageId が使われることを確認する。
+    /// <summary>
+    /// 状態: 重複モードと固定 MessageId を設定する。
+    /// 振る舞い: 設定済みの重複用 MessageId でメールを作成する。
+    /// </summary>
     [Fact]
     public void Create_UsesConfiguredDuplicateMessageIdForDuplicateMode()
     {
@@ -35,7 +41,10 @@ public sealed class MailMessageFactoryTests
         Assert.Equal("duplicate-message-id@example.com", message.MessageId);
     }
 
-    // custom モードでは任意件名を使い、一意な MessageId が生成されることを確認する。
+    /// <summary>
+    /// 状態: カスタムモードとカスタム件名を設定する。
+    /// 振る舞い: カスタム件名でメールを作成する。
+    /// </summary>
     [Fact]
     public void Create_UsesCustomSubjectWhenModeIsCustom()
     {
@@ -47,7 +56,10 @@ public sealed class MailMessageFactoryTests
         Assert.EndsWith("@example.local", message.MessageId);
     }
 
-    // custom モードで件名が未設定の場合に設定不備として例外を投げることを確認する。
+    /// <summary>
+    /// 状態: カスタムモードで件名を設定しない。
+    /// 振る舞い: メール作成時に InvalidOperationException を投げる。
+    /// </summary>
     [Fact]
     public void Create_ThrowsWhenCustomModeDoesNotConfigureSubject()
     {
