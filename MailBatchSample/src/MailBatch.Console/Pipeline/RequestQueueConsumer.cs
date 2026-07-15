@@ -15,7 +15,7 @@ internal interface IRequestQueueConsumer
 }
 
 internal sealed class RequestQueueConsumer(
-    AppOptions options,
+    ApiOptions apiOptions,
     IReceivedMailSession receivedMailSession,
     IApiClient receivedMailApiClient,
     ChannelReader<MailLinkageRequest> reader,
@@ -27,7 +27,7 @@ internal sealed class RequestQueueConsumer(
     public async Task<ProcessResult> ConsumeAsync(CancellationToken cancellationToken = default)
     {
         ProcessResultAccumulator result = new();
-        logger.LogInformation("API consumer started. Endpoint={Endpoint}", options.Api.Endpoint);
+        logger.LogInformation("API consumer started. Endpoint={Endpoint}", apiOptions.Endpoint);
 
         await foreach (MailLinkageRequest request in reader.ReadAllAsync(cancellationToken))
         {

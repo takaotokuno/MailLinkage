@@ -17,10 +17,10 @@ internal interface IApiClient
 /// <summary>
 /// HttpClientを使用して受信メールAPIへリクエストを送信します。
 /// </summary>
-internal sealed class ApiClient(HttpClient httpClient, AppOptions options) : IApiClient
+internal sealed class ApiClient(HttpClient httpClient, ApiOptions apiOptions) : IApiClient
 {
     /// <summary>
     /// 設定されたエンドポイントへ受信メールリクエストをPOSTします。
     /// </summary>
-    public Task<HttpResponseMessage> PostReceivedMailAsync(ApiRequest request, CancellationToken cancellationToken = default) => httpClient.PostAsJsonAsync(options.Api.Endpoint, request, cancellationToken);
+    public Task<HttpResponseMessage> PostReceivedMailAsync(ApiRequest request, CancellationToken cancellationToken = default) => httpClient.PostAsJsonAsync(apiOptions.Endpoint, request, cancellationToken);
 }

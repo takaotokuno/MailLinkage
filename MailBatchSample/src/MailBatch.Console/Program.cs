@@ -38,7 +38,12 @@ try
         .CreateLogger();
 
     await using ServiceProvider serviceProvider = new ServiceCollection()
-        .AddSingleton(options)
+        .AddSingleton(options.Batch)
+        .AddSingleton(options.Imap)
+        .AddSingleton(options.MailSearch)
+        .AddSingleton(options.Api)
+        .AddSingleton(options.Processing)
+        .AddSingleton(options.Notification)
         .AddSingleton(new BatchRunContext(runId))
         .AddLogging(builder =>
         {

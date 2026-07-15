@@ -16,7 +16,7 @@ internal interface IReceivedMailPipelineComponentFactory
 }
 
 internal sealed class ReceivedMailPipelineComponentFactory(
-    AppOptions options,
+    ApiOptions apiOptions,
     IReceivedMailSession receivedMailSession,
     IApiClient apiClient,
     IMailNotifier mailNotifier,
@@ -37,7 +37,7 @@ internal sealed class ReceivedMailPipelineComponentFactory(
     public IRequestQueueConsumer CreateConsumer(ChannelReader<MailLinkageRequest> reader)
     {
         return new RequestQueueConsumer(
-            options,
+            apiOptions,
             receivedMailSession,
             apiClient,
             reader,

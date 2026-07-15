@@ -6,7 +6,8 @@ using Microsoft.Extensions.Logging;
 namespace MailBatch.Console.ReceivedMails.Folders;
 
 internal sealed class MailFolderProvider(
-    AppOptions options,
+    ImapOptions imapOptions,
+    ProcessingOptions processingOptions,
     IImapConnection imapConnection,
     ILogger<MailFolderProvider> logger) : IMailFolderProvider
 {
@@ -31,8 +32,8 @@ internal sealed class MailFolderProvider(
 
         logger.LogInformation(
             "Prepared IMAP folders. Mailbox={Mailbox}, ProcessedMailbox={ProcessedMailbox}",
-            options.Imap.Mailbox,
-            options.Processing.ProcessedMailbox);
+            imapOptions.Mailbox,
+            processingOptions.ProcessedMailbox);
     }
 
     public IMailFolder GetOpenedReceiveFolder()
@@ -67,7 +68,7 @@ internal sealed class MailFolderProvider(
     private async Task<IMailFolder> GetOrCreateReceiveFolderAsync(
         CancellationToken cancellationToken)
     {
-        string folderName = options.Imap.Mailbox;
+        string folderName = imapOptions.Mailbox;
 
         try
         {
@@ -87,7 +88,7 @@ internal sealed class MailFolderProvider(
         IMailFolder receiveFolder,
         CancellationToken cancellationToken)
     {
-        string folderName = options.Processing.ProcessedMailbox;
+        string folderName = processingOptions.ProcessedMailbox;
 
         try
         {

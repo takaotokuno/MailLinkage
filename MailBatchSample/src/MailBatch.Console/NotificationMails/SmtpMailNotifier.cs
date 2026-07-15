@@ -7,7 +7,7 @@ using MimeKit;
 namespace MailBatch.Console.NotificationMails;
 
 internal sealed class SmtpMailNotifier(
-    AppOptions options,
+    MailNotificationOptions notificationOptions,
     ILogger<SmtpMailNotifier> logger) : IMailNotifier
 {
     /// <summary>
@@ -29,16 +29,16 @@ internal sealed class SmtpMailNotifier(
 
         using SmtpClient smtpClient = new();
         await smtpClient.ConnectAsync(
-            options.Notification.SmtpHost,
-            options.Notification.SmtpPort,
+            notificationOptions.SmtpHost,
+            notificationOptions.SmtpPort,
             SecureSocketOptions.SslOnConnect,
             cancellationToken);
 
-        if (!string.IsNullOrWhiteSpace(options.Notification.UserName))
+        if (!string.IsNullOrWhiteSpace(notificationOptions.UserName))
         {
             await smtpClient.AuthenticateAsync(
-                options.Notification.UserName,
-                options.Notification.Password!,
+                notificationOptions.UserName,
+                notificationOptions.Password!,
                 cancellationToken);
         }
 
@@ -58,7 +58,7 @@ internal sealed class SmtpMailNotifier(
     private MimeMessage CreateMessage(MailNotification notification)
     {
         MimeMessage message = new();
-        message.From.Add(MailboxAddress.Parse(options.Notification.From));
+        message.From.Add(MailboxAddress.Parse(notificationOptions.From));
         message.To.Add(MailboxAddress.Parse(notification.To));
         message.Subject = notification.Subject;
         message.Body = new TextPart("plain") { Text = notification.Body };

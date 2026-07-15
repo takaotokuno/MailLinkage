@@ -11,7 +11,7 @@ internal interface IProcessedMailMover
 }
 
 internal sealed class ProcessedMailMover(
-    AppOptions options,
+    ProcessingOptions processingOptions,
     IMailFolderProvider mailFolderProvider,
     ILogger<ProcessedMailMover> logger) : IProcessedMailMover
 {
@@ -24,6 +24,6 @@ internal sealed class ProcessedMailMover(
 
         logger.LogInformation(
             "Moved processed message. DestinationMailbox={DestinationMailbox}",
-            options.Processing.ProcessedMailbox);
+            processingOptions.ProcessedMailbox);
     }
 }
