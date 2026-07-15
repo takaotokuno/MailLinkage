@@ -1,18 +1,8 @@
-using MailBatch.Console.Api;
 using MailBatch.Console.BatchProcessing;
 using MailBatch.Console.Configuration;
-using MailBatch.Console.NotificationMails;
+using MailBatch.Console.DependencyInjection;
 using MailBatch.Console.Options;
-using MailBatch.Console.Pipeline;
-using MailBatch.Console.ReceivedMails.Fetching;
-using MailBatch.Console.ReceivedMails.Folders;
-using MailBatch.Console.ReceivedMails.Imap;
-using MailBatch.Console.ReceivedMails.MailKit;
-using MailBatch.Console.ReceivedMails.Processing;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Polly;
-using Polly.Extensions.Http;
 using Serilog;
 
 int exitCode = 0;
@@ -32,44 +22,10 @@ try
     LoadedConfiguration loadedConfiguration = AppConfiguration.Load(args);
     AppOptions options = loadedConfiguration.Options;
 
-    Log.Logger = new LoggerConfiguration()
-        .ReadFrom.Configuration(loadedConfiguration.Configuration)
-        .Enrich.WithProperty("RunId", runId)
-        .CreateLogger();
+    Log.Logger = SerilogLoggerFactory.Create(loadedConfiguration, runId);
 
     await using ServiceProvider serviceProvider = new ServiceCollection()
-        .AddSingleton(options.Batch)
-        .AddSingleton(options.Imap)
-        .AddSingleton(options.MailSearch)
-        .AddSingleton(options.Api)
-        .AddSingleton(options.Processing)
-        .AddSingleton(options.Notification)
-        .AddSingleton(new BatchRunContext(runId))
-        .AddLogging(builder =>
-        {
-            _ = builder.ClearProviders();
-            _ = builder.AddSerilog(Log.Logger, dispose: false);
-        })
-        .AddTransient<IMailNotifier, SmtpMailNotifier>()
-        .AddTransient<MailNotificationFactory>()
-        .AddScoped<IImapConnection, ImapConnection>()
-        .AddScoped<IMailFolderProvider, MailFolderProvider>()
-        .AddScoped<IMailKitSearcher, MailKitSearcher>()
-        .AddScoped<IReceivedMailReader, ReceivedMailReader>()
-        .AddScoped<IProcessedMailMover, ProcessedMailMover>()
-        .AddScoped<IReceivedMailSession, ReceivedMailSession>()
-        .AddTransient<IReceivedMailQueueFactory, ReceivedMailQueueFactory>()
-        .AddTransient<IReceivedMailPipelineComponentFactory, ReceivedMailPipelineComponentFactory>()
-        .AddTransient<IReceivedMailPipeline, ReceivedMailPipeline>()
-        .AddTransient<IRunStatusNotifier, RunStatusNotifier>()
-        .AddHttpClient<IApiClient, ApiClient>(client =>
-        {
-            client.BaseAddress = options.Api.BaseUrl;
-            client.Timeout = TimeSpan.FromSeconds(options.Api.TimeoutSeconds);
-        })
-        .AddPolicyHandler(CreateApiRetryPolicy(options.Api))
-        .Services
-        .AddTransient<BatchRunner>()
+        .AddMailBatchApplication(options, runId, Log.Logger)
         .BuildServiceProvider();
 
     BatchRunner runner = serviceProvider.GetRequiredService<BatchRunner>();
@@ -99,16 +55,3 @@ finally
 }
 
 return exitCode;
-
-
-static IAsyncPolicy<HttpResponseMessage> CreateApiRetryPolicy(ApiOptions apiOptions)
-{
-    return HttpPolicyExtensions
-        .HandleTransientHttpError()
-        .WaitAndRetryAsync(
-            apiOptions.RetryCount,
-            retryAttempt =>
-            {
-                return TimeSpan.FromSeconds(apiOptions.RetryDelaySeconds * Math.Pow(2, retryAttempt - 1));
-            });
-}
