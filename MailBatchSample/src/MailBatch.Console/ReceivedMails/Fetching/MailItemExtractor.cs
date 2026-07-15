@@ -27,7 +27,7 @@ internal static partial class MailItemExtractor
         {
             errors.Add("A key line in the format 'Key: alphanumeric-value' was not found.");
         }
-        else if (matches.Count > 0)
+        else if (matches.Count > 1)
         {
             errors.Add($"Multiple key lines were found. Expected exactly one, but found {matches.Count}.");
         }

@@ -57,7 +57,7 @@ internal sealed class MailFetchQueueProducer(
             result.IncrementSuccess();
 
             logger.LogInformation(
-                "Queued API request. MessageId={MessageId}, QueueCount={QueueCount}, BodyLength={BodyLength}",
+                "Queued API request. MailId={MailId}, QueueCount={QueueCount}, BodyLength={BodyLength}",
                 mail.MailId,
                 result.Succeeded,
                 mail.Body?.Length ?? 0);
@@ -104,7 +104,7 @@ internal sealed class MailFetchQueueProducer(
             await NotifyValidationErrorAsync(mail, errors, cancellationToken);
 
             logger.LogWarning(
-                "Validation failed for received mail request. MessageId={MessageId}, Errors={ValidationErrors}",
+                "Validation failed for received mail request. MailId={MailId}, Errors={ValidationErrors}",
                 mail.MailId,
                 string.Join("; ", errors));
 
@@ -132,7 +132,7 @@ internal sealed class MailFetchQueueProducer(
         if (string.IsNullOrWhiteSpace(mail.Sender))
         {
             logger.LogWarning(
-                "Cannot send validation error notification because sender is empty. MessageId={MessageId}",
+                "Cannot send validation error notification because sender is empty. MailId={MailId}",
                 mail.MailId);
             return;
         }

@@ -1,4 +1,6 @@
 using System.Globalization;
+using MailBatch.Console.ReceivedMails.MailKit;
+using MailBatch.Console.ReceivedMails.Searching;
 using MailKit.Search;
 using Xunit;
 
