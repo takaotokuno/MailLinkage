@@ -2,6 +2,9 @@ using MailKit.Security;
 
 namespace MailBatch.Console.Options;
 
+/// <summary>
+/// IMAPサーバー接続と受信メールボックスに関する設定を保持します。
+/// </summary>
 internal sealed class ImapOptions
 {
     public string Host { get; init; } = "";
@@ -11,6 +14,9 @@ internal sealed class ImapOptions
     public string Password { get; init; } = "";
     public string Mailbox { get; init; } = "INBOX";
 
+    /// <summary>
+    /// IMAP接続に必要な設定値を検証します。
+    /// </summary>
     public void Validate()
     {
         OptionValidation.Require(Host, "Imap:Host");
@@ -26,6 +32,9 @@ internal sealed class ImapOptions
         }
     }
 
+    /// <summary>
+    /// 設定文字列をMailKitのSecureSocketOptionsへ変換します。
+    /// </summary>
     public SecureSocketOptions GetSecureSocketOptions()
     {
         return Enum.Parse<SecureSocketOptions>(
