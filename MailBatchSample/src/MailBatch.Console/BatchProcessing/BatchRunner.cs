@@ -63,13 +63,14 @@ internal sealed class BatchRunner(
     {
         logger.LogInformation("Mail batch started. RunId={RunId}", runContext.RunId);
         logger.LogInformation(
-            "Configuration loaded. IMAP={ImapHost}:{ImapPort}, Mailbox={Mailbox}, ApiBaseUrl={ApiBaseUrl}, ApiEndpoint={ApiEndpoint}, LogDirectory={LogDirectory}",
+            "Configuration loaded. IMAP={ImapHost}:{ImapPort}, Mailbox={Mailbox}, ApiBaseUrl={ApiBaseUrl}, ApiEndpoint={ApiEndpoint}, LogDirectory={LogDirectory}, LogRetentionDays={LogRetentionDays}",
             imapOptions.Host,
             imapOptions.Port,
             imapOptions.Mailbox,
             apiOptions.BaseUrl,
             apiOptions.Endpoint,
-            batchOptions.LogDirectory);
+            batchOptions.LogDirectory,
+            batchOptions.LogRetentionDays);
     }
 
     /// <summary>

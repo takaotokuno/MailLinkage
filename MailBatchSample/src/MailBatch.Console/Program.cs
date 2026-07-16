@@ -1,11 +1,13 @@
 using MailBatch.Console.BatchProcessing;
 using MailBatch.Console.Configuration;
+using MailBatch.Console.Logging;
 using MailBatch.Console.DependencyInjection;
 using MailBatch.Console.Options;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 
 int exitCode = 0;
+BatchOptions? batchOptions = null;
 string runId = Guid.NewGuid().ToString();
 using CancellationTokenSource cancellationTokenSource = new();
 
@@ -21,6 +23,7 @@ try
 {
     LoadedConfiguration loadedConfiguration = AppConfiguration.Load(args);
     AppOptions options = loadedConfiguration.Options;
+    batchOptions = options.Batch;
 
     Log.Logger = SerilogLoggerFactory.Create(loadedConfiguration, runId);
 
@@ -52,6 +55,11 @@ finally
 {
     // メモリ上に残っているログを書き出してロガーを終了する
     await Log.CloseAndFlushAsync();
+
+    if (batchOptions is not null)
+    {
+        new LogRetentionCleaner(batchOptions).DeleteExpiredLogs();
+    }
 }
 
 return exitCode;

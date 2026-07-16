@@ -38,6 +38,21 @@ public sealed class OptionsValidationTests
         Assert.Equal("Batch:LogDirectory is required.", exception.Message);
     }
 
+
+    /// <summary>
+    /// 状態: Batchのログ保管期間に0が設定されている。
+    /// 振る舞い: 正の値ではないため、Batch:LogRetentionDaysの検証エラーを送出する。
+    /// </summary>
+    [Fact]
+    public void BatchOptionsValidate_WithZeroLogRetentionDays_ThrowsInvalidOperationException()
+    {
+        BatchOptions options = new() { LogRetentionDays = 0 };
+
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(options.Validate);
+
+        Assert.Equal("Batch:LogRetentionDays must be greater than 0.", exception.Message);
+    }
+
     /// <summary>
     /// 状態: IMAP接続に必要な値がすべて設定され、SecureSocketOptionが小文字で指定されている。
     /// 振る舞い: 検証エラーを送出せず、大文字小文字を区別せずにSecureSocketOptionsへ変換する。
