@@ -1,5 +1,6 @@
 using System.Threading.Channels;
 using MailBatch.Console.BatchProcessing;
+using MailBatch.Console.BatchProcessing.Result;
 using MailBatch.Console.NotificationMails;
 using MailBatch.Console.Options;
 using MailBatch.Console.Pipeline;

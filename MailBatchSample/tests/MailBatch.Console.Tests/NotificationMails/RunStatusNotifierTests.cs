@@ -1,4 +1,5 @@
 using MailBatch.Console.BatchProcessing;
+using MailBatch.Console.BatchProcessing.Result;
 using MailBatch.Console.NotificationMails;
 using MailBatch.Console.Options;
 using Microsoft.Extensions.Logging.Abstractions;

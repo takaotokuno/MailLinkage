@@ -1,4 +1,5 @@
 using System.Threading.Channels;
+using MailBatch.Console.BatchProcessing.Result;
 using MailBatch.Console.Pipeline;
 using MailBatch.Console.ReceivedMails;
 using Microsoft.Extensions.Logging.Abstractions;

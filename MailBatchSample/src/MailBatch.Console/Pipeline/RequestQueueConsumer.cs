@@ -1,5 +1,6 @@
 using System.Threading.Channels;
 using MailBatch.Console.Api;
+using MailBatch.Console.BatchProcessing.Result;
 using MailBatch.Console.Options;
 using MailBatch.Console.ReceivedMails;
 using MailBatch.Console.ReceivedMails.Processing;

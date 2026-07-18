@@ -1,3 +1,4 @@
+using MailBatch.Console.BatchProcessing.Result;
 using Xunit;
 
 namespace MailBatch.Console.Tests.BatchProcessing;
