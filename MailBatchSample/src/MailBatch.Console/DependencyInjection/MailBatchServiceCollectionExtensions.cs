@@ -73,6 +73,7 @@ internal static class MailBatchServiceCollectionExtensions
     private static IServiceCollection AddPipelineServices(this IServiceCollection services)
     {
         return services
+            .AddSingleton<IProcessedMailMoveFailureStore, FileProcessedMailMoveFailureStore>()
             .AddTransient<IReceivedMailQueueFactory, ReceivedMailQueueFactory>()
             .AddTransient<IReceivedMailPipelineComponentFactory, ReceivedMailPipelineComponentFactory>()
             .AddTransient<IReceivedMailPipeline, ReceivedMailPipeline>();

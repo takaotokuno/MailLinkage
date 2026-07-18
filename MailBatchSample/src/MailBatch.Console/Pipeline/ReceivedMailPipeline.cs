@@ -33,16 +33,17 @@ internal sealed class ReceivedMailPipeline(
         ProcessResult consumerResult = await consumerTask;
 
         logger.LogInformation(
-            "Queue processing completed. Enqueued={Enqueued}, InvalidFormat={InvalidFormat}, ApiSucceeded={ApiSucceeded}, ApiFailed={ApiFailed}",
+            "Queue processing completed. Enqueued={Enqueued}, InvalidFormat={InvalidFormat}, ApiSucceeded={ApiSucceeded}, ApiFailed={ApiFailed}, MoveRecoveryFailed={MoveRecoveryFailed}",
             producerResult.Succeeded,
             producerResult.InvalidFormat,
             consumerResult.Succeeded,
-            consumerResult.ApiFailed);
+            consumerResult.ApiFailed,
+            producerResult.ApiFailed);
 
         return new ProcessResult(
             Total: targetMailIds.Count,
             Succeeded: consumerResult.Succeeded,
             InvalidFormat: producerResult.InvalidFormat,
-            ApiFailed: consumerResult.ApiFailed);
+            ApiFailed: consumerResult.ApiFailed + producerResult.ApiFailed);
     }
 }

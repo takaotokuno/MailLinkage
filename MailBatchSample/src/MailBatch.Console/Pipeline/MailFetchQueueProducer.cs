@@ -18,6 +18,7 @@ internal sealed class MailFetchQueueProducer(
     ChannelWriter<MailLinkageRequest> writer,
     IMailNotifier mailNotifier,
     MailNotificationFactory mailNotificationFactory,
+    IProcessedMailMoveFailureStore moveFailureStore,
     ILogger<MailFetchQueueProducer> logger) : IMailFetchQueueProducer
 {
     /// <summary>
@@ -53,6 +54,11 @@ internal sealed class MailFetchQueueProducer(
     {
         try
         {
+            if (await TryRecoverProcessedMoveFailureAsync(mailId, result, cancellationToken))
+            {
+                return;
+            }
+
             ReceivedMail mail = await receivedMailSession.CreateRequestAsync(mailId, cancellationToken);
 
             ExtractedMailItem item = await ValidateAndExtractAsync(mail, cancellationToken);
@@ -67,6 +73,10 @@ internal sealed class MailFetchQueueProducer(
                 result.Succeeded,
                 mail.Body?.Length ?? 0);
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             result.IncrementInvalidFormat();
@@ -75,6 +85,42 @@ internal sealed class MailFetchQueueProducer(
                 "Failed to fetch, transform, validate, or queue message. MailId={MailId}",
                 mailId);
         }
+    }
+
+    /// <summary>
+    /// API送信済みで処理済みメールボックスへの移動だけが未完了のメールを再送せずに移動します。
+    /// </summary>
+    private async Task<bool> TryRecoverProcessedMoveFailureAsync(ReceivedMailId mailId, ProcessResultAccumulator result, CancellationToken cancellationToken)
+    {
+        if (!await moveFailureStore.ContainsAsync(mailId, cancellationToken))
+        {
+            return false;
+        }
+
+        try
+        {
+            await receivedMailSession.MoveToProcessedMailboxAsync(mailId, cancellationToken);
+            await moveFailureStore.RemoveAsync(mailId, cancellationToken);
+            result.IncrementSuccess();
+
+            logger.LogInformation(
+                "Recovered processed mailbox move failure without reposting API request. MailId={MailId}",
+                mailId);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            result.IncrementApiFailure();
+            logger.LogError(
+                ex,
+                "Failed to recover processed mailbox move failure. MailId={MailId}",
+                mailId);
+        }
+
+        return true;
     }
 
     /// <summary>
