@@ -114,7 +114,7 @@ internal sealed class FileProcessedMailMoveFailureStore(
         string storePath = StorePath;
         _ = Directory.CreateDirectory(Path.GetDirectoryName(storePath) ?? ".");
         string temporaryPath = storePath + ".tmp";
-        ReceivedMailId[] sortedMailIds = [.. mailIds.OrderBy(mailId => mailId.UidValidity).ThenBy(mailId => mailId.Uid)];
+        ReceivedMailId[] sortedMailIds = [.. mailIds.OrderBy(mailId => { return mailId.UidValidity; }).ThenBy(mailId => { return mailId.Uid; })];
 
         await using (FileStream stream = File.Create(temporaryPath))
         {

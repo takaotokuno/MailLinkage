@@ -18,7 +18,10 @@ public sealed class MailFetchQueueProducerTests
     public async Task ProduceAsync_WhenFetchFailsWithMimeDamage_CountsAsInvalidFormat()
     {
         MailFetchQueueProducer producer = CreateProducer(
-            _ => throw new InvalidDataException("MIME message is damaged."));
+            _ =>
+            {
+                throw new InvalidDataException("MIME message is damaged.");
+            });
 
         ProcessResult result = await producer.ProduceAsync([new ReceivedMailId(1, 999)]);
 
@@ -29,7 +32,10 @@ public sealed class MailFetchQueueProducerTests
     public async Task ProduceAsync_WhenExtractKeyIsMissing_CountsAsInvalidFormat()
     {
         MailFetchQueueProducer producer = CreateProducer(
-            id => new ReceivedMail(id, "sender@example.com", "subject", "body without key"));
+            id =>
+            {
+                return new ReceivedMail(id, "sender@example.com", "subject", "body without key");
+            });
 
         ProcessResult result = await producer.ProduceAsync([new ReceivedMailId(1, 999)]);
 
@@ -40,11 +46,14 @@ public sealed class MailFetchQueueProducerTests
     public async Task ProduceAsync_WhenDataSizeLimitIsExceeded_CountsAsInvalidFormat()
     {
         MailFetchQueueProducer producer = CreateProducer(
-            id => new ReceivedMail(
-                id,
-                "sender@example.com",
-                new string('s', ReceivedMail.MaxSubjectLength + 1),
-                $"Key: ABC123{Environment.NewLine}{new string('b', ReceivedMail.MaxBodyLength + 1)}"));
+            id =>
+            {
+                return new ReceivedMail(
+                                id,
+                                "sender@example.com",
+                                new string('s', ReceivedMail.MaxSubjectLength + 1),
+                                $"Key: ABC123{Environment.NewLine}{new string('b', ReceivedMail.MaxBodyLength + 1)}");
+            });
 
         ProcessResult result = await producer.ProduceAsync([new ReceivedMailId(1, 999)]);
 
@@ -57,7 +66,10 @@ public sealed class MailFetchQueueProducerTests
         Channel<MailLinkageRequest> channel = Channel.CreateBounded<MailLinkageRequest>(1);
         channel.Writer.Complete(new InvalidOperationException("Queue is unavailable."));
         MailFetchQueueProducer producer = CreateProducer(
-            id => new ReceivedMail(id, "sender@example.com", "subject", "Key: ABC123"),
+            id =>
+            {
+                return new ReceivedMail(id, "sender@example.com", "subject", "Key: ABC123");
+            },
             channel.Writer);
 
         ProcessResult result = await producer.ProduceAsync([new ReceivedMailId(1, 999)]);

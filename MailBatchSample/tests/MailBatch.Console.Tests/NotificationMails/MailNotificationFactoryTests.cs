@@ -66,7 +66,7 @@ public sealed class MailNotificationFactoryTests
             ["first error", "second error"]);
 
         Assert.Equal("sender@example.com", notification.To);
-        Assert.Equal($"Validation 123 {new string('s', 200)}...", notification.Subject);
+        Assert.Equal($"Validation 999:123 {new string('s', 200)}...", notification.Subject);
         Assert.Equal($"Errors:{Environment.NewLine}- first error{Environment.NewLine}- second error", notification.Body);
     }
 

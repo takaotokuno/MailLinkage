@@ -94,7 +94,7 @@ public sealed class RequestQueueConsumerTests
     public async Task ConsumeAsync_DoesNotWriteRequestMessageBodyToApiSendLog()
     {
         const string sensitiveMessage = "Key: ABC123\nName: Taro Yamada\nPhone: 090-0000-0000";
-        MailLinkageRequest request = new(new ReceivedMailId(4), "key", sensitiveMessage);
+        MailLinkageRequest request = new(new ReceivedMailId(4, 999), "key", sensitiveMessage);
         ChannelReader<MailLinkageRequest> reader = CreateCompletedReader(request);
         FakeReceivedMailSession session = new();
         FakeApiClient apiClient = new(new ApiPostResult(true, 201, /*lang=json,strict*/ "{\"id\":1}"));
@@ -110,9 +110,18 @@ public sealed class RequestQueueConsumerTests
 
         _ = await consumer.ConsumeAsync();
 
-        Assert.DoesNotContain(logger.Entries, entry => entry.Contains(sensitiveMessage, StringComparison.Ordinal));
-        Assert.DoesNotContain(logger.Entries, entry => entry.Contains("Taro Yamada", StringComparison.Ordinal));
-        Assert.Contains(logger.Entries, entry => entry.Contains($"MessageLength={sensitiveMessage.Length}", StringComparison.Ordinal));
+        Assert.DoesNotContain(logger.Entries, entry =>
+        {
+            return entry.Contains(sensitiveMessage, StringComparison.Ordinal);
+        });
+        Assert.DoesNotContain(logger.Entries, entry =>
+        {
+            return entry.Contains("Taro Yamada", StringComparison.Ordinal);
+        });
+        Assert.Contains(logger.Entries, entry =>
+        {
+            return entry.Contains($"MessageLength={sensitiveMessage.Length}", StringComparison.Ordinal);
+        });
     }
 
     private static ChannelReader<MailLinkageRequest> CreateCompletedReader(MailLinkageRequest request)
@@ -180,10 +189,7 @@ public sealed class RequestQueueConsumerTests
             EventId eventId,
             TState state,
             Exception? exception,
-            Func<TState, Exception?, string> formatter)
-        {
-            Entries.Add(formatter(state, exception));
-        }
+            Func<TState, Exception?, string> formatter) => Entries.Add(formatter(state, exception));
 
         private sealed class NullScope : IDisposable
         {
