@@ -141,6 +141,23 @@ public sealed class OptionsValidationTests
     }
 
     /// <summary>
+    /// 状態: リクエストキューの上限に0が設定されている。
+    /// 振る舞い: 正の値ではないため、Processing:RequestQueueCapacityの検証エラーを送出する。
+    /// </summary>
+    [Fact]
+    public void ProcessingOptionsValidate_WithNonPositiveRequestQueueCapacity_ThrowsInvalidOperationException()
+    {
+        ProcessingOptions options = new()
+        {
+            RequestQueueCapacity = 0
+        };
+
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(options.Validate);
+
+        Assert.Equal("Processing:RequestQueueCapacity must be greater than 0.", exception.Message);
+    }
+
+    /// <summary>
     /// 状態: 通知メールテンプレートの本文が空白で設定されている。
     /// 振る舞い: テンプレート本文が必須項目のため、Notification:Templates:0:Bodyの検証エラーを送出する。
     /// </summary>
