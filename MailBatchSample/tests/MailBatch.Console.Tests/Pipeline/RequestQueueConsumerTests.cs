@@ -29,7 +29,7 @@ public sealed class RequestQueueConsumerTests
 
         ProcessResult result = await consumer.ConsumeAsync();
 
-        Assert.Equal(1, result.Failed);
+        Assert.Equal(1, result.ApiFailed);
         Assert.Equal(0, result.Succeeded);
         Assert.Equal(request.MailId, session.ErrorMailIds.Single());
         Assert.Empty(session.ProcessedMailIds);
@@ -51,7 +51,7 @@ public sealed class RequestQueueConsumerTests
 
         ProcessResult result = await consumer.ConsumeAsync();
 
-        Assert.Equal(0, result.Failed);
+        Assert.Equal(0, result.ApiFailed);
         Assert.Equal(1, result.Succeeded);
         Assert.Equal(request.MailId, session.ProcessedMailIds.Single());
         Assert.Empty(session.ErrorMailIds);

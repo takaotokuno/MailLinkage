@@ -79,9 +79,10 @@ internal sealed class BatchRunner(
     private void LogFinish(ProcessResult result)
     {
         logger.LogInformation(
-            "Mail batch finished. Succeeded={Succeeded}, Failed={Failed}, Total={Total}",
+            "Mail batch finished. MailCount={MailCount}, Succeeded={Succeeded}, InvalidFormat={InvalidFormat}, ApiFailed={ApiFailed}",
+            result.Total,
             result.Succeeded,
-            result.Failed,
-            result.Total);
+            result.InvalidFormat,
+            result.ApiFailed);
     }
 }

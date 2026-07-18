@@ -16,13 +16,13 @@ public sealed class MailNotificationFactoryTests
     public void CreateRunStatusNotification_AppliesRunStatusTemplate()
     {
         MailNotificationFactory factory = new(CreateOptions(), new BatchRunContext("run-001"));
-        ProcessResult result = new(Total: 3, Succeeded: 2, Failed: 1);
+        ProcessResult result = new(Total: 3, Succeeded: 2, InvalidFormat: 1, ApiFailed: 0);
 
         MailNotification notification = factory.CreateRunStatusNotification(result, exitCode: 1);
 
         Assert.Equal("admin@example.com", notification.To);
         Assert.Equal("Run run-001 failed", notification.Subject);
-        Assert.Equal("Exit=1 Total=3 Succeeded=2 Failed=1", notification.Body);
+        Assert.Equal("Exit=1 Total=3 Succeeded=2 InvalidFormat=1 ApiFailed=0", notification.Body);
     }
 
     /// <summary>
@@ -61,7 +61,7 @@ public sealed class MailNotificationFactoryTests
                     {
                         Name = MailNotificationOptions.RunStatusTemplateName,
                         Subject = "Run {RunId} {Status}",
-                        Body = "Exit={ExitCode} Total={Total} Succeeded={Succeeded} Failed={Failed}"
+                        Body = "Exit={ExitCode} Total={Total} Succeeded={Succeeded} InvalidFormat={InvalidFormat} ApiFailed={ApiFailed}"
                     },
                     new MailNotificationTemplateOptions
                     {

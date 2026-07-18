@@ -41,15 +41,15 @@ internal sealed class RequestQueueConsumer(
                 else
                 {
                     await MoveToErrorMailboxAsync(request.MailId, cancellationToken);
-                    result.IncrementFailure();
+                    result.IncrementApiFailure();
                 }
             }
         }
 
         logger.LogInformation(
-            "Consumer confirmed no remaining queued data. ApiSucceeded={Succeeded}, ApiFailed={Failed}",
+            "Consumer confirmed no remaining queued data. ApiSucceeded={Succeeded}, ApiFailed={ApiFailed}",
             result.Succeeded,
-            result.Failed);
+            result.ApiFailed);
 
         return result.ToResult();
     }

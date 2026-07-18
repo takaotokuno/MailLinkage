@@ -51,7 +51,9 @@ internal sealed class MailNotificationFactory(MailNotificationOptions notificati
             .Replace("{ExitCode}", exitCode.ToString(), StringComparison.Ordinal)
             .Replace("{Total}", result.Total.ToString(), StringComparison.Ordinal)
             .Replace("{Succeeded}", result.Succeeded.ToString(), StringComparison.Ordinal)
-            .Replace("{Failed}", result.Failed.ToString(), StringComparison.Ordinal);
+            .Replace("{Failed}", result.Failed.ToString(), StringComparison.Ordinal)
+            .Replace("{InvalidFormat}", result.InvalidFormat.ToString(), StringComparison.Ordinal)
+            .Replace("{ApiFailed}", result.ApiFailed.ToString(), StringComparison.Ordinal);
     }
 
     private static string ApplyValidationErrorTemplate(

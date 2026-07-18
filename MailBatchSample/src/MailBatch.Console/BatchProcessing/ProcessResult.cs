@@ -3,8 +3,10 @@ namespace MailBatch.Console.BatchProcessing;
 /// <summary>
 /// 確定した処理結果を表します。
 /// </summary>
-internal sealed record ProcessResult(int Total, int Succeeded = 0, int Failed = 0)
+internal sealed record ProcessResult(int Total, int Succeeded = 0, int InvalidFormat = 0, int ApiFailed = 0)
 {
+    public int Failed => InvalidFormat + ApiFailed;
+
     public int ConvertToExitCode() => Failed > 0 ? 2 : 0;
 }
 
@@ -20,14 +22,21 @@ internal sealed class ProcessResultAccumulator(int total = 0)
         get; private set;
     }
 
-    public int Failed
+    public int InvalidFormat
+    {
+        get; private set;
+    }
+
+    public int ApiFailed
     {
         get; private set;
     }
 
     public void IncrementSuccess() => Succeeded++;
 
-    public void IncrementFailure() => Failed++;
+    public void IncrementInvalidFormat() => InvalidFormat++;
 
-    public ProcessResult ToResult() => new(Total, Succeeded, Failed);
+    public void IncrementApiFailure() => ApiFailed++;
+
+    public ProcessResult ToResult() => new(Total, Succeeded, InvalidFormat, ApiFailed);
 }
