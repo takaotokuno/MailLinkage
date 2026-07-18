@@ -6,33 +6,25 @@ namespace MailBatch.Console.Configuration;
 
 internal static class AppConfiguration
 {
-    private const string DevelopmentEnvironmentName = "Development";
     private const string EnvironmentVariablePrefix = "MAILBATCH_";
+    private const string AzureKeyVaultEnabledKey = "AzureKeyVault:Enabled";
     private const string AzureKeyVaultUriKey = "AzureKeyVault:VaultUri";
 
     /// <summary>
-    /// コマンドライン引数、環境変数、設定ファイル、Azure Key Vaultからアプリケーション設定を読み込み、検証します。
+    /// コマンドライン引数、環境変数、設定ファイル、任意のAzure Key Vaultからアプリケーション設定を読み込み、検証します。
     /// </summary>
     internal static LoadedConfiguration Load(string[] args)
     {
-        string environmentName = GetEnvironmentName();
-        bool isDevelopment = IsDevelopment(environmentName);
+        IConfigurationBuilder builder = CreateBaseBuilder(args);
+        IConfigurationRoot bootstrapConfiguration = builder.Build();
 
-        IConfigurationBuilder builder = new ConfigurationBuilder()
-            .SetBasePath(AppContext.BaseDirectory)
-            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: false)
-            .AddJsonFile($"appsettings.{environmentName}.json", optional: true, reloadOnChange: false)
-            .AddEnvironmentVariables(prefix: EnvironmentVariablePrefix)
-            .AddCommandLine(args);
-
-        if (!isDevelopment)
+        if (IsAzureKeyVaultEnabled(bootstrapConfiguration))
         {
-            IConfigurationRoot bootstrapConfiguration = builder.Build();
             string? vaultUri = bootstrapConfiguration[AzureKeyVaultUriKey];
             if (string.IsNullOrWhiteSpace(vaultUri))
             {
                 throw new InvalidOperationException(
-                    $"{AzureKeyVaultUriKey} is required outside the Development environment.");
+                    $"{AzureKeyVaultUriKey} is required when {AzureKeyVaultEnabledKey} is true.");
             }
 
             _ = builder.AddAzureKeyVault(new Uri(vaultUri), new DefaultAzureCredential())
@@ -46,18 +38,27 @@ internal static class AppConfiguration
         return new LoadedConfiguration(configuration, options);
     }
 
+    private static IConfigurationBuilder CreateBaseBuilder(string[] args)
+    {
+        string environmentName = GetEnvironmentName();
+
+        return new ConfigurationBuilder()
+            .SetBasePath(AppContext.BaseDirectory)
+            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: false)
+            .AddJsonFile($"appsettings.{environmentName}.json", optional: true, reloadOnChange: false)
+            .AddEnvironmentVariables(prefix: EnvironmentVariablePrefix)
+            .AddCommandLine(args);
+    }
+
+    private static bool IsAzureKeyVaultEnabled(IConfiguration configuration)
+    {
+        return configuration.GetValue<bool>(AzureKeyVaultEnabledKey);
+    }
+
     private static string GetEnvironmentName()
     {
         return Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT")
             ?? Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")
             ?? "Production";
-    }
-
-    private static bool IsDevelopment(string environmentName)
-    {
-        return string.Equals(
-            environmentName,
-            DevelopmentEnvironmentName,
-            StringComparison.OrdinalIgnoreCase);
     }
 }

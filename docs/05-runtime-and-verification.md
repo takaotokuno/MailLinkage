@@ -73,7 +73,7 @@ curl --url "imap://mailserver:3143/INBOX;MAILINDEX=1" --user "test@example.local
 
 ## バッチ起動と結果確認
 
-`MailBatch.Console` は、IMAP で `INBOX` から対象メールを検索し、抽出したメール情報を `MailReceiver.Api` へ POST する。Docker Compose 起動後、リポジトリルートから次のように実行する。
+`MailBatch.Console` は、IMAP で `INBOX` から対象メールを検索し、抽出したメール情報を `MailReceiver.Api` へ POST する。Docker Compose 起動後、リポジトリルートから次のように実行する。コンテナ動作確認では Azure Key Vault は不要で、`MAILBATCH_` プレフィックス付き環境変数（例: `MAILBATCH_Imap__Password`）やコマンドライン引数でシークレットを供給できる。Azure Key Vault を利用する場合だけ `AzureKeyVault:Enabled=true` と `AzureKeyVault:VaultUri` を設定する。
 
 ```bash
 dotnet run --project MailBatchSample/src/MailBatch.Console/MailBatch.Console.csproj
