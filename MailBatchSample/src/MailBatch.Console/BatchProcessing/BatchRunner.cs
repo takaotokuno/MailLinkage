@@ -38,7 +38,7 @@ internal sealed class BatchRunner(
                     Stage: "Startup"));
             int duplicateRunExitCode = duplicateRunResult.ConvertToExitCode();
 
-            await runStatusNotifier.NotifyAsync(duplicateRunResult, duplicateRunExitCode, cancellationToken);
+            _ = await runStatusNotifier.TryNotifyAsync(duplicateRunResult, duplicateRunExitCode, cancellationToken);
             logger.LogError(
                 "Mail batch aborted because another instance is already running. RunId={RunId}",
                 runContext.RunId);
@@ -61,7 +61,7 @@ internal sealed class BatchRunner(
 
         int exitCode = runResult.ConvertToExitCode();
 
-        await runStatusNotifier.NotifyAsync(runResult, exitCode, cancellationToken);
+        _ = await runStatusNotifier.TryNotifyAsync(runResult, exitCode, cancellationToken);
         LogFinish(runResult.ProcessResult);
 
         return exitCode;

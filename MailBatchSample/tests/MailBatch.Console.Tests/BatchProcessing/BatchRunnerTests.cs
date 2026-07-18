@@ -48,19 +48,45 @@ public sealed class BatchRunnerTests
         Assert.Equal(1, notifier.Notifications[0].ExitCode);
     }
 
+    /// <summary>
+    /// 状態: 実行ロックを取得できず、多重起動通知の送信に失敗する。
+    /// 振る舞い: 通知失敗を終了コードへ反映せず、多重起動の終了コード1を返す。
+    /// </summary>
+    [Fact]
+    public async Task RunAsync_WhenDuplicateRunNotificationFails_ReturnsOriginalExitCode()
+    {
+        FakeRunStatusNotifier notifier = new(notifyResult: false);
+        BatchRunner runner = new(
+            new ImapOptions(),
+            new ApiOptions(),
+            new BatchOptions(),
+            new MailSearchOptions(),
+            new BatchRunContext("run-duplicate"),
+            NullLogger<BatchRunner>.Instance,
+            new FakeReceivedMailPipeline(),
+            notifier,
+            new FakeReceivedMailSession(),
+            new FakeJobExecutionLock(null));
+
+        int exitCode = await runner.RunAsync();
+
+        Assert.Equal(1, exitCode);
+        _ = Assert.Single(notifier.Notifications);
+    }
+
     private sealed class FakeJobExecutionLock(JobExecutionLockHandle? handle) : IJobExecutionLock
     {
         public JobExecutionLockHandle? TryAcquire() => handle;
     }
 
-    private sealed class FakeRunStatusNotifier : IRunStatusNotifier
+    private sealed class FakeRunStatusNotifier(bool notifyResult = true) : IRunStatusNotifier
     {
         public List<(BatchRunResult Result, int ExitCode)> Notifications { get; } = [];
 
-        public Task NotifyAsync(BatchRunResult result, int exitCode, CancellationToken cancellationToken = default)
+        public Task<bool> TryNotifyAsync(BatchRunResult result, int exitCode, CancellationToken cancellationToken = default)
         {
             Notifications.Add((result, exitCode));
-            return Task.CompletedTask;
+            return Task.FromResult(notifyResult);
         }
     }
 
