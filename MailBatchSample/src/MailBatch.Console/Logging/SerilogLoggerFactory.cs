@@ -1,6 +1,7 @@
+using MailBatch.Console.Configuration;
 using Serilog;
 
-namespace MailBatch.Console.Configuration;
+namespace MailBatch.Console.Logging;
 
 internal static class SerilogLoggerFactory
 {

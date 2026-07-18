@@ -5,7 +5,13 @@ namespace MailBatch.Console.BatchProcessing;
 /// </summary>
 internal sealed record ProcessResult(int Total, int Succeeded = 0, int InvalidFormat = 0, int ApiFailed = 0)
 {
-    public int Failed => InvalidFormat + ApiFailed;
+    public int Failed
+    {
+        get
+        {
+            return InvalidFormat + ApiFailed;
+        }
+    }
 
     public int ConvertToExitCode() => Failed > 0 ? 2 : 0;
 }

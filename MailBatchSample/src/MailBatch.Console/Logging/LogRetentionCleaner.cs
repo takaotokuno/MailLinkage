@@ -4,7 +4,7 @@ namespace MailBatch.Console.Logging;
 
 internal sealed class LogRetentionCleaner(BatchOptions batchOptions, TimeProvider? timeProvider = null)
 {
-    private readonly TimeProvider timeProvider = timeProvider ?? TimeProvider.System;
+    private readonly TimeProvider _timeProvider = timeProvider ?? TimeProvider.System;
 
     /// <summary>
     /// 設定された保管期間を過ぎたログファイルを削除します。
@@ -16,9 +16,14 @@ internal sealed class LogRetentionCleaner(BatchOptions batchOptions, TimeProvide
             return;
         }
 
-        DateTimeOffset expirationThreshold = timeProvider.GetUtcNow().AddDays(-batchOptions.LogRetentionDays);
+        DateTimeOffset expirationThreshold = _timeProvider.GetUtcNow().AddDays(-batchOptions.LogRetentionDays);
 
-        foreach (string logFilePath in Directory.EnumerateFiles(batchOptions.LogDirectory, "*.log", SearchOption.TopDirectoryOnly))
+        IEnumerable<string> logFilePaths = Directory.EnumerateFiles(
+            batchOptions.LogDirectory,
+            "*.log",
+            SearchOption.TopDirectoryOnly);
+
+        foreach (string logFilePath in logFilePaths)
         {
             DateTimeOffset lastWriteTime = File.GetLastWriteTimeUtc(logFilePath);
 

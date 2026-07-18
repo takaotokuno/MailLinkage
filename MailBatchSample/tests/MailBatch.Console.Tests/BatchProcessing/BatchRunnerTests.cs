@@ -39,8 +39,8 @@ public sealed class BatchRunnerTests
         Assert.Equal(2, exitCode);
         Assert.False(session.Connected);
         Assert.False(pipeline.Processed);
-        Assert.Single(notifier.Notifications);
-        Assert.Equal(new ProcessResult(Total: 0, Succeeded: 0, Failed: 1), notifier.Notifications[0].Result);
+        _ = Assert.Single(notifier.Notifications);
+        Assert.Equal(new ProcessResult(Total: 0, Succeeded: 0, InvalidFormat: 0, ApiFailed: 1), notifier.Notifications[0].Result);
         Assert.Equal(2, notifier.Notifications[0].ExitCode);
     }
 
@@ -62,7 +62,10 @@ public sealed class BatchRunnerTests
 
     private sealed class FakeReceivedMailPipeline : IReceivedMailPipeline
     {
-        public bool Processed { get; private set; }
+        public bool Processed
+        {
+            get; private set;
+        }
 
         public Task<ProcessResult> ProcessAsync(IReadOnlyList<ReceivedMailId> targetMailIds, CancellationToken cancellationToken = default)
         {
@@ -73,7 +76,10 @@ public sealed class BatchRunnerTests
 
     private sealed class FakeReceivedMailSession : IReceivedMailSession
     {
-        public bool Connected { get; private set; }
+        public bool Connected
+        {
+            get; private set;
+        }
 
         public Task ConnectAsync(CancellationToken cancellationToken = default)
         {

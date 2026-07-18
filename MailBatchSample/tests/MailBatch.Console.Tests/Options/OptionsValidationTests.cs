@@ -31,7 +31,10 @@ public sealed class OptionsValidationTests
     [Fact]
     public void BatchOptionsValidate_WithBlankLogDirectory_ThrowsInvalidOperationException()
     {
-        BatchOptions options = new() { LogDirectory = " " };
+        BatchOptions options = new()
+        {
+            LogDirectory = " "
+        };
 
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(options.Validate);
 
@@ -46,7 +49,10 @@ public sealed class OptionsValidationTests
     [Fact]
     public void BatchOptionsValidate_WithZeroLogRetentionDays_ThrowsInvalidOperationException()
     {
-        BatchOptions options = new() { LogRetentionDays = 0 };
+        BatchOptions options = new()
+        {
+            LogRetentionDays = 0
+        };
 
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(options.Validate);
 
@@ -89,7 +95,10 @@ public sealed class OptionsValidationTests
     [Fact]
     public void MailSearchOptionsValidate_WithNonPositiveMaxMessages_ThrowsInvalidOperationException()
     {
-        MailSearchOptions options = new() { MaxMessages = 0 };
+        MailSearchOptions options = new()
+        {
+            MaxMessages = 0
+        };
 
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(options.Validate);
 
@@ -103,7 +112,10 @@ public sealed class OptionsValidationTests
     [Fact]
     public void ProcessingOptionsValidate_WithBlankProcessedMailbox_ThrowsInvalidOperationException()
     {
-        ProcessingOptions options = new() { ProcessedMailbox = "" };
+        ProcessingOptions options = new()
+        {
+            ProcessedMailbox = ""
+        };
 
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(options.Validate);
 
@@ -118,7 +130,10 @@ public sealed class OptionsValidationTests
     [Fact]
     public void ProcessingOptionsValidate_WithBlankErrorMailbox_ThrowsInvalidOperationException()
     {
-        ProcessingOptions options = new() { ErrorMailbox = " " };
+        ProcessingOptions options = new()
+        {
+            ErrorMailbox = " "
+        };
 
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(options.Validate);
 

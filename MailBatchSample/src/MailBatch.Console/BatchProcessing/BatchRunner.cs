@@ -30,7 +30,7 @@ internal sealed class BatchRunner(
         using JobExecutionLockHandle? executionLock = jobExecutionLock.TryAcquire();
         if (executionLock is null)
         {
-            ProcessResult duplicateRunResult = new(Total: 0, Succeeded: 0, Failed: 1);
+            ProcessResult duplicateRunResult = new(Total: 0, Succeeded: 0, InvalidFormat: 0, ApiFailed: 1);
             const int DUPLICATE_RUN_EXIT_CODE = 2;
 
             await runStatusNotifier.NotifyAsync(duplicateRunResult, DUPLICATE_RUN_EXIT_CODE, cancellationToken);

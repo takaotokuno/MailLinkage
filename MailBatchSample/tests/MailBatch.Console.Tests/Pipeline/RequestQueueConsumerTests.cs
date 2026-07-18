@@ -43,7 +43,7 @@ public sealed class RequestQueueConsumerTests
         MailLinkageRequest request = new(new ReceivedMailId(2), "key", "message");
         ChannelReader<MailLinkageRequest> reader = CreateCompletedReader(request);
         FakeReceivedMailSession session = new();
-        FakeApiClient apiClient = new(new ApiPostResult(true, 201, "{\"id\":1}"));
+        FakeApiClient apiClient = new(new ApiPostResult(true, 201, /*lang=json,strict*/ "{\"id\":1}"));
         FakeMoveFailureStore moveFailureStore = new();
         RequestQueueConsumer consumer = new(
             new ApiOptions { Endpoint = "/api/received-mails" },
@@ -67,8 +67,11 @@ public sealed class RequestQueueConsumerTests
     {
         MailLinkageRequest request = new(new ReceivedMailId(3), "key", "message");
         ChannelReader<MailLinkageRequest> reader = CreateCompletedReader(request);
-        FakeReceivedMailSession session = new() { ThrowOnMoveToProcessed = true };
-        FakeApiClient apiClient = new(new ApiPostResult(true, 201, "{\"id\":1}"));
+        FakeReceivedMailSession session = new()
+        {
+            ThrowOnMoveToProcessed = true
+        };
+        FakeApiClient apiClient = new(new ApiPostResult(true, 201, /*lang=json,strict*/ "{\"id\":1}"));
         FakeMoveFailureStore moveFailureStore = new();
         RequestQueueConsumer consumer = new(
             new ApiOptions { Endpoint = "/api/received-mails" },
@@ -104,7 +107,10 @@ public sealed class RequestQueueConsumerTests
 
         public List<ReceivedMailId> ErrorMailIds { get; } = [];
 
-        public bool ThrowOnMoveToProcessed { get; init; }
+        public bool ThrowOnMoveToProcessed
+        {
+            get; init;
+        }
 
         public Task ConnectAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 

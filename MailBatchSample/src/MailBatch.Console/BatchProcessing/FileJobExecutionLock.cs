@@ -12,7 +12,7 @@ internal sealed class FileJobExecutionLock(BatchOptions batchOptions, BatchRunCo
 
     public JobExecutionLockHandle? TryAcquire()
     {
-        Directory.CreateDirectory(batchOptions.LogDirectory);
+        _ = Directory.CreateDirectory(batchOptions.LogDirectory);
         string lockFilePath = Path.Combine(batchOptions.LogDirectory, LockFileName);
 
         try

@@ -1,7 +1,7 @@
 using MailBatch.Console.BatchProcessing;
 using MailBatch.Console.Configuration;
-using MailBatch.Console.Logging;
 using MailBatch.Console.DependencyInjection;
+using MailBatch.Console.Logging;
 using MailBatch.Console.Options;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
@@ -28,7 +28,7 @@ try
     Log.Logger = SerilogLoggerFactory.Create(loadedConfiguration, runId);
 
     await using ServiceProvider serviceProvider = new ServiceCollection()
-        .AddMailBatchApplication(options, runId, Log.Logger)
+        .AddBatchApplication(options, runId, Log.Logger)
         .BuildServiceProvider();
 
     BatchRunner runner = serviceProvider.GetRequiredService<BatchRunner>();
@@ -56,6 +56,7 @@ finally
     // メモリ上に残っているログを書き出してロガーを終了する
     await Log.CloseAndFlushAsync();
 
+    // 古いログを削除する
     if (batchOptions is not null)
     {
         new LogRetentionCleaner(batchOptions).DeleteExpiredLogs();

@@ -6,12 +6,12 @@ namespace MailBatch.Console.Tests.Logging;
 
 public sealed class LogRetentionCleanerTests : IDisposable
 {
-    private readonly string logDirectory = Path.Combine(Path.GetTempPath(), $"MailBatchLogs-{Guid.NewGuid():N}");
+    private readonly string _logDirectory = Path.Combine(Path.GetTempPath(), $"MailBatchLogs-{Guid.NewGuid():N}");
 
     [Fact]
     public void DeleteExpiredLogs_DeletesOnlyLogFilesOlderThanRetentionDays()
     {
-        Directory.CreateDirectory(logDirectory);
+        _ = Directory.CreateDirectory(_logDirectory);
         DateTimeOffset now = new(2026, 7, 16, 10, 0, 0, TimeSpan.Zero);
         FakeTimeProvider timeProvider = new(now);
         string expiredLog = CreateFile("expired.log", now.AddDays(-31));
@@ -19,7 +19,7 @@ public sealed class LogRetentionCleanerTests : IDisposable
         string expiredText = CreateFile("expired.txt", now.AddDays(-31));
         BatchOptions options = new()
         {
-            LogDirectory = logDirectory,
+            LogDirectory = _logDirectory,
             LogRetentionDays = 30
         };
         LogRetentionCleaner cleaner = new(options, timeProvider);
@@ -36,7 +36,7 @@ public sealed class LogRetentionCleanerTests : IDisposable
     {
         BatchOptions options = new()
         {
-            LogDirectory = logDirectory,
+            LogDirectory = _logDirectory,
             LogRetentionDays = 30
         };
         LogRetentionCleaner cleaner = new(options, new FakeTimeProvider(DateTimeOffset.UtcNow));
@@ -48,15 +48,15 @@ public sealed class LogRetentionCleanerTests : IDisposable
 
     public void Dispose()
     {
-        if (Directory.Exists(logDirectory))
+        if (Directory.Exists(_logDirectory))
         {
-            Directory.Delete(logDirectory, recursive: true);
+            Directory.Delete(_logDirectory, recursive: true);
         }
     }
 
     private string CreateFile(string fileName, DateTimeOffset lastWriteTime)
     {
-        string path = Path.Combine(logDirectory, fileName);
+        string path = Path.Combine(_logDirectory, fileName);
         File.WriteAllText(path, fileName);
         File.SetLastWriteTimeUtc(path, lastWriteTime.UtcDateTime);
         return path;
@@ -66,6 +66,12 @@ public sealed class LogRetentionCleanerTests : IDisposable
     {
         public override DateTimeOffset GetUtcNow() => now.ToUniversalTime();
 
-        public override TimeZoneInfo LocalTimeZone => TimeZoneInfo.Utc;
+        public override TimeZoneInfo LocalTimeZone
+        {
+            get
+            {
+                return TimeZoneInfo.Utc;
+            }
+        }
     }
 }

@@ -48,29 +48,26 @@ public sealed class MailNotificationFactoryTests
         Assert.Equal($"Errors:{Environment.NewLine}- first error{Environment.NewLine}- second error", notification.Body);
     }
 
-    private static AppOptions CreateOptions()
+    private static MailNotificationOptions CreateOptions()
     {
-        return new AppOptions
+        return new MailNotificationOptions
         {
-            Notification = new MailNotificationOptions
-            {
-                AdminAddress = "admin@example.com",
-                Templates =
-                [
-                    new MailNotificationTemplateOptions
-                    {
-                        Name = MailNotificationOptions.RunStatusTemplateName,
-                        Subject = "Run {RunId} {Status}",
-                        Body = "Exit={ExitCode} Total={Total} Succeeded={Succeeded} InvalidFormat={InvalidFormat} ApiFailed={ApiFailed}"
-                    },
-                    new MailNotificationTemplateOptions
-                    {
-                        Name = MailNotificationOptions.ValidationErrorTemplateName,
-                        Subject = "Validation {MailId} {Subject}",
-                        Body = "Errors:\n{ValidationErrors}"
-                    }
-                ]
-            }
+            AdminAddress = "admin@example.com",
+            Templates =
+            [
+                new MailNotificationTemplateOptions
+                {
+                    Name = MailNotificationOptions.RunStatusTemplateName,
+                    Subject = "Run {RunId} {Status}",
+                    Body = "Exit={ExitCode} Total={Total} Succeeded={Succeeded} InvalidFormat={InvalidFormat} ApiFailed={ApiFailed}"
+                },
+                new MailNotificationTemplateOptions
+                {
+                    Name = MailNotificationOptions.ValidationErrorTemplateName,
+                    Subject = "Validation {MailId} {Subject}",
+                    Body = "Errors:\n{ValidationErrors}"
+                }
+            ]
         };
     }
 }

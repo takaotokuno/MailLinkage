@@ -18,12 +18,18 @@ internal sealed class FileProcessedMailMoveFailureStore(
     BatchOptions batchOptions,
     ILogger<FileProcessedMailMoveFailureStore> logger) : IProcessedMailMoveFailureStore
 {
-    private readonly SemaphoreSlim semaphore = new(1, 1);
-    private string StorePath => Path.Combine(batchOptions.LogDirectory, "processed-mail-move-failures.json");
+    private readonly SemaphoreSlim _semaphore = new(1, 1);
+    private string StorePath
+    {
+        get
+        {
+            return Path.Combine(batchOptions.LogDirectory, "processed-mail-move-failures.json");
+        }
+    }
 
     public async Task<bool> ContainsAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
     {
-        await semaphore.WaitAsync(cancellationToken);
+        await _semaphore.WaitAsync(cancellationToken);
         try
         {
             HashSet<uint> mailIds = await LoadAsync(cancellationToken);
@@ -31,13 +37,13 @@ internal sealed class FileProcessedMailMoveFailureStore(
         }
         finally
         {
-            _ = semaphore.Release();
+            _ = _semaphore.Release();
         }
     }
 
     public async Task AddAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
     {
-        await semaphore.WaitAsync(cancellationToken);
+        await _semaphore.WaitAsync(cancellationToken);
         try
         {
             HashSet<uint> mailIds = await LoadAsync(cancellationToken);
@@ -49,13 +55,13 @@ internal sealed class FileProcessedMailMoveFailureStore(
         }
         finally
         {
-            _ = semaphore.Release();
+            _ = _semaphore.Release();
         }
     }
 
     public async Task RemoveAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
     {
-        await semaphore.WaitAsync(cancellationToken);
+        await _semaphore.WaitAsync(cancellationToken);
         try
         {
             HashSet<uint> mailIds = await LoadAsync(cancellationToken);
@@ -67,7 +73,7 @@ internal sealed class FileProcessedMailMoveFailureStore(
         }
         finally
         {
-            _ = semaphore.Release();
+            _ = _semaphore.Release();
         }
     }
 
@@ -87,9 +93,9 @@ internal sealed class FileProcessedMailMoveFailureStore(
     private async Task SaveAsync(HashSet<uint> mailIds, CancellationToken cancellationToken)
     {
         string storePath = StorePath;
-        Directory.CreateDirectory(Path.GetDirectoryName(storePath) ?? ".");
+        _ = Directory.CreateDirectory(Path.GetDirectoryName(storePath) ?? ".");
         string temporaryPath = storePath + ".tmp";
-        uint[] sortedMailIds = mailIds.Order().ToArray();
+        uint[] sortedMailIds = [.. mailIds.Order()];
 
         await using (FileStream stream = File.Create(temporaryPath))
         {

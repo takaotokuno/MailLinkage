@@ -1,5 +1,4 @@
 using System.Net;
-using System.Text;
 using MailBatch.Console.Api;
 using MailBatch.Console.Options;
 using Xunit;
@@ -35,7 +34,7 @@ public sealed class ApiClientTests
         Assert.Equal("created", result.ResponseBody);
         Assert.Equal(HttpMethod.Post, handler.Request?.Method);
         Assert.Equal(new Uri("https://api.example.local/received-mails"), handler.Request?.RequestUri);
-        Assert.Equal(/*lang=json,strict*/ "{\"Message\":\"linked message\"}", handler.RequestBody);
+        Assert.Equal(/*lang=json,strict*/ "{\"message\":\"linked message\"}", handler.RequestBody);
     }
 
     /// <summary>
@@ -67,8 +66,14 @@ public sealed class ApiClientTests
 
     private sealed class StubHttpMessageHandler(Func<HttpRequestMessage, HttpResponseMessage> responder) : HttpMessageHandler
     {
-        public HttpRequestMessage? Request { get; private set; }
-        public string? RequestBody { get; private set; }
+        public HttpRequestMessage? Request
+        {
+            get; private set;
+        }
+        public string? RequestBody
+        {
+            get; private set;
+        }
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {

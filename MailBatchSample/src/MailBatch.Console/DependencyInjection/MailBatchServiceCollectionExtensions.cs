@@ -14,9 +14,9 @@ using Serilog;
 
 namespace MailBatch.Console.DependencyInjection;
 
-internal static class MailBatchServiceCollectionExtensions
+internal static class BatchServiceCollectionExtensions
 {
-    public static IServiceCollection AddMailBatchApplication(
+    public static IServiceCollection AddBatchApplication(
         this IServiceCollection services,
         AppOptions options,
         string runId,
