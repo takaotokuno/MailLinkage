@@ -7,6 +7,7 @@ using MailBatch.Console.ReceivedMails;
 using MailBatch.Console.ReceivedMails.Processing;
 using MailBatch.Console.ReceivedMails.Searching;
 using MailBatch.Console.ReceivedMails.State;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
@@ -89,6 +90,31 @@ public sealed class RequestQueueConsumerTests
         Assert.Contains(request.MailId, moveFailureStore.MailIds);
     }
 
+    [Fact]
+    public async Task ConsumeAsync_DoesNotWriteRequestMessageBodyToApiSendLog()
+    {
+        const string sensitiveMessage = "Key: ABC123\nName: Taro Yamada\nPhone: 090-0000-0000";
+        MailLinkageRequest request = new(new ReceivedMailId(4), "key", sensitiveMessage);
+        ChannelReader<MailLinkageRequest> reader = CreateCompletedReader(request);
+        FakeReceivedMailSession session = new();
+        FakeApiClient apiClient = new(new ApiPostResult(true, 201, /*lang=json,strict*/ "{\"id\":1}"));
+        FakeMoveFailureStore moveFailureStore = new();
+        FakeLogger<MailLinkageRequest> logger = new();
+        RequestQueueConsumer consumer = new(
+            new ApiOptions { Endpoint = "/api/received-mails" },
+            session,
+            apiClient,
+            reader,
+            moveFailureStore,
+            logger);
+
+        _ = await consumer.ConsumeAsync();
+
+        Assert.DoesNotContain(logger.Entries, entry => entry.Contains(sensitiveMessage, StringComparison.Ordinal));
+        Assert.DoesNotContain(logger.Entries, entry => entry.Contains("Taro Yamada", StringComparison.Ordinal));
+        Assert.Contains(logger.Entries, entry => entry.Contains($"MessageLength={sensitiveMessage.Length}", StringComparison.Ordinal));
+    }
+
     private static ChannelReader<MailLinkageRequest> CreateCompletedReader(MailLinkageRequest request)
     {
         Channel<MailLinkageRequest> channel = Channel.CreateUnbounded<MailLinkageRequest>();
@@ -139,6 +165,34 @@ public sealed class RequestQueueConsumerTests
         }
 
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+    }
+
+    private sealed class FakeLogger<T> : ILogger<T>
+    {
+        public List<string> Entries { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+        {
+            Entries.Add(formatter(state, exception));
+        }
+
+        private sealed class NullScope : IDisposable
+        {
+            public static NullScope Instance { get; } = new();
+
+            public void Dispose()
+            {
+            }
+        }
     }
 
     private sealed class FakeMoveFailureStore : IProcessedMailMoveFailureStore
