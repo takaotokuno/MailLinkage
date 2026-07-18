@@ -8,6 +8,7 @@ using MailBatch.Console.ReceivedMails.Folders;
 using MailBatch.Console.ReceivedMails.Imap;
 using MailBatch.Console.ReceivedMails.MailKit;
 using MailBatch.Console.ReceivedMails.Processing;
+using MailBatch.Console.ReceivedMails.State;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Serilog;

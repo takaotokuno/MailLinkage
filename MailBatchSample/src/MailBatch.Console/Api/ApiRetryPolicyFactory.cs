@@ -2,7 +2,7 @@ using MailBatch.Console.Options;
 using Polly;
 using Polly.Extensions.Http;
 
-namespace MailBatch.Console.DependencyInjection;
+namespace MailBatch.Console.Api;
 
 internal static class ApiRetryPolicyFactory
 {

@@ -2,6 +2,7 @@ using System.Threading.Channels;
 using MailBatch.Console.BatchProcessing;
 using MailBatch.Console.NotificationMails;
 using MailBatch.Console.ReceivedMails;
+using MailBatch.Console.ReceivedMails.State;
 using MailBatch.Console.ReceivedMails.Fetching;
 using MailBatch.Console.ReceivedMails.Processing;
 using Microsoft.Extensions.Logging;
