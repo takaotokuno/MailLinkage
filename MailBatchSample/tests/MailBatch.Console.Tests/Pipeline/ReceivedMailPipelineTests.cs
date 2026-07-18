@@ -3,6 +3,7 @@ using MailBatch.Console.BatchProcessing;
 using MailBatch.Console.Pipeline;
 using MailBatch.Console.ReceivedMails;
 using Microsoft.Extensions.Logging.Abstractions;
+using Xunit;
 
 namespace MailBatch.Console.Tests.Pipeline;
 
@@ -14,8 +15,14 @@ public sealed class ReceivedMailPipelineTests
         BoundedQueueFactory queueFactory = new(capacity: 1);
         InvalidOperationException consumerException = new("consumer failed");
         TestComponentFactory componentFactory = new(
-            writer => new BlockingProducer(writer),
-            _ => new FailingConsumer(consumerException));
+            writer =>
+            {
+                return new BlockingProducer(writer);
+            },
+            _ =>
+            {
+                return new FailingConsumer(consumerException);
+            });
         ReceivedMailPipeline pipeline = new(queueFactory, componentFactory, NullLogger<ReceivedMailPipeline>.Instance);
         ReceivedMailId[] targetMailIds = [new(1), new(2), new(3)];
 
@@ -23,7 +30,10 @@ public sealed class ReceivedMailPipelineTests
         Task completedTask = await Task.WhenAny(processTask, Task.Delay(TimeSpan.FromSeconds(2)));
 
         Assert.Same(processTask, completedTask);
-        InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(() => processTask);
+        InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        {
+            return processTask;
+        });
         Assert.Same(consumerException, exception);
     }
 
@@ -33,15 +43,24 @@ public sealed class ReceivedMailPipelineTests
         BoundedQueueFactory queueFactory = new(capacity: 1);
         InvalidOperationException producerException = new("producer failed");
         TestComponentFactory componentFactory = new(
-            _ => new FailingProducer(producerException),
-            reader => new WaitingConsumer(reader));
+            _ =>
+            {
+                return new FailingProducer(producerException);
+            },
+            reader =>
+            {
+                return new WaitingConsumer(reader);
+            });
         ReceivedMailPipeline pipeline = new(queueFactory, componentFactory, NullLogger<ReceivedMailPipeline>.Instance);
 
         Task<ProcessResult> processTask = pipeline.ProcessAsync([new ReceivedMailId(1)]);
         Task completedTask = await Task.WhenAny(processTask, Task.Delay(TimeSpan.FromSeconds(2)));
 
         Assert.Same(processTask, completedTask);
-        InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(() => processTask);
+        InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        {
+            return processTask;
+        });
         Assert.Same(producerException, exception);
     }
 
@@ -76,7 +95,7 @@ public sealed class ReceivedMailPipelineTests
                 await writer.WriteAsync(new MailLinkageRequest(mailId, $"key-{mailId.Value}", "message"), cancellationToken);
             }
 
-            writer.TryComplete();
+            _ = writer.TryComplete();
             return new ProcessResult(targetMailIds.Count, Succeeded: targetMailIds.Count);
         }
     }

@@ -4,9 +4,9 @@ using MailBatch.Console.BatchProcessing;
 using MailBatch.Console.Options;
 using MailBatch.Console.Pipeline;
 using MailBatch.Console.ReceivedMails;
-using MailBatch.Console.ReceivedMails.State;
 using MailBatch.Console.ReceivedMails.Processing;
 using MailBatch.Console.ReceivedMails.Searching;
+using MailBatch.Console.ReceivedMails.State;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 

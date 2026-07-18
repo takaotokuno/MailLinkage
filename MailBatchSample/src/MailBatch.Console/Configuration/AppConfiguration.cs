@@ -35,7 +35,7 @@ internal static class AppConfiguration
                     $"{AzureKeyVaultUriKey} is required outside the Development environment.");
             }
 
-            builder.AddAzureKeyVault(new Uri(vaultUri), new DefaultAzureCredential())
+            _ = builder.AddAzureKeyVault(new Uri(vaultUri), new DefaultAzureCredential())
                 .AddEnvironmentVariables(prefix: EnvironmentVariablePrefix)
                 .AddCommandLine(args);
         }

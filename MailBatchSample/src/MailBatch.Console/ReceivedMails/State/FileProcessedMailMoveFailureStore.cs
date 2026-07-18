@@ -1,6 +1,5 @@
 using System.Text.Json;
 using MailBatch.Console.Options;
-using MailBatch.Console.ReceivedMails;
 using Microsoft.Extensions.Logging;
 
 namespace MailBatch.Console.ReceivedMails.State;

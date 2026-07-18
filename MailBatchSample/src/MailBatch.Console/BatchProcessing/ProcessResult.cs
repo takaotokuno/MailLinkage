@@ -21,7 +21,13 @@ internal sealed record ProcessResult(int Total, int Succeeded = 0, int InvalidFo
 /// </summary>
 internal sealed record BatchRunResult(ProcessResult ProcessResult, FatalBatchError? FatalError = null)
 {
-    public bool HasFatalError => FatalError is not null;
+    public bool HasFatalError
+    {
+        get
+        {
+            return FatalError is not null;
+        }
+    }
 
     public int ConvertToExitCode() => HasFatalError ? 1 : ProcessResult.ConvertToExitCode();
 }

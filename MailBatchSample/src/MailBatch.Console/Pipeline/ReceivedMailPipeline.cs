@@ -63,14 +63,17 @@ internal sealed class ReceivedMailPipeline(
 
         if (firstCompletedTask.IsFaulted)
         {
-            writer.TryComplete(firstCompletedTask.Exception);
+            _ = writer.TryComplete(firstCompletedTask.Exception);
             await cancellationTokenSource.CancelAsync();
+
+            await ((Task)allTasks).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+            await firstCompletedTask;
         }
         else if (firstCompletedTask.IsCanceled)
         {
             await cancellationTokenSource.CancelAsync();
         }
 
-        await allTasks;
+        _ = await allTasks;
     }
 }

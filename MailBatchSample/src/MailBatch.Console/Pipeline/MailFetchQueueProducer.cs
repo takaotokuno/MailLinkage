@@ -2,9 +2,9 @@ using System.Threading.Channels;
 using MailBatch.Console.BatchProcessing;
 using MailBatch.Console.NotificationMails;
 using MailBatch.Console.ReceivedMails;
-using MailBatch.Console.ReceivedMails.State;
 using MailBatch.Console.ReceivedMails.Fetching;
 using MailBatch.Console.ReceivedMails.Processing;
+using MailBatch.Console.ReceivedMails.State;
 using Microsoft.Extensions.Logging;
 
 namespace MailBatch.Console.Pipeline;
@@ -50,7 +50,7 @@ internal sealed class MailFetchQueueProducer(
         }
         finally
         {
-            writer.TryComplete(fatalException);
+            _ = writer.TryComplete(fatalException);
             logger.LogInformation(
                 "Producer completed queue additions. Enqueued={Enqueued}, InvalidFormat={InvalidFormat}",
                 result.Succeeded,
