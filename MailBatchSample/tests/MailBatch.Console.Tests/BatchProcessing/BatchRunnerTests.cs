@@ -6,8 +6,8 @@ using MailBatch.Console.Options;
 using MailBatch.Console.Pipeline;
 using MailBatch.Console.ReceivedMails;
 using MailBatch.Console.ReceivedMails.Processing;
+using MailBatch.Console.ReceivedMails.Recovery;
 using MailBatch.Console.ReceivedMails.Searching;
-using MailBatch.Console.ReceivedMails.State;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
@@ -35,7 +35,7 @@ public sealed class BatchRunnerTests
             pipeline,
             notifier,
             session,
-            new FakeMoveFailureStore(),
+            new FakeMailMoveFailureRecoveryService(),
             new FakeJobExecutionLock(null));
 
         int exitCode = await runner.RunAsync();
@@ -70,7 +70,7 @@ public sealed class BatchRunnerTests
             new FakeReceivedMailPipeline(),
             notifier,
             new FakeReceivedMailSession(),
-            new FakeMoveFailureStore(),
+            new FakeMailMoveFailureRecoveryService(),
             new FakeJobExecutionLock(null));
 
         int exitCode = await runner.RunAsync();
@@ -99,7 +99,7 @@ public sealed class BatchRunnerTests
             new FakeReceivedMailPipeline(),
             notifier,
             session,
-            new FakeMoveFailureStore(),
+            new FakeMailMoveFailureRecoveryService(),
             new FakeJobExecutionLock(new JobExecutionLockHandle(new FakeLockRelease())));
 
         InvalidOperationException thrown = await Assert.ThrowsAsync<InvalidOperationException>(() =>
@@ -136,7 +136,7 @@ public sealed class BatchRunnerTests
             pipeline,
             notifier,
             new FakeReceivedMailSession(mailIds: [new ReceivedMailId(1, 1)]),
-            new FakeMoveFailureStore(),
+            new FakeMailMoveFailureRecoveryService(),
             new FakeJobExecutionLock(new JobExecutionLockHandle(new FakeLockRelease())));
 
         ApplicationException thrown = await Assert.ThrowsAsync<ApplicationException>(() =>
@@ -161,10 +161,8 @@ public sealed class BatchRunnerTests
         ReceivedMailId processedMailId = new(10, 999);
         ReceivedMailId errorMailId = new(11, 999);
         FakeRunStatusNotifier notifier = new();
-        FakeReceivedMailSession session = new();
-        FakeMoveFailureStore moveFailureStore = new();
-        moveFailureStore.Failures.Add(new MailMoveFailure(processedMailId, MailMoveFailureDestination.Processed));
-        moveFailureStore.Failures.Add(new MailMoveFailure(errorMailId, MailMoveFailureDestination.Error));
+        FakeReceivedMailSession session = new(mailIds: [processedMailId, errorMailId]);
+        FakeMailMoveFailureRecoveryService recoveryService = new(session.MarkRecoveryCompleted);
         BatchRunner runner = new(
             new ImapOptions(),
             new ApiOptions(),
@@ -175,15 +173,14 @@ public sealed class BatchRunnerTests
             new FakeReceivedMailPipeline(),
             notifier,
             session,
-            moveFailureStore,
+            recoveryService,
             new FakeJobExecutionLock(new JobExecutionLockHandle(new FakeLockRelease())));
 
         int exitCode = await runner.RunAsync();
 
         Assert.Equal(0, exitCode);
-        Assert.Equal(processedMailId, session.ProcessedMailIds.Single());
-        Assert.Equal(errorMailId, session.ErrorMailIds.Single());
-        Assert.Empty(moveFailureStore.Failures);
+        Assert.True(recoveryService.Recovered);
+        Assert.True(session.SearchedAfterRecovery);
     }
 
     private sealed class FakeLockRelease : IDisposable
@@ -226,6 +223,8 @@ public sealed class BatchRunnerTests
 
     private sealed class FakeReceivedMailSession(Exception? connectException = null, IReadOnlyList<ReceivedMailId>? mailIds = null) : IReceivedMailSession
     {
+        private bool recoveryCompleted;
+
         public bool Connected
         {
             get; private set;
@@ -244,7 +243,13 @@ public sealed class BatchRunnerTests
 
         public Task DisconnectAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
-        public Task<IReadOnlyList<ReceivedMailId>> SearchTargetMessagesAsync(MailSearchCondition condition, int maxMessages, CancellationToken cancellationToken = default) => Task.FromResult(mailIds ?? []);
+        public bool SearchedAfterRecovery { get; private set; }
+
+        public Task<IReadOnlyList<ReceivedMailId>> SearchTargetMessagesAsync(MailSearchCondition condition, int maxMessages, CancellationToken cancellationToken = default)
+        {
+            SearchedAfterRecovery = recoveryCompleted;
+            return Task.FromResult(mailIds ?? []);
+        }
 
         public Task<ReceivedMail> CreateRequestAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
@@ -264,45 +269,22 @@ public sealed class BatchRunnerTests
             return Task.CompletedTask;
         }
 
+        public void MarkRecoveryCompleted() => recoveryCompleted = true;
+
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
-    private sealed class FakeMoveFailureStore : IProcessedMailMoveFailureStore
+
+    private sealed class FakeMailMoveFailureRecoveryService(Action? onRecover = null) : IMailMoveFailureRecoveryService
     {
-        public List<MailMoveFailure> Failures { get; } = [];
+        public bool Recovered { get; private set; }
 
-        public Task<IReadOnlyList<MailMoveFailure>> GetAllAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<MailMoveFailure>>(Failures.ToArray());
-
-        public Task<bool> ContainsAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default) => Task.FromResult(Failures.Any(failure =>
+        public Task RecoverAsync(CancellationToken cancellationToken)
         {
-            return failure.MailId == mailId;
-        }));
-
-        public Task AddAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
-        {
-            Failures.Add(new MailMoveFailure(mailId, MailMoveFailureDestination.Processed));
-            return Task.CompletedTask;
-        }
-
-        public Task AddErrorMoveFailureAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
-        {
-            Failures.Add(new MailMoveFailure(mailId, MailMoveFailureDestination.Error));
-            return Task.CompletedTask;
-        }
-
-        public Task RemoveAsync(MailMoveFailure failure, CancellationToken cancellationToken = default)
-        {
-            _ = Failures.Remove(failure);
-            return Task.CompletedTask;
-        }
-
-        public Task RemoveAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
-        {
-            _ = Failures.RemoveAll(failure =>
-            {
-                return failure.MailId == mailId && failure.Destination == MailMoveFailureDestination.Processed;
-            });
+            Recovered = true;
+            onRecover?.Invoke();
             return Task.CompletedTask;
         }
     }
+
 
 }
