@@ -2,6 +2,9 @@ using MailKit;
 
 namespace MailBatch.Console.ReceivedMails.Folders;
 
+/// <summary>
+/// 受信・処理済み・エラー用のIMAPフォルダーを準備して提供します。
+/// </summary>
 internal interface IMailFolderProvider
 {
     IMailFolder? ReceiveFolder

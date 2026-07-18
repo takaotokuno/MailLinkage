@@ -5,6 +5,9 @@ using Microsoft.Extensions.Logging;
 
 namespace MailBatch.Console.ReceivedMails.State;
 
+/// <summary>
+/// メール移動失敗情報を永続化し、次回実行時の再処理に利用できるようにします。
+/// </summary>
 internal interface IProcessedMailMoveFailureStore
 {
     Task<IReadOnlyList<MailMoveFailure>> GetAllAsync(CancellationToken cancellationToken = default);
@@ -20,18 +23,28 @@ internal interface IProcessedMailMoveFailureStore
     Task RemoveAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// メール移動に失敗したメールIDと移動先を表します。
+/// </summary>
 internal readonly record struct MailMoveFailure(ReceivedMailId MailId, MailMoveFailureDestination Destination);
 
+/// <summary>
+/// メール移動失敗時に目標としていた移動先を表します。
+/// </summary>
 internal enum MailMoveFailureDestination
 {
     Processed,
     Error
 }
 
+/// <summary>
+/// メール移動失敗情報をJSONファイルへ保存します。
+/// </summary>
 internal sealed class FileProcessedMailMoveFailureStore(
     BatchOptions batchOptions,
     ILogger<FileProcessedMailMoveFailureStore> logger) : IProcessedMailMoveFailureStore
 {
+    // ファイルの読み書きを直列化し、同一プロセス内の並行更新で失敗記録が失われることを防ぎます。
     private readonly SemaphoreSlim _semaphore = new(1, 1);
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {
@@ -144,6 +157,7 @@ internal sealed class FileProcessedMailMoveFailureStore(
 
         foreach (JsonElement element in document.RootElement.EnumerateArray())
         {
+            // 旧形式の失敗記録も読み込めるようにし、バージョンアップ直後に再移動対象が欠落することを防ぎます。
             if (element.ValueKind == JsonValueKind.Number && element.TryGetUInt32(out uint legacyUid))
             {
                 _ = records.Add(MailMoveFailureRecord.Processed(new ReceivedMailId(legacyUid, 0)));
@@ -195,6 +209,7 @@ internal sealed class FileProcessedMailMoveFailureStore(
         string temporaryPath = storePath + ".tmp";
         MailMoveFailureRecord[] sortedRecords = [.. records.OrderBy(record => { return record.MailId.UidValidity; }).ThenBy(record => { return record.MailId.Uid; }).ThenBy(record => { return record.Destination; })];
 
+        // 一時ファイルへ書き切ってから差し替え、保存途中の異常終了で本体ファイルが壊れるリスクを下げます。
         await using (FileStream stream = File.Create(temporaryPath))
         {
             await JsonSerializer.SerializeAsync(stream, sortedRecords, SerializerOptions, cancellationToken);

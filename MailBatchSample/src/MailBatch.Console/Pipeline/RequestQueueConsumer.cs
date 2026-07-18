@@ -9,11 +9,17 @@ using Microsoft.Extensions.Logging;
 
 namespace MailBatch.Console.Pipeline;
 
+/// <summary>
+/// キューからAPI連携リクエストを取り出して処理します。
+/// </summary>
 internal interface IRequestQueueConsumer
 {
     Task<ProcessResult> ConsumeAsync(CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// API連携リクエストを送信し、結果に応じてメールを移動します。
+/// </summary>
 internal sealed class RequestQueueConsumer(
     ApiOptions apiOptions,
     IReceivedMailSession receivedMailSession,

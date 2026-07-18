@@ -5,6 +5,9 @@ using Microsoft.Extensions.Logging;
 
 namespace MailBatch.Console.ReceivedMails.Folders;
 
+/// <summary>
+/// 設定に基づいてIMAPフォルダーを取得または作成し、処理中のフォルダー参照を保持します。
+/// </summary>
 internal sealed class MailFolderProvider(
     ImapOptions imapOptions,
     ProcessingOptions processingOptions,
@@ -29,6 +32,7 @@ internal sealed class MailFolderProvider(
     public async Task PrepareFoldersAsync(
         CancellationToken cancellationToken = default)
     {
+        // 必要なメールボックスを起動時に準備し、処理中に移動先不足でメール状態が中途半端になることを防ぎます。
         ReceiveFolder = await GetOrCreateReceiveFolderAsync(cancellationToken);
 
         _ = await ReceiveFolder.OpenAsync(FolderAccess.ReadWrite, cancellationToken);

@@ -1,5 +1,8 @@
 namespace MailBatch.Console.NotificationMails;
 
+/// <summary>
+/// 通知メール送信の操作を提供します。
+/// </summary>
 internal interface IMailNotifier
 {
     /// <summary>

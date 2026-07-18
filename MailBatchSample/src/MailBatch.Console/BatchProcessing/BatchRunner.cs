@@ -9,6 +9,9 @@ using Microsoft.Extensions.Logging;
 
 namespace MailBatch.Console.BatchProcessing;
 
+/// <summary>
+/// メール検索から処理結果通知までのバッチ全体を実行します。
+/// </summary>
 internal sealed class BatchRunner(
     ImapOptions imapOptions,
     ApiOptions apiOptions,

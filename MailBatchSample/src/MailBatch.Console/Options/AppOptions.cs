@@ -1,5 +1,8 @@
 namespace MailBatch.Console.Options;
 
+/// <summary>
+/// アプリケーション全体の設定を保持します。
+/// </summary>
 internal sealed class AppOptions
 {
     public BatchOptions Batch { get; init; } = new();

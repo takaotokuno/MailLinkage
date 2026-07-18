@@ -15,6 +15,9 @@ using Serilog;
 
 namespace MailBatch.Console.DependencyInjection;
 
+/// <summary>
+/// MailBatch.Consoleで使用する依存関係を登録します。
+/// </summary>
 internal static class BatchServiceCollectionExtensions
 {
     public static IServiceCollection AddBatchApplication(

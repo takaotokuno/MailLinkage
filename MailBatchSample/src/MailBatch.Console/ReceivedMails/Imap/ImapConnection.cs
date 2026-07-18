@@ -4,6 +4,9 @@ using Microsoft.Extensions.Logging;
 
 namespace MailBatch.Console.ReceivedMails.Imap;
 
+/// <summary>
+/// MailKitのIMAPクライアントを生成し、接続・認証・切断を行います。
+/// </summary>
 internal sealed class ImapConnection(
     ImapOptions imapOptions,
     ILogger<ImapConnection> logger) : IImapConnection

@@ -2,6 +2,9 @@ using MailKit.Net.Imap;
 
 namespace MailBatch.Console.ReceivedMails.Imap;
 
+/// <summary>
+/// IMAPサーバーとの接続ライフサイクルを管理します。
+/// </summary>
 internal interface IImapConnection : IAsyncDisposable
 {
     ImapClient Client

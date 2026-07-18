@@ -2,6 +2,9 @@ using System.Text.RegularExpressions;
 
 namespace MailBatch.Console.Api;
 
+/// <summary>
+/// API応答本文をログ出力向けに要約します。
+/// </summary>
 internal static class ApiResponseSummary
 {
     /// <summary>

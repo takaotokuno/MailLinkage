@@ -5,11 +5,17 @@ using Microsoft.Extensions.Logging;
 
 namespace MailBatch.Console.Pipeline;
 
+/// <summary>
+/// 対象メールの読取からAPI連携までの一連の処理を実行します。
+/// </summary>
 internal interface IReceivedMailPipeline
 {
     Task<ProcessResult> ProcessAsync(IReadOnlyList<ReceivedMailId> targetMailIds, CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// 受信メール処理をキュー経由で並行実行します。
+/// </summary>
 internal sealed class ReceivedMailPipeline(
     IReceivedMailQueueFactory queueFactory,
     IReceivedMailPipelineComponentFactory componentFactory,
@@ -26,6 +32,8 @@ internal sealed class ReceivedMailPipeline(
         IMailFetchQueueProducer producer = componentFactory.CreateProducer(queue.Writer);
         IRequestQueueConsumer consumer = componentFactory.CreateConsumer(queue.Reader);
 
+        // Producer/Consumerのどちらかで致命的な失敗が起きた場合に片側だけが待ち続けないよう、
+        // 共有トークンでパイプライン全体を停止できるようにします。
         using CancellationTokenSource linkedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         CancellationToken pipelineCancellationToken = linkedCancellationTokenSource.Token;
 
@@ -58,6 +66,7 @@ internal sealed class ReceivedMailPipeline(
         ChannelWriter<MailLinkageRequest> writer,
         CancellationTokenSource cancellationTokenSource)
     {
+        // 先に失敗したタスクを検知してキューを閉じることで、未処理データの増加やConsumerの永久待機を防ぎます。
         Task<ProcessResult[]> allTasks = Task.WhenAll(producerTask, consumerTask);
         Task firstCompletedTask = await Task.WhenAny(allTasks, producerTask, consumerTask);
 

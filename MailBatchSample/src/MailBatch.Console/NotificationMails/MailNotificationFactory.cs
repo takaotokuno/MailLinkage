@@ -4,6 +4,9 @@ using MailBatch.Console.ReceivedMails;
 
 namespace MailBatch.Console.NotificationMails;
 
+/// <summary>
+/// 通知メールの件名・本文をテンプレートから組み立てます。
+/// </summary>
 internal sealed class MailNotificationFactory(MailNotificationOptions notificationOptions, BatchRunContext runContext)
 {
     /// <summary>

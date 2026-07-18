@@ -9,6 +9,9 @@ using Microsoft.Extensions.Logging;
 
 namespace MailBatch.Console.Pipeline;
 
+/// <summary>
+/// パイプライン内で使用するProducer/Consumerをキューに合わせて生成します。
+/// </summary>
 internal interface IReceivedMailPipelineComponentFactory
 {
     IMailFetchQueueProducer CreateProducer(ChannelWriter<MailLinkageRequest> writer);
@@ -16,6 +19,9 @@ internal interface IReceivedMailPipelineComponentFactory
     IRequestQueueConsumer CreateConsumer(ChannelReader<MailLinkageRequest> reader);
 }
 
+/// <summary>
+/// パイプライン部品の生成を担当します。
+/// </summary>
 internal sealed class ReceivedMailPipelineComponentFactory(
     ApiOptions apiOptions,
     IReceivedMailSession receivedMailSession,
