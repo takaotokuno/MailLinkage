@@ -1,0 +1,101 @@
+using System.Threading.Channels;
+using MailBatch.Console.Api;
+using MailBatch.Console.BatchProcessing;
+using MailBatch.Console.Options;
+using MailBatch.Console.Pipeline;
+using MailBatch.Console.ReceivedMails;
+using MailBatch.Console.ReceivedMails.Processing;
+using MailBatch.Console.ReceivedMails.Searching;
+using Microsoft.Extensions.Logging.Abstractions;
+using Xunit;
+
+namespace MailBatch.Console.Tests.Pipeline;
+
+public sealed class RequestQueueConsumerTests
+{
+    [Fact]
+    public async Task ConsumeAsync_WhenApiReturnsFailure_MovesMailToErrorMailboxAndCountsFailure()
+    {
+        MailLinkageRequest request = new(new ReceivedMailId(1), "key", "message");
+        ChannelReader<MailLinkageRequest> reader = CreateCompletedReader(request);
+        FakeReceivedMailSession session = new();
+        FakeApiClient apiClient = new(new ApiPostResult(false, 500, "server error"));
+        RequestQueueConsumer consumer = new(
+            new ApiOptions { Endpoint = "/api/received-mails" },
+            session,
+            apiClient,
+            reader,
+            NullLogger<MailLinkageRequest>.Instance);
+
+        ProcessResult result = await consumer.ConsumeAsync();
+
+        Assert.Equal(1, result.Failed);
+        Assert.Equal(0, result.Succeeded);
+        Assert.Equal(request.MailId, session.ErrorMailIds.Single());
+        Assert.Empty(session.ProcessedMailIds);
+    }
+
+    [Fact]
+    public async Task ConsumeAsync_WhenApiReturnsSuccess_MovesMailToProcessedMailboxAndCountsSuccess()
+    {
+        MailLinkageRequest request = new(new ReceivedMailId(2), "key", "message");
+        ChannelReader<MailLinkageRequest> reader = CreateCompletedReader(request);
+        FakeReceivedMailSession session = new();
+        FakeApiClient apiClient = new(new ApiPostResult(true, 201, "{\"id\":1}"));
+        RequestQueueConsumer consumer = new(
+            new ApiOptions { Endpoint = "/api/received-mails" },
+            session,
+            apiClient,
+            reader,
+            NullLogger<MailLinkageRequest>.Instance);
+
+        ProcessResult result = await consumer.ConsumeAsync();
+
+        Assert.Equal(0, result.Failed);
+        Assert.Equal(1, result.Succeeded);
+        Assert.Equal(request.MailId, session.ProcessedMailIds.Single());
+        Assert.Empty(session.ErrorMailIds);
+    }
+
+    private static ChannelReader<MailLinkageRequest> CreateCompletedReader(MailLinkageRequest request)
+    {
+        Channel<MailLinkageRequest> channel = Channel.CreateUnbounded<MailLinkageRequest>();
+        Assert.True(channel.Writer.TryWrite(request));
+        channel.Writer.Complete();
+        return channel.Reader;
+    }
+
+    private sealed class FakeApiClient(ApiPostResult result) : IApiClient
+    {
+        public Task<ApiPostResult> PostReceivedMailAsync(ApiRequest request, CancellationToken cancellationToken = default) => Task.FromResult(result);
+    }
+
+    private sealed class FakeReceivedMailSession : IReceivedMailSession
+    {
+        public List<ReceivedMailId> ProcessedMailIds { get; } = [];
+
+        public List<ReceivedMailId> ErrorMailIds { get; } = [];
+
+        public Task ConnectAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public Task DisconnectAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public Task<IReadOnlyList<ReceivedMailId>> SearchTargetMessagesAsync(MailSearchCondition condition, int maxMessages, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<ReceivedMailId>>([]);
+
+        public Task<ReceivedMail> CreateRequestAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task MoveToProcessedMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
+        {
+            ProcessedMailIds.Add(mailId);
+            return Task.CompletedTask;
+        }
+
+        public Task MoveToErrorMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
+        {
+            ErrorMailIds.Add(mailId);
+            return Task.CompletedTask;
+        }
+
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+    }
+}

@@ -40,6 +40,7 @@ internal sealed class RequestQueueConsumer(
                 }
                 else
                 {
+                    await MoveToErrorMailboxAsync(request.MailId, cancellationToken);
                     result.IncrementFailure();
                 }
             }
@@ -61,7 +62,7 @@ internal sealed class RequestQueueConsumer(
         try
         {
             ApiRequest apiRequest = new(request.Message);
-            _ = await PostMessageAsync(apiRequest, cancellationToken);
+            return await PostMessageAsync(apiRequest, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -72,7 +73,6 @@ internal sealed class RequestQueueConsumer(
 
             return false;
         }
-        return true;
     }
 
     /// <summary>
@@ -124,4 +124,9 @@ internal sealed class RequestQueueConsumer(
     /// 処理済みメールを設定されたメールボックスへ移動します。
     /// </summary>
     private async Task MoveToProcessedMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken) => await receivedMailSession.MoveToProcessedMailboxAsync(mailId, cancellationToken);
+
+    /// <summary>
+    /// API連携に失敗したメールを設定されたエラーメールボックスへ移動します。
+    /// </summary>
+    private async Task MoveToErrorMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken) => await receivedMailSession.MoveToErrorMailboxAsync(mailId, cancellationToken);
 }

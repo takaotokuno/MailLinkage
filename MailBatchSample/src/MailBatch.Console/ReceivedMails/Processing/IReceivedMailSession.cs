@@ -31,4 +31,9 @@ internal interface IReceivedMailSession : IAsyncDisposable
     /// 処理済みメールを設定されたメールボックスへ移動します。
     /// </summary>
     Task MoveToProcessedMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// API連携に失敗したメールを設定されたエラーメールボックスへ移動します。
+    /// </summary>
+    Task MoveToErrorMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default);
 }

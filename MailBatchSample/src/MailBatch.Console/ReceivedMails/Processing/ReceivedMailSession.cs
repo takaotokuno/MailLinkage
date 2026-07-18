@@ -118,6 +118,22 @@ internal sealed class ReceivedMailSession(
         }
     }
 
+    /// <summary>
+    /// API連携に失敗したメールを設定されたエラーメールボックスへ移動します。
+    /// </summary>
+    public async Task MoveToErrorMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
+    {
+        await imapLock.WaitAsync(cancellationToken);
+        try
+        {
+            await processedMailMover.MoveToErrorMailboxAsync(mailId, cancellationToken);
+        }
+        finally
+        {
+            _ = imapLock.Release();
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
         await DisconnectAsync();

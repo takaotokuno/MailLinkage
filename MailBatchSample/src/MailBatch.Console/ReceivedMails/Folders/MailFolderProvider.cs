@@ -21,6 +21,11 @@ internal sealed class MailFolderProvider(
         get; private set;
     }
 
+    public IMailFolder? ErrorFolder
+    {
+        get; private set;
+    }
+
     public async Task PrepareFoldersAsync(
         CancellationToken cancellationToken = default)
     {
@@ -28,12 +33,20 @@ internal sealed class MailFolderProvider(
 
         _ = await ReceiveFolder.OpenAsync(FolderAccess.ReadWrite, cancellationToken);
 
-        ProcessedFolder = await GetOrCreateProcessedSubfolderAsync(ReceiveFolder, cancellationToken);
+        ProcessedFolder = await GetOrCreateConfiguredSubfolderAsync(
+            ReceiveFolder,
+            processingOptions.ProcessedMailbox,
+            cancellationToken);
+        ErrorFolder = await GetOrCreateConfiguredSubfolderAsync(
+            ReceiveFolder,
+            processingOptions.ErrorMailbox,
+            cancellationToken);
 
         logger.LogInformation(
-            "Prepared IMAP folders. Mailbox={Mailbox}, ProcessedMailbox={ProcessedMailbox}",
+            "Prepared IMAP folders. Mailbox={Mailbox}, ProcessedMailbox={ProcessedMailbox}, ErrorMailbox={ErrorMailbox}",
             imapOptions.Mailbox,
-            processingOptions.ProcessedMailbox);
+            processingOptions.ProcessedMailbox,
+            processingOptions.ErrorMailbox);
     }
 
     public IMailFolder GetOpenedReceiveFolder()
@@ -51,18 +64,36 @@ internal sealed class MailFolderProvider(
         {
             IMailFolder receiveFolder = GetOpenedReceiveFolder();
 
-            ProcessedFolder = await GetOrCreateProcessedSubfolderAsync(
+            ProcessedFolder = await GetOrCreateConfiguredSubfolderAsync(
                 receiveFolder,
+                processingOptions.ProcessedMailbox,
                 cancellationToken);
         }
 
         return ProcessedFolder;
     }
 
+    public async Task<IMailFolder> GetOrCreateErrorFolderAsync(
+        CancellationToken cancellationToken = default)
+    {
+        if (ErrorFolder is null)
+        {
+            IMailFolder receiveFolder = GetOpenedReceiveFolder();
+
+            ErrorFolder = await GetOrCreateConfiguredSubfolderAsync(
+                receiveFolder,
+                processingOptions.ErrorMailbox,
+                cancellationToken);
+        }
+
+        return ErrorFolder;
+    }
+
     public void Clear()
     {
         ReceiveFolder = null;
         ProcessedFolder = null;
+        ErrorFolder = null;
     }
 
     private async Task<IMailFolder> GetOrCreateReceiveFolderAsync(
@@ -84,12 +115,11 @@ internal sealed class MailFolderProvider(
         }
     }
 
-    private async Task<IMailFolder> GetOrCreateProcessedSubfolderAsync(
+    private static async Task<IMailFolder> GetOrCreateConfiguredSubfolderAsync(
         IMailFolder receiveFolder,
+        string folderName,
         CancellationToken cancellationToken)
     {
-        string folderName = processingOptions.ProcessedMailbox;
-
         try
         {
             return await receiveFolder.GetSubfolderAsync(
