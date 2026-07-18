@@ -7,13 +7,25 @@ namespace MailBatch.Console.ReceivedMails.State;
 
 internal interface IProcessedMailMoveFailureStore
 {
+    Task<IReadOnlyList<MailMoveFailure>> GetAllAsync(CancellationToken cancellationToken = default);
+
     Task<bool> ContainsAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default);
 
     Task AddAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default);
 
     Task AddErrorMoveFailureAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default);
 
+    Task RemoveAsync(MailMoveFailure failure, CancellationToken cancellationToken = default);
+
     Task RemoveAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default);
+}
+
+internal readonly record struct MailMoveFailure(ReceivedMailId MailId, MailMoveFailureDestination Destination);
+
+internal enum MailMoveFailureDestination
+{
+    Processed,
+    Error
 }
 
 internal sealed class FileProcessedMailMoveFailureStore(
@@ -37,13 +49,27 @@ internal sealed class FileProcessedMailMoveFailureStore(
         }
     }
 
+    public async Task<IReadOnlyList<MailMoveFailure>> GetAllAsync(CancellationToken cancellationToken = default)
+    {
+        await _semaphore.WaitAsync(cancellationToken);
+        try
+        {
+            HashSet<MailMoveFailureRecord> records = await LoadAsync(cancellationToken);
+            return [.. records.Select(record => new MailMoveFailure(record.MailId, record.Destination))];
+        }
+        finally
+        {
+            _ = _semaphore.Release();
+        }
+    }
+
     public async Task<bool> ContainsAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
     {
         await _semaphore.WaitAsync(cancellationToken);
         try
         {
             HashSet<MailMoveFailureRecord> records = await LoadAsync(cancellationToken);
-            return records.Contains(MailMoveFailureRecord.Processed(mailId));
+            return records.Any(record => record.MailId == mailId);
         }
         finally
         {
@@ -79,16 +105,26 @@ internal sealed class FileProcessedMailMoveFailureStore(
         }
     }
 
+    public async Task RemoveAsync(MailMoveFailure failure, CancellationToken cancellationToken = default)
+    {
+        await RemoveAsync(new MailMoveFailureRecord(failure.MailId, failure.Destination), cancellationToken);
+    }
+
     public async Task RemoveAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
+    {
+        await RemoveAsync(MailMoveFailureRecord.Processed(mailId), cancellationToken);
+    }
+
+    private async Task RemoveAsync(MailMoveFailureRecord record, CancellationToken cancellationToken)
     {
         await _semaphore.WaitAsync(cancellationToken);
         try
         {
             HashSet<MailMoveFailureRecord> records = await LoadAsync(cancellationToken);
-            if (records.Remove(MailMoveFailureRecord.Processed(mailId)))
+            if (records.Remove(record))
             {
                 await SaveAsync(records, cancellationToken);
-                logger.LogInformation("Cleared processed mailbox move failure record. MailId={MailId}", mailId);
+                logger.LogInformation("Cleared mailbox move failure record. MailId={MailId}, Destination={Destination}", record.MailId, record.Destination);
             }
         }
         finally
@@ -136,13 +172,20 @@ internal sealed class FileProcessedMailMoveFailureStore(
     private static bool TryGetDestination(JsonElement element, out MailMoveFailureDestination destination)
     {
         destination = MailMoveFailureDestination.Processed;
-        return !element.TryGetProperty(nameof(MailMoveFailureRecord.Destination), out JsonElement destinationElement)
-            || destinationElement.ValueKind != JsonValueKind.String
-            ? destinationElement.ValueKind == JsonValueKind.Number
-                && destinationElement.TryGetInt32(out int rawDestination)
-                && Enum.IsDefined(typeof(MailMoveFailureDestination), rawDestination)
-                && TryConvertDestination(rawDestination, out destination)
-            : Enum.TryParse(destinationElement.GetString(), ignoreCase: true, out destination);
+        if (!element.TryGetProperty(nameof(MailMoveFailureRecord.Destination), out JsonElement destinationElement))
+        {
+            return false;
+        }
+
+        if (destinationElement.ValueKind == JsonValueKind.String)
+        {
+            return Enum.TryParse(destinationElement.GetString(), ignoreCase: true, out destination);
+        }
+
+        return destinationElement.ValueKind == JsonValueKind.Number
+            && destinationElement.TryGetInt32(out int rawDestination)
+            && Enum.IsDefined(typeof(MailMoveFailureDestination), rawDestination)
+            && TryConvertDestination(rawDestination, out destination);
     }
 
     private static bool TryConvertDestination(int rawDestination, out MailMoveFailureDestination destination)
@@ -189,9 +232,4 @@ internal sealed class FileProcessedMailMoveFailureStore(
         public static MailMoveFailureRecord Error(ReceivedMailId mailId) => new(mailId, MailMoveFailureDestination.Error);
     }
 
-    private enum MailMoveFailureDestination
-    {
-        Processed,
-        Error
-    }
 }

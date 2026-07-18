@@ -4,6 +4,7 @@ using MailBatch.Console.Pipeline;
 using MailBatch.Console.ReceivedMails;
 using MailBatch.Console.ReceivedMails.Processing;
 using MailBatch.Console.ReceivedMails.Searching;
+using MailBatch.Console.ReceivedMails.State;
 using Microsoft.Extensions.Logging;
 
 namespace MailBatch.Console.BatchProcessing;
@@ -18,6 +19,7 @@ internal sealed class BatchRunner(
     IReceivedMailPipeline receivedMailPipeline,
     IRunStatusNotifier runStatusNotifier,
     IReceivedMailSession receivedMailSession,
+    IProcessedMailMoveFailureStore moveFailureStore,
     IJobExecutionLock jobExecutionLock)
 {
     /// <summary>
@@ -55,6 +57,8 @@ internal sealed class BatchRunner(
             {
                 await receivedMailSession.ConnectAsync(cancellationToken);
                 fatalErrorStage = "Processing";
+
+                await RecoverMailboxMoveFailuresAsync(cancellationToken);
 
                 ProcessResult processResult = await RunUseCaseAsync(cancellationToken);
                 runResult = new BatchRunResult(processResult);
@@ -95,6 +99,43 @@ internal sealed class BatchRunner(
                 Code: exception.GetType().Name,
                 Message: exception.Message,
                 Stage: stage));
+    }
+
+    private async Task RecoverMailboxMoveFailuresAsync(CancellationToken cancellationToken)
+    {
+        IReadOnlyList<MailMoveFailure> failures = await moveFailureStore.GetAllAsync(cancellationToken);
+        foreach (MailMoveFailure failure in failures)
+        {
+            try
+            {
+                if (failure.Destination == MailMoveFailureDestination.Processed)
+                {
+                    await receivedMailSession.MoveToProcessedMailboxAsync(failure.MailId, cancellationToken);
+                }
+                else
+                {
+                    await receivedMailSession.MoveToErrorMailboxAsync(failure.MailId, cancellationToken);
+                }
+
+                await moveFailureStore.RemoveAsync(failure, cancellationToken);
+                logger.LogInformation(
+                    "Recovered mailbox move failure. MailId={MailId}, Destination={Destination}",
+                    failure.MailId,
+                    failure.Destination);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(
+                    ex,
+                    "Failed to recover mailbox move failure. MailId={MailId}, Destination={Destination}",
+                    failure.MailId,
+                    failure.Destination);
+            }
+        }
     }
 
     private async Task<ProcessResult> RunUseCaseAsync(CancellationToken cancellationToken)
