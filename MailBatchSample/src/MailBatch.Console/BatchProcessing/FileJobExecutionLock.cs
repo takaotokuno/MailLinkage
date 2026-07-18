@@ -27,7 +27,7 @@ internal sealed class FileJobExecutionLock(BatchOptions batchOptions, BatchRunCo
             using StreamWriter writer = new(lockFileStream, leaveOpen: true);
             writer.WriteLine($"RunId={runContext.RunId}");
             writer.WriteLine($"ProcessId={Environment.ProcessId}");
-            writer.WriteLine($"StartedAt={DateTimeOffset.Now:O}");
+            writer.WriteLine($"StartedAt={DateTimeOffset.UtcNow:O}");
             writer.Flush();
             lockFileStream.Flush();
             lockFileStream.Position = 0;

@@ -69,7 +69,7 @@ internal sealed class BatchRunner(
 
     private async Task<ProcessResult> RunUseCaseAsync(CancellationToken cancellationToken)
     {
-        MailSearchCondition condition = MailSearchCondition.FromOptions(mailSearchOptions, DateTime.Now);
+        MailSearchCondition condition = MailSearchCondition.FromOptions(mailSearchOptions, DateTime.UtcNow);
         IReadOnlyList<ReceivedMailId> targetMailIds = await receivedMailSession.SearchTargetMessagesAsync(
             condition,
             mailSearchOptions.MaxMessages,

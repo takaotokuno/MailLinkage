@@ -12,8 +12,9 @@ internal sealed record MailSearchCondition(
 {
     public static MailSearchCondition FromOptions(MailSearchOptions options, DateTime utcNow)
     {
+        DateTime utcDate = utcNow.ToUniversalTime().Date;
         DateTime? deliveredAfter = options.SinceDays is > 0
-            ? utcNow.Date.AddDays(-options.SinceDays.Value)
+            ? utcDate.AddDays(-options.SinceDays.Value)
             : null;
 
         return new MailSearchCondition(
