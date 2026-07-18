@@ -48,7 +48,7 @@ internal sealed class RequestQueueConsumer(
                 }
                 else
                 {
-                    await MoveToErrorMailboxAsync(request.MailId, cancellationToken);
+                    await TryMoveToErrorMailboxAsync(request.MailId, cancellationToken);
                     result.IncrementApiFailure();
                 }
             }
@@ -156,6 +156,29 @@ internal sealed class RequestQueueConsumer(
                 mailId);
 
             return false;
+        }
+    }
+
+    /// <summary>
+    /// API送信失敗後、エラーメールボックスへ移動します。移動失敗時は再処理抑止用に記録します。
+    /// </summary>
+    private async Task TryMoveToErrorMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await MoveToErrorMailboxAsync(mailId, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            await moveFailureStore.AddErrorMoveFailureAsync(mailId, cancellationToken);
+            logger.LogError(
+                ex,
+                "API post failed and moving mail to error mailbox failed. MailId={MailId}",
+                mailId);
         }
     }
 
