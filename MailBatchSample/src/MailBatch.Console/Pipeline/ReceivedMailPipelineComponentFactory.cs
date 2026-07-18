@@ -22,7 +22,8 @@ internal sealed class ReceivedMailPipelineComponentFactory(
     IMailNotifier mailNotifier,
     MailNotificationFactory mailNotificationFactory,
     ILogger<MailFetchQueueProducer> producerLogger,
-    ILogger<MailLinkageRequest> consumerLogger) : IReceivedMailPipelineComponentFactory
+    ILogger<MailLinkageRequest> consumerLogger,
+    IProcessedMailMoveFailureStore moveFailureStore) : IReceivedMailPipelineComponentFactory
 {
     public IMailFetchQueueProducer CreateProducer(ChannelWriter<MailLinkageRequest> writer)
     {
@@ -31,6 +32,7 @@ internal sealed class ReceivedMailPipelineComponentFactory(
             writer,
             mailNotifier,
             mailNotificationFactory,
+            moveFailureStore,
             producerLogger);
     }
 
@@ -41,6 +43,7 @@ internal sealed class ReceivedMailPipelineComponentFactory(
             receivedMailSession,
             apiClient,
             reader,
+            moveFailureStore,
             consumerLogger);
     }
 }

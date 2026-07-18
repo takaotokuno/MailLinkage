@@ -20,11 +20,13 @@ public sealed class RequestQueueConsumerTests
         ChannelReader<MailLinkageRequest> reader = CreateCompletedReader(request);
         FakeReceivedMailSession session = new();
         FakeApiClient apiClient = new(new ApiPostResult(false, 500, "server error"));
+        FakeMoveFailureStore moveFailureStore = new();
         RequestQueueConsumer consumer = new(
             new ApiOptions { Endpoint = "/api/received-mails" },
             session,
             apiClient,
             reader,
+            moveFailureStore,
             NullLogger<MailLinkageRequest>.Instance);
 
         ProcessResult result = await consumer.ConsumeAsync();
@@ -42,11 +44,13 @@ public sealed class RequestQueueConsumerTests
         ChannelReader<MailLinkageRequest> reader = CreateCompletedReader(request);
         FakeReceivedMailSession session = new();
         FakeApiClient apiClient = new(new ApiPostResult(true, 201, "{\"id\":1}"));
+        FakeMoveFailureStore moveFailureStore = new();
         RequestQueueConsumer consumer = new(
             new ApiOptions { Endpoint = "/api/received-mails" },
             session,
             apiClient,
             reader,
+            moveFailureStore,
             NullLogger<MailLinkageRequest>.Instance);
 
         ProcessResult result = await consumer.ConsumeAsync();
@@ -55,6 +59,30 @@ public sealed class RequestQueueConsumerTests
         Assert.Equal(1, result.Succeeded);
         Assert.Equal(request.MailId, session.ProcessedMailIds.Single());
         Assert.Empty(session.ErrorMailIds);
+    }
+
+
+    [Fact]
+    public async Task ConsumeAsync_WhenProcessedMoveFailsAfterApiSuccess_RecordsFailureAndCountsApiFailure()
+    {
+        MailLinkageRequest request = new(new ReceivedMailId(3), "key", "message");
+        ChannelReader<MailLinkageRequest> reader = CreateCompletedReader(request);
+        FakeReceivedMailSession session = new() { ThrowOnMoveToProcessed = true };
+        FakeApiClient apiClient = new(new ApiPostResult(true, 201, "{\"id\":1}"));
+        FakeMoveFailureStore moveFailureStore = new();
+        RequestQueueConsumer consumer = new(
+            new ApiOptions { Endpoint = "/api/received-mails" },
+            session,
+            apiClient,
+            reader,
+            moveFailureStore,
+            NullLogger<MailLinkageRequest>.Instance);
+
+        ProcessResult result = await consumer.ConsumeAsync();
+
+        Assert.Equal(1, result.ApiFailed);
+        Assert.Equal(0, result.Succeeded);
+        Assert.Contains(request.MailId, moveFailureStore.MailIds);
     }
 
     private static ChannelReader<MailLinkageRequest> CreateCompletedReader(MailLinkageRequest request)
@@ -76,6 +104,8 @@ public sealed class RequestQueueConsumerTests
 
         public List<ReceivedMailId> ErrorMailIds { get; } = [];
 
+        public bool ThrowOnMoveToProcessed { get; init; }
+
         public Task ConnectAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
         public Task DisconnectAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
@@ -86,6 +116,11 @@ public sealed class RequestQueueConsumerTests
 
         public Task MoveToProcessedMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
         {
+            if (ThrowOnMoveToProcessed)
+            {
+                throw new InvalidOperationException("move failed");
+            }
+
             ProcessedMailIds.Add(mailId);
             return Task.CompletedTask;
         }
@@ -97,5 +132,28 @@ public sealed class RequestQueueConsumerTests
         }
 
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+    }
+
+    private sealed class FakeMoveFailureStore : IProcessedMailMoveFailureStore
+    {
+        public List<ReceivedMailId> MailIds { get; } = [];
+
+        public Task<bool> ContainsAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default) => Task.FromResult(MailIds.Contains(mailId));
+
+        public Task AddAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
+        {
+            if (!MailIds.Contains(mailId))
+            {
+                MailIds.Add(mailId);
+            }
+
+            return Task.CompletedTask;
+        }
+
+        public Task RemoveAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
+        {
+            _ = MailIds.Remove(mailId);
+            return Task.CompletedTask;
+        }
     }
 }

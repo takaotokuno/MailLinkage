@@ -18,6 +18,7 @@ internal sealed class RequestQueueConsumer(
     IReceivedMailSession receivedMailSession,
     IApiClient receivedMailApiClient,
     ChannelReader<MailLinkageRequest> reader,
+    IProcessedMailMoveFailureStore moveFailureStore,
     ILogger<MailLinkageRequest> logger) : IRequestQueueConsumer
 {
     /// <summary>
@@ -35,8 +36,14 @@ internal sealed class RequestQueueConsumer(
                 bool succeeded = await PostAndHandleResultAsync(request, cancellationToken);
                 if (succeeded)
                 {
-                    await MoveToProcessedMailboxAsync(request.MailId, cancellationToken);
-                    result.IncrementSuccess();
+                    if (await TryMoveToProcessedMailboxAsync(request.MailId, cancellationToken))
+                    {
+                        result.IncrementSuccess();
+                    }
+                    else
+                    {
+                        result.IncrementApiFailure();
+                    }
                 }
                 else
                 {
@@ -63,6 +70,10 @@ internal sealed class RequestQueueConsumer(
         {
             ApiRequest apiRequest = new(request.Message);
             return await PostMessageAsync(apiRequest, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -118,6 +129,33 @@ internal sealed class RequestQueueConsumer(
             "API post failed. StatusCode={StatusCode}, Response={ResponseSummary}",
             statusCode,
             ApiResponseSummary.Summarize(responseBody));
+    }
+
+    /// <summary>
+    /// API送信成功後、処理済みメールボックスへ移動します。移動失敗時は再送防止用に記録します。
+    /// </summary>
+    private async Task<bool> TryMoveToProcessedMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await MoveToProcessedMailboxAsync(mailId, cancellationToken);
+            await moveFailureStore.RemoveAsync(mailId, cancellationToken);
+            return true;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            await moveFailureStore.AddAsync(mailId, cancellationToken);
+            logger.LogError(
+                ex,
+                "API post succeeded but moving mail to processed mailbox failed. MailId={MailId}",
+                mailId);
+
+            return false;
+        }
     }
 
     /// <summary>
