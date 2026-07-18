@@ -50,10 +50,7 @@ internal static class AppConfiguration
             .AddCommandLine(args);
     }
 
-    private static bool IsAzureKeyVaultEnabled(IConfiguration configuration)
-    {
-        return configuration.GetValue<bool>(AzureKeyVaultEnabledKey);
-    }
+    private static bool IsAzureKeyVaultEnabled(IConfiguration configuration) => configuration.GetValue<bool>(AzureKeyVaultEnabledKey);
 
     private static string GetEnvironmentName()
     {

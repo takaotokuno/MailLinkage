@@ -72,7 +72,10 @@ public sealed class MailFetchQueueProducerTests
             },
             channel.Writer);
 
-        await Assert.ThrowsAsync<ChannelClosedException>(() => producer.ProduceAsync([new ReceivedMailId(1, 999)]));
+        _ = await Assert.ThrowsAsync<ChannelClosedException>(() =>
+        {
+            return producer.ProduceAsync([new ReceivedMailId(1, 999)]);
+        });
     }
 
     [Fact]
@@ -84,7 +87,10 @@ public sealed class MailFetchQueueProducerTests
                 throw new InvalidOperationException("IMAP server is unavailable.");
             });
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => producer.ProduceAsync([new ReceivedMailId(1, 999)]));
+        _ = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        {
+            return producer.ProduceAsync([new ReceivedMailId(1, 999)]);
+        });
     }
 
     private static MailFetchQueueProducer CreateProducer(

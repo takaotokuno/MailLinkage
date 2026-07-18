@@ -136,16 +136,13 @@ internal sealed class FileProcessedMailMoveFailureStore(
     private static bool TryGetDestination(JsonElement element, out MailMoveFailureDestination destination)
     {
         destination = MailMoveFailureDestination.Processed;
-        if (!element.TryGetProperty(nameof(MailMoveFailureRecord.Destination), out JsonElement destinationElement)
-            || destinationElement.ValueKind != JsonValueKind.String)
-        {
-            return destinationElement.ValueKind == JsonValueKind.Number
+        return !element.TryGetProperty(nameof(MailMoveFailureRecord.Destination), out JsonElement destinationElement)
+            || destinationElement.ValueKind != JsonValueKind.String
+            ? destinationElement.ValueKind == JsonValueKind.Number
                 && destinationElement.TryGetInt32(out int rawDestination)
                 && Enum.IsDefined(typeof(MailMoveFailureDestination), rawDestination)
-                && TryConvertDestination(rawDestination, out destination);
-        }
-
-        return Enum.TryParse(destinationElement.GetString(), ignoreCase: true, out destination);
+                && TryConvertDestination(rawDestination, out destination)
+            : Enum.TryParse(destinationElement.GetString(), ignoreCase: true, out destination);
     }
 
     private static bool TryConvertDestination(int rawDestination, out MailMoveFailureDestination destination)
@@ -171,9 +168,21 @@ internal sealed class FileProcessedMailMoveFailureStore(
 
     private readonly record struct MailMoveFailureRecord(ReceivedMailId MailId, MailMoveFailureDestination Destination)
     {
-        public uint Uid => MailId.Uid;
+        public uint Uid
+        {
+            get
+            {
+                return MailId.Uid;
+            }
+        }
 
-        public uint UidValidity => MailId.UidValidity;
+        public uint UidValidity
+        {
+            get
+            {
+                return MailId.UidValidity;
+            }
+        }
 
         public static MailMoveFailureRecord Processed(ReceivedMailId mailId) => new(mailId, MailMoveFailureDestination.Processed);
 

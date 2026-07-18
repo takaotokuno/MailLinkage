@@ -96,7 +96,10 @@ public sealed class BatchRunnerTests
             session,
             new FakeJobExecutionLock(new JobExecutionLockHandle(new FakeLockRelease())));
 
-        InvalidOperationException thrown = await Assert.ThrowsAsync<InvalidOperationException>(() => runner.RunAsync());
+        InvalidOperationException thrown = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        {
+            return runner.RunAsync();
+        });
 
         Assert.Same(exception, thrown);
         _ = Assert.Single(notifier.Notifications);
@@ -126,10 +129,13 @@ public sealed class BatchRunnerTests
             NullLogger<BatchRunner>.Instance,
             pipeline,
             notifier,
-            new FakeReceivedMailSession(mailIds: [new ReceivedMailId(1)]),
+            new FakeReceivedMailSession(mailIds: [new ReceivedMailId(1, 1)]),
             new FakeJobExecutionLock(new JobExecutionLockHandle(new FakeLockRelease())));
 
-        ApplicationException thrown = await Assert.ThrowsAsync<ApplicationException>(() => runner.RunAsync());
+        ApplicationException thrown = await Assert.ThrowsAsync<ApplicationException>(() =>
+        {
+            return runner.RunAsync();
+        });
 
         Assert.Same(exception, thrown);
         Assert.True(pipeline.Processed);
@@ -175,12 +181,7 @@ public sealed class BatchRunnerTests
         {
             Processed = true;
 
-            if (processException is not null)
-            {
-                throw processException;
-            }
-
-            return Task.FromResult(new ProcessResult(targetMailIds.Count));
+            return processException is not null ? throw processException : Task.FromResult(new ProcessResult(targetMailIds.Count));
         }
     }
 
