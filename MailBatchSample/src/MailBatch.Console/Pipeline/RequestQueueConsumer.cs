@@ -93,8 +93,8 @@ internal sealed class RequestQueueConsumer(
     private async Task<bool> PostMessageAsync(ApiRequest request, CancellationToken cancellationToken)
     {
         logger.LogInformation(
-            "Posting queued API request. Message={Message}",
-            request.Message);
+            "Posting queued API request. MessageLength={MessageLength}",
+            request.Message.Length);
 
         ApiPostResult result = await receivedMailApiClient.PostReceivedMailAsync(request, cancellationToken);
 
