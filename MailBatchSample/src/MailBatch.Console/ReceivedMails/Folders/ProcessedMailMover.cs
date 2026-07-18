@@ -35,12 +35,15 @@ internal sealed class ProcessedMailMover(
         string destinationMailbox,
         CancellationToken cancellationToken)
     {
-        UniqueId uid = MailKitReceivedMailIdMapper.ToUniqueId(mailId);
+        UniqueId sourceUid = MailKitReceivedMailIdMapper.ToUniqueId(mailId);
         IMailFolder folder = mailFolderProvider.GetOpenedReceiveFolder();
-        _ = await folder.MoveToAsync(uid, destinationFolder, cancellationToken);
+        UniqueId? destinationUid = await folder.MoveToAsync(sourceUid, destinationFolder, cancellationToken);
 
         logger.LogInformation(
-            "Moved message. DestinationMailbox={DestinationMailbox}",
-            destinationMailbox);
+            "Moved message. SourceMailbox={SourceMailbox}, DestinationMailbox={DestinationMailbox}, SourceMailId={SourceMailId}, DestinationMailId={DestinationMailId}",
+            folder.FullName,
+            destinationMailbox,
+            sourceUid.Id,
+            destinationUid?.Id);
     }
 }
