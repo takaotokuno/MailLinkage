@@ -9,6 +9,7 @@ using MailBatch.Console.ReceivedMails.Folders;
 using MailBatch.Console.ReceivedMails.Imap;
 using MailBatch.Console.ReceivedMails.MailKit;
 using MailBatch.Console.ReceivedMails.Processing;
+using MailBatch.Console.ReceivedMails.Recovery;
 using MailBatch.Console.ReceivedMails.State;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -84,7 +85,8 @@ internal static class BatchServiceCollectionExtensions
             .AddScoped<IMailKitSearcher, MailKitSearcher>()
             .AddScoped<IReceivedMailReader, ReceivedMailReader>()
             .AddScoped<IProcessedMailMover, ProcessedMailMover>()
-            .AddScoped<IReceivedMailSession, ReceivedMailSession>();
+            .AddScoped<IReceivedMailSession, ReceivedMailSession>()
+            .AddScoped<IMailMoveFailureRecoveryService, MailMoveFailureRecoveryService>();
     }
 
     /// <summary>
