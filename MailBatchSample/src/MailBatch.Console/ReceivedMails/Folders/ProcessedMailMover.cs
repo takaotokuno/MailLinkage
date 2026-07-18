@@ -40,10 +40,11 @@ internal sealed class ProcessedMailMover(
         UniqueId? destinationUid = await folder.MoveToAsync(sourceUid, destinationFolder, cancellationToken);
 
         logger.LogInformation(
-            "Moved message. SourceMailbox={SourceMailbox}, DestinationMailbox={DestinationMailbox}, SourceMailId={SourceMailId}, DestinationMailId={DestinationMailId}",
+            "Moved message. SourceMailbox={SourceMailbox}, DestinationMailbox={DestinationMailbox}, SourceMailId={SourceMailId}, SourceUidValidity={SourceUidValidity}, DestinationMailId={DestinationMailId}",
             folder.FullName,
             destinationMailbox,
             sourceUid.Id,
+            sourceUid.Validity,
             destinationUid?.Id);
     }
 }

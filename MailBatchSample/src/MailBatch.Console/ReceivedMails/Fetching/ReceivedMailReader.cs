@@ -19,7 +19,7 @@ internal sealed class ReceivedMailReader(IMailFolderProvider mailFolderProvider)
         MimeMessage message = await folder.GetMessageAsync(uid, cancellationToken);
 
         return new ReceivedMail(
-            MailKitReceivedMailIdMapper.ToReceivedMailId(uid),
+            mailId,
             message.Sender?.ToString() ?? "",
             message.Subject ?? "",
             message.Body?.ToString() ?? "");

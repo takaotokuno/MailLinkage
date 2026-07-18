@@ -18,7 +18,7 @@ public sealed class ReceivedMailQueueFactoryTests
         ReceivedMailQueueFactory factory = new(new ProcessingOptions { RequestQueueCapacity = 1 });
         Channel<MailLinkageRequest> channel = factory.Create();
 
-        Assert.True(channel.Writer.TryWrite(new MailLinkageRequest(new ReceivedMailId(1), "key-1", "message-1")));
-        Assert.False(channel.Writer.TryWrite(new MailLinkageRequest(new ReceivedMailId(2), "key-2", "message-2")));
+        Assert.True(channel.Writer.TryWrite(new MailLinkageRequest(new ReceivedMailId(1, 999), "key-1", "message-1")));
+        Assert.False(channel.Writer.TryWrite(new MailLinkageRequest(new ReceivedMailId(2, 999), "key-2", "message-2")));
     }
 }

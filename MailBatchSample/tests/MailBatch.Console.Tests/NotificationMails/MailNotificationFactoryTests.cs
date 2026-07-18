@@ -56,7 +56,7 @@ public sealed class MailNotificationFactoryTests
     {
         MailNotificationFactory factory = new(CreateOptions(), new BatchRunContext("run-001"));
         ReceivedMail mail = new(
-            MailId: new ReceivedMailId(123),
+            MailId: new ReceivedMailId(123, 999),
             Sender: "sender@example.com",
             Subject: new string('s', 201),
             Body: "body");
