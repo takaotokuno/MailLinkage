@@ -16,7 +16,23 @@ internal sealed class ReceivedMailReader(IMailFolderProvider mailFolderProvider)
     {
         UniqueId uid = MailKitReceivedMailIdMapper.ToUniqueId(mailId);
         IMailFolder folder = mailFolderProvider.GetOpenedReceiveFolder();
-        MimeMessage message = await folder.GetMessageAsync(uid, cancellationToken);
+        MimeMessage message;
+        try
+        {
+            message = await folder.GetMessageAsync(uid, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (ParseException ex)
+        {
+            throw new ReceivedMailFormatException("MIME message is damaged or invalid.", ex);
+        }
+        catch (InvalidDataException ex)
+        {
+            throw new ReceivedMailFormatException("MIME message is damaged or invalid.", ex);
+        }
 
         return new ReceivedMail(
             mailId,
