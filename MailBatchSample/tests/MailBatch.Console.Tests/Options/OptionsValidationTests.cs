@@ -110,6 +110,21 @@ public sealed class OptionsValidationTests
         Assert.Equal("Processing:ProcessedMailbox is required.", exception.Message);
     }
 
+
+    /// <summary>
+    /// 状態: エラーメールボックス名が空白で設定されている。
+    /// 振る舞い: 必須項目が未設定のため、Processing:ErrorMailboxの検証エラーを送出する。
+    /// </summary>
+    [Fact]
+    public void ProcessingOptionsValidate_WithBlankErrorMailbox_ThrowsInvalidOperationException()
+    {
+        ProcessingOptions options = new() { ErrorMailbox = " " };
+
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(options.Validate);
+
+        Assert.Equal("Processing:ErrorMailbox is required.", exception.Message);
+    }
+
     /// <summary>
     /// 状態: 通知メールテンプレートの本文が空白で設定されている。
     /// 振る舞い: テンプレート本文が必須項目のため、Notification:Templates:0:Bodyの検証エラーを送出する。
