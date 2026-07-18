@@ -20,7 +20,7 @@ public sealed class MailFetchQueueProducerTests
         MailFetchQueueProducer producer = CreateProducer(
             _ =>
             {
-                throw new InvalidDataException("MIME message is damaged.");
+                throw new ReceivedMailFormatException("MIME message is damaged.");
             });
 
         ProcessResult result = await producer.ProduceAsync([new ReceivedMailId(1, 999)]);
@@ -61,7 +61,7 @@ public sealed class MailFetchQueueProducerTests
     }
 
     [Fact]
-    public async Task ProduceAsync_WhenQueueWriteFails_CountsAsInvalidFormat()
+    public async Task ProduceAsync_WhenQueueWriteFails_ThrowsSystemError()
     {
         Channel<MailLinkageRequest> channel = Channel.CreateBounded<MailLinkageRequest>(1);
         channel.Writer.Complete(new InvalidOperationException("Queue is unavailable."));
@@ -72,9 +72,19 @@ public sealed class MailFetchQueueProducerTests
             },
             channel.Writer);
 
-        ProcessResult result = await producer.ProduceAsync([new ReceivedMailId(1, 999)]);
+        await Assert.ThrowsAsync<ChannelClosedException>(() => producer.ProduceAsync([new ReceivedMailId(1, 999)]));
+    }
 
-        Assert.Equal(new ProcessResult(Total: 1, InvalidFormat: 1), result);
+    [Fact]
+    public async Task ProduceAsync_WhenFetchFailsWithNonMimeError_ThrowsSystemError()
+    {
+        MailFetchQueueProducer producer = CreateProducer(
+            _ =>
+            {
+                throw new InvalidOperationException("IMAP server is unavailable.");
+            });
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => producer.ProduceAsync([new ReceivedMailId(1, 999)]));
     }
 
     private static MailFetchQueueProducer CreateProducer(

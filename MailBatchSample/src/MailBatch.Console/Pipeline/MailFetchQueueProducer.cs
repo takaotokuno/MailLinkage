@@ -88,23 +88,34 @@ internal sealed class MailFetchQueueProducer(
         {
             throw;
         }
-        catch (Exception ex)
+        catch (ReceivedMailProcessingException ex)
         {
             RecordInvalidFormat(mailId, result, ex);
+        }
+        catch (ReceivedMailFormatException ex)
+        {
+            RecordInvalidFormat(mailId, result, ex);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(
+                ex,
+                "Failed to fetch, transform, or queue message. Counted as system error. MailId={MailId}",
+                mailId);
+            throw;
         }
     }
 
 
     /// <summary>
-    /// メール取得、変換、キュー投入中の業務処理例外はすべて入力メール形式不正として集計します。
-    /// MIME破損、Extract時のキー情報不足、データサイズ上限超過、キュー投入失敗はいずれもここでInvalidFormatへ寄せます。
+    /// メールそのものが壊れている、キー情報が不足している、またはデータサイズ上限を超過している場合のみ入力メール形式不正として集計します。
     /// </summary>
     private void RecordInvalidFormat(ReceivedMailId mailId, ProcessResultAccumulator result, Exception exception)
     {
         result.IncrementInvalidFormat();
         logger.LogError(
             exception,
-            "Failed to fetch, transform, validate, or queue message. Counted as InvalidFormat. MailId={MailId}",
+            "Failed to parse, validate, or extract received mail content. Counted as InvalidFormat. MailId={MailId}",
             mailId);
     }
 

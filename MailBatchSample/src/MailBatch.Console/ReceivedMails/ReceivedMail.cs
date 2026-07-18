@@ -48,3 +48,9 @@ internal sealed class ReceivedMailContentValidationException(IReadOnlyList<strin
     /// </summary>
     public IReadOnlyList<string> Errors { get; } = errors;
 }
+
+/// <summary>
+/// 受信メールそのものが壊れていて読み取り可能な形式ではない場合に発生する例外です。
+/// </summary>
+internal sealed class ReceivedMailFormatException(string message, Exception? innerException = null)
+    : Exception(message, innerException);
