@@ -17,6 +17,21 @@ internal sealed record ProcessResult(int Total, int Succeeded = 0, int InvalidFo
 }
 
 /// <summary>
+/// バッチ実行全体の結果を表します。
+/// </summary>
+internal sealed record BatchRunResult(ProcessResult ProcessResult, FatalBatchError? FatalError = null)
+{
+    public bool HasFatalError => FatalError is not null;
+
+    public int ConvertToExitCode() => HasFatalError ? 1 : ProcessResult.ConvertToExitCode();
+}
+
+/// <summary>
+/// バッチ処理を継続できない致命的なエラーを表します。
+/// </summary>
+internal sealed record FatalBatchError(string Code, string Message, string Stage);
+
+/// <summary>
 /// 処理途中の集計値を保持します。
 /// </summary>
 internal sealed class ProcessResultAccumulator(int total = 0)

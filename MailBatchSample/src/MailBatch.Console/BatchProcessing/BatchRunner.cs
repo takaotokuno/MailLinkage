@@ -30,33 +30,39 @@ internal sealed class BatchRunner(
         using JobExecutionLockHandle? executionLock = jobExecutionLock.TryAcquire();
         if (executionLock is null)
         {
-            ProcessResult duplicateRunResult = new(Total: 0, Succeeded: 0, InvalidFormat: 0, ApiFailed: 1);
-            const int DUPLICATE_RUN_EXIT_CODE = 2;
+            BatchRunResult duplicateRunResult = new(
+                new ProcessResult(Total: 0),
+                new FatalBatchError(
+                    Code: "DuplicateRun",
+                    Message: "Another mail batch instance is already running.",
+                    Stage: "Startup"));
+            int duplicateRunExitCode = duplicateRunResult.ConvertToExitCode();
 
-            await runStatusNotifier.NotifyAsync(duplicateRunResult, DUPLICATE_RUN_EXIT_CODE, cancellationToken);
+            await runStatusNotifier.NotifyAsync(duplicateRunResult, duplicateRunExitCode, cancellationToken);
             logger.LogError(
                 "Mail batch aborted because another instance is already running. RunId={RunId}",
                 runContext.RunId);
 
-            return DUPLICATE_RUN_EXIT_CODE;
+            return duplicateRunExitCode;
         }
 
-        ProcessResult result;
+        BatchRunResult runResult;
 
         try
         {
             await receivedMailSession.ConnectAsync(cancellationToken);
-            result = await RunUseCaseAsync(cancellationToken);
+            ProcessResult processResult = await RunUseCaseAsync(cancellationToken);
+            runResult = new BatchRunResult(processResult);
         }
         finally
         {
             await receivedMailSession.DisconnectAsync(CancellationToken.None);
         }
 
-        int exitCode = result.ConvertToExitCode();
+        int exitCode = runResult.ConvertToExitCode();
 
-        await runStatusNotifier.NotifyAsync(result, exitCode, cancellationToken);
-        LogFinish(result);
+        await runStatusNotifier.NotifyAsync(runResult, exitCode, cancellationToken);
+        LogFinish(runResult.ProcessResult);
 
         return exitCode;
     }

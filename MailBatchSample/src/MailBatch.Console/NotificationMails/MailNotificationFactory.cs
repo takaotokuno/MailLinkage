@@ -9,7 +9,7 @@ internal sealed class MailNotificationFactory(MailNotificationOptions notificati
     /// <summary>
     /// バッチ実行結果の通知テンプレートから管理者宛て通知を作成します。
     /// </summary>
-    public MailNotification CreateRunStatusNotification(ProcessResult result, int exitCode)
+    public MailNotification CreateRunStatusNotification(BatchRunResult result, int exitCode)
     {
         MailNotificationTemplateOptions template
             = notificationOptions.GetTemplate(MailNotificationOptions.RunStatusTemplateName);
@@ -41,19 +41,24 @@ internal sealed class MailNotificationFactory(MailNotificationOptions notificati
             ApplyValidationErrorTemplate(template.Body, mail, validationErrorsText));
     }
 
-    private string ApplyRunStatusTemplate(string template, ProcessResult result, int exitCode)
+    private string ApplyRunStatusTemplate(string template, BatchRunResult result, int exitCode)
     {
         string status = ToRunStatus(exitCode);
+        ProcessResult processResult = result.ProcessResult;
+        FatalBatchError? fatalError = result.FatalError;
 
         return template
             .Replace("{RunId}", runContext.RunId, StringComparison.Ordinal)
             .Replace("{Status}", status, StringComparison.Ordinal)
             .Replace("{ExitCode}", exitCode.ToString(), StringComparison.Ordinal)
-            .Replace("{Total}", result.Total.ToString(), StringComparison.Ordinal)
-            .Replace("{Succeeded}", result.Succeeded.ToString(), StringComparison.Ordinal)
-            .Replace("{Failed}", result.Failed.ToString(), StringComparison.Ordinal)
-            .Replace("{InvalidFormat}", result.InvalidFormat.ToString(), StringComparison.Ordinal)
-            .Replace("{ApiFailed}", result.ApiFailed.ToString(), StringComparison.Ordinal);
+            .Replace("{Total}", processResult.Total.ToString(), StringComparison.Ordinal)
+            .Replace("{Succeeded}", processResult.Succeeded.ToString(), StringComparison.Ordinal)
+            .Replace("{Failed}", processResult.Failed.ToString(), StringComparison.Ordinal)
+            .Replace("{InvalidFormat}", processResult.InvalidFormat.ToString(), StringComparison.Ordinal)
+            .Replace("{ApiFailed}", processResult.ApiFailed.ToString(), StringComparison.Ordinal)
+            .Replace("{FatalErrorCode}", fatalError?.Code ?? string.Empty, StringComparison.Ordinal)
+            .Replace("{FatalErrorMessage}", fatalError?.Message ?? string.Empty, StringComparison.Ordinal)
+            .Replace("{FatalErrorStage}", fatalError?.Stage ?? string.Empty, StringComparison.Ordinal);
     }
 
     private static string ApplyValidationErrorTemplate(
