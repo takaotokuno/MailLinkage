@@ -24,7 +24,7 @@ public sealed class ReceivedMailPipelineTests
                 return new FailingConsumer(consumerException);
             });
         ReceivedMailPipeline pipeline = new(queueFactory, componentFactory, NullLogger<ReceivedMailPipeline>.Instance);
-        ReceivedMailId[] targetMailIds = [new(1), new(2), new(3)];
+        ReceivedMailId[] targetMailIds = [new(1, 999), new(2, 999), new(3, 999)];
 
         Task<ProcessResult> processTask = pipeline.ProcessAsync(targetMailIds);
         Task completedTask = await Task.WhenAny(processTask, Task.Delay(TimeSpan.FromSeconds(2)));
@@ -53,7 +53,7 @@ public sealed class ReceivedMailPipelineTests
             });
         ReceivedMailPipeline pipeline = new(queueFactory, componentFactory, NullLogger<ReceivedMailPipeline>.Instance);
 
-        Task<ProcessResult> processTask = pipeline.ProcessAsync([new ReceivedMailId(1)]);
+        Task<ProcessResult> processTask = pipeline.ProcessAsync([new ReceivedMailId(1, 999)]);
         Task completedTask = await Task.WhenAny(processTask, Task.Delay(TimeSpan.FromSeconds(2)));
 
         Assert.Same(processTask, completedTask);
@@ -92,7 +92,7 @@ public sealed class ReceivedMailPipelineTests
         {
             foreach (ReceivedMailId mailId in targetMailIds)
             {
-                await writer.WriteAsync(new MailLinkageRequest(mailId, $"key-{mailId.Value}", "message"), cancellationToken);
+                await writer.WriteAsync(new MailLinkageRequest(mailId, $"key-{mailId.Uid}", "message"), cancellationToken);
             }
 
             _ = writer.TryComplete();

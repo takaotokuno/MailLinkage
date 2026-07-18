@@ -10,10 +10,15 @@ internal static class MailKitReceivedMailIdMapper
     /// <summary>
     /// MailKitのUIDをアプリケーション層の受信メールIDへ変換します。
     /// </summary>
-    public static ReceivedMailId ToReceivedMailId(UniqueId uid) => new(uid.Id);
+    public static ReceivedMailId ToReceivedMailId(UniqueId uid) => new(uid.Id, uid.Validity);
+
+    /// <summary>
+    /// MailKitのUIDとUIDVALIDITYをアプリケーション層の受信メールIDへ変換します。
+    /// </summary>
+    public static ReceivedMailId ToReceivedMailId(UniqueId uid, uint uidValidity) => new(uid.Id, uid.Validity == 0 ? uidValidity : uid.Validity);
 
     /// <summary>
     /// アプリケーション層の受信メールIDをMailKitのUIDへ変換します。
     /// </summary>
-    public static UniqueId ToUniqueId(ReceivedMailId mailId) => new(mailId.Value);
+    public static UniqueId ToUniqueId(ReceivedMailId mailId) => new(mailId.UidValidity, mailId.Uid);
 }

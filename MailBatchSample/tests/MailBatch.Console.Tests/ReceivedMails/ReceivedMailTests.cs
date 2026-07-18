@@ -42,7 +42,7 @@ public sealed class ReceivedMailTests
     private static ReceivedMail CreateMail(string subject, string body)
     {
         return new ReceivedMail(
-            MailId: new ReceivedMailId(123),
+            MailId: new ReceivedMailId(123, 999),
             Sender: "sender@example.com",
             Subject: subject,
             Body: body);

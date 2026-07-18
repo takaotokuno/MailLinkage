@@ -35,7 +35,7 @@ internal sealed class MailKitSearcher(
             .Take(maxMessages)
             .Select(summary =>
             {
-                return MailKitReceivedMailIdMapper.ToReceivedMailId(summary.UniqueId);
+                return MailKitReceivedMailIdMapper.ToReceivedMailId(summary.UniqueId, folder.UidValidity);
             })
             .ToList();
 

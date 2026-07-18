@@ -31,8 +31,8 @@ internal sealed class FileProcessedMailMoveFailureStore(
         await _semaphore.WaitAsync(cancellationToken);
         try
         {
-            HashSet<uint> mailIds = await LoadAsync(cancellationToken);
-            return mailIds.Contains(mailId.Value);
+            HashSet<ReceivedMailId> mailIds = await LoadAsync(cancellationToken);
+            return mailIds.Contains(mailId);
         }
         finally
         {
@@ -45,8 +45,8 @@ internal sealed class FileProcessedMailMoveFailureStore(
         await _semaphore.WaitAsync(cancellationToken);
         try
         {
-            HashSet<uint> mailIds = await LoadAsync(cancellationToken);
-            if (mailIds.Add(mailId.Value))
+            HashSet<ReceivedMailId> mailIds = await LoadAsync(cancellationToken);
+            if (mailIds.Add(mailId))
             {
                 await SaveAsync(mailIds, cancellationToken);
                 logger.LogWarning("Recorded processed mailbox move failure. MailId={MailId}", mailId);
@@ -63,8 +63,8 @@ internal sealed class FileProcessedMailMoveFailureStore(
         await _semaphore.WaitAsync(cancellationToken);
         try
         {
-            HashSet<uint> mailIds = await LoadAsync(cancellationToken);
-            if (mailIds.Remove(mailId.Value))
+            HashSet<ReceivedMailId> mailIds = await LoadAsync(cancellationToken);
+            if (mailIds.Remove(mailId))
             {
                 await SaveAsync(mailIds, cancellationToken);
                 logger.LogInformation("Cleared processed mailbox move failure record. MailId={MailId}", mailId);
@@ -76,7 +76,7 @@ internal sealed class FileProcessedMailMoveFailureStore(
         }
     }
 
-    private async Task<HashSet<uint>> LoadAsync(CancellationToken cancellationToken)
+    private async Task<HashSet<ReceivedMailId>> LoadAsync(CancellationToken cancellationToken)
     {
         string storePath = StorePath;
         if (!File.Exists(storePath))
@@ -85,16 +85,36 @@ internal sealed class FileProcessedMailMoveFailureStore(
         }
 
         await using FileStream stream = File.OpenRead(storePath);
-        uint[]? mailIds = await JsonSerializer.DeserializeAsync<uint[]>(stream, cancellationToken: cancellationToken);
-        return mailIds?.ToHashSet() ?? [];
+        using JsonDocument document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+        HashSet<ReceivedMailId> mailIds = [];
+
+        foreach (JsonElement element in document.RootElement.EnumerateArray())
+        {
+            if (element.ValueKind == JsonValueKind.Number && element.TryGetUInt32(out uint legacyUid))
+            {
+                _ = mailIds.Add(new ReceivedMailId(legacyUid, 0));
+                continue;
+            }
+
+            if (element.ValueKind == JsonValueKind.Object
+                && element.TryGetProperty(nameof(ReceivedMailId.Uid), out JsonElement uidElement)
+                && element.TryGetProperty(nameof(ReceivedMailId.UidValidity), out JsonElement uidValidityElement)
+                && uidElement.TryGetUInt32(out uint uid)
+                && uidValidityElement.TryGetUInt32(out uint uidValidity))
+            {
+                _ = mailIds.Add(new ReceivedMailId(uid, uidValidity));
+            }
+        }
+
+        return mailIds;
     }
 
-    private async Task SaveAsync(HashSet<uint> mailIds, CancellationToken cancellationToken)
+    private async Task SaveAsync(HashSet<ReceivedMailId> mailIds, CancellationToken cancellationToken)
     {
         string storePath = StorePath;
         _ = Directory.CreateDirectory(Path.GetDirectoryName(storePath) ?? ".");
         string temporaryPath = storePath + ".tmp";
-        uint[] sortedMailIds = [.. mailIds.Order()];
+        ReceivedMailId[] sortedMailIds = [.. mailIds.OrderBy(mailId => mailId.UidValidity).ThenBy(mailId => mailId.Uid)];
 
         await using (FileStream stream = File.Create(temporaryPath))
         {

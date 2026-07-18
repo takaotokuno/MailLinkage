@@ -17,7 +17,7 @@ public sealed class RequestQueueConsumerTests
     [Fact]
     public async Task ConsumeAsync_WhenApiReturnsFailure_MovesMailToErrorMailboxAndCountsFailure()
     {
-        MailLinkageRequest request = new(new ReceivedMailId(1), "key", "message");
+        MailLinkageRequest request = new(new ReceivedMailId(1, 999), "key", "message");
         ChannelReader<MailLinkageRequest> reader = CreateCompletedReader(request);
         FakeReceivedMailSession session = new();
         FakeApiClient apiClient = new(new ApiPostResult(false, 500, "server error"));
@@ -41,7 +41,7 @@ public sealed class RequestQueueConsumerTests
     [Fact]
     public async Task ConsumeAsync_WhenApiReturnsSuccess_MovesMailToProcessedMailboxAndCountsSuccess()
     {
-        MailLinkageRequest request = new(new ReceivedMailId(2), "key", "message");
+        MailLinkageRequest request = new(new ReceivedMailId(2, 999), "key", "message");
         ChannelReader<MailLinkageRequest> reader = CreateCompletedReader(request);
         FakeReceivedMailSession session = new();
         FakeApiClient apiClient = new(new ApiPostResult(true, 201, /*lang=json,strict*/ "{\"id\":1}"));
@@ -66,7 +66,7 @@ public sealed class RequestQueueConsumerTests
     [Fact]
     public async Task ConsumeAsync_WhenProcessedMoveFailsAfterApiSuccess_RecordsFailureAndCountsApiFailure()
     {
-        MailLinkageRequest request = new(new ReceivedMailId(3), "key", "message");
+        MailLinkageRequest request = new(new ReceivedMailId(3, 999), "key", "message");
         ChannelReader<MailLinkageRequest> reader = CreateCompletedReader(request);
         FakeReceivedMailSession session = new()
         {

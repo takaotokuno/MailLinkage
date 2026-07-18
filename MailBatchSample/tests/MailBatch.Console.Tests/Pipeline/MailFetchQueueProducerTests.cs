@@ -20,7 +20,7 @@ public sealed class MailFetchQueueProducerTests
         MailFetchQueueProducer producer = CreateProducer(
             _ => throw new InvalidDataException("MIME message is damaged."));
 
-        ProcessResult result = await producer.ProduceAsync([new ReceivedMailId(1)]);
+        ProcessResult result = await producer.ProduceAsync([new ReceivedMailId(1, 999)]);
 
         Assert.Equal(new ProcessResult(Total: 1, InvalidFormat: 1), result);
     }
@@ -31,7 +31,7 @@ public sealed class MailFetchQueueProducerTests
         MailFetchQueueProducer producer = CreateProducer(
             id => new ReceivedMail(id, "sender@example.com", "subject", "body without key"));
 
-        ProcessResult result = await producer.ProduceAsync([new ReceivedMailId(1)]);
+        ProcessResult result = await producer.ProduceAsync([new ReceivedMailId(1, 999)]);
 
         Assert.Equal(new ProcessResult(Total: 1, InvalidFormat: 1), result);
     }
@@ -46,7 +46,7 @@ public sealed class MailFetchQueueProducerTests
                 new string('s', ReceivedMail.MaxSubjectLength + 1),
                 $"Key: ABC123{Environment.NewLine}{new string('b', ReceivedMail.MaxBodyLength + 1)}"));
 
-        ProcessResult result = await producer.ProduceAsync([new ReceivedMailId(1)]);
+        ProcessResult result = await producer.ProduceAsync([new ReceivedMailId(1, 999)]);
 
         Assert.Equal(new ProcessResult(Total: 1, InvalidFormat: 1), result);
     }
@@ -60,7 +60,7 @@ public sealed class MailFetchQueueProducerTests
             id => new ReceivedMail(id, "sender@example.com", "subject", "Key: ABC123"),
             channel.Writer);
 
-        ProcessResult result = await producer.ProduceAsync([new ReceivedMailId(1)]);
+        ProcessResult result = await producer.ProduceAsync([new ReceivedMailId(1, 999)]);
 
         Assert.Equal(new ProcessResult(Total: 1, InvalidFormat: 1), result);
     }
