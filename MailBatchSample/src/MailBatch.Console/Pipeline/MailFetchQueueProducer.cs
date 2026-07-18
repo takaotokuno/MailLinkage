@@ -65,8 +65,11 @@ internal sealed class MailFetchQueueProducer(
     {
         try
         {
-            if (await TryRecoverProcessedMoveFailureAsync(mailId, result, cancellationToken))
+            if (await moveFailureStore.ContainsAsync(mailId, cancellationToken))
             {
+                logger.LogWarning(
+                    "Skipped message because a mailbox move failure record still exists. MailId={MailId}",
+                    mailId);
                 return;
             }
 
@@ -90,11 +93,11 @@ internal sealed class MailFetchQueueProducer(
         }
         catch (ReceivedMailProcessingException ex)
         {
-            RecordInvalidFormat(mailId, result, ex);
+            await RecordInvalidFormatAsync(mailId, result, ex, cancellationToken);
         }
         catch (ReceivedMailFormatException ex)
         {
-            RecordInvalidFormat(mailId, result, ex);
+            await RecordInvalidFormatAsync(mailId, result, ex, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -110,33 +113,20 @@ internal sealed class MailFetchQueueProducer(
     /// <summary>
     /// メールそのものが壊れている、キー情報が不足している、またはデータサイズ上限を超過している場合のみ入力メール形式不正として集計します。
     /// </summary>
-    private void RecordInvalidFormat(ReceivedMailId mailId, ProcessResultAccumulator result, Exception exception)
+    private async Task RecordInvalidFormatAsync(ReceivedMailId mailId, ProcessResultAccumulator result, Exception exception, CancellationToken cancellationToken)
     {
         result.IncrementInvalidFormat();
         logger.LogError(
             exception,
             "Failed to parse, validate, or extract received mail content. Counted as InvalidFormat. MailId={MailId}",
             mailId);
-    }
-
-    /// <summary>
-    /// API送信済みで処理済みメールボックスへの移動だけが未完了のメールを再送せずに移動します。
-    /// </summary>
-    private async Task<bool> TryRecoverProcessedMoveFailureAsync(ReceivedMailId mailId, ProcessResultAccumulator result, CancellationToken cancellationToken)
-    {
-        if (!await moveFailureStore.ContainsAsync(mailId, cancellationToken))
-        {
-            return false;
-        }
 
         try
         {
             await receivedMailSession.MoveToProcessedMailboxAsync(mailId, cancellationToken);
             await moveFailureStore.RemoveAsync(mailId, cancellationToken);
-            result.IncrementSuccess();
-
             logger.LogInformation(
-                "Recovered processed mailbox move failure without reposting API request. MailId={MailId}",
+                "Moved invalid format message to processed mailbox. MailId={MailId}",
                 mailId);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -145,14 +135,12 @@ internal sealed class MailFetchQueueProducer(
         }
         catch (Exception ex)
         {
-            result.IncrementApiFailure();
+            await moveFailureStore.AddAsync(mailId, cancellationToken);
             logger.LogError(
                 ex,
-                "Failed to recover processed mailbox move failure. MailId={MailId}",
+                "Invalid format message was counted but moving mail to processed mailbox failed. MailId={MailId}",
                 mailId);
         }
-
-        return true;
     }
 
     /// <summary>

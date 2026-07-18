@@ -243,7 +243,16 @@ public sealed class RequestQueueConsumerTests
     {
         public List<ReceivedMailId> MailIds { get; } = [];
 
-        public Task<bool> ContainsAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default) => Task.FromResult(MailIds.Contains(mailId));
+        public Task<IReadOnlyList<MailMoveFailure>> GetAllAsync(CancellationToken cancellationToken = default)
+        {
+            IReadOnlyList<MailMoveFailure> failures = [
+                .. MailIds.Select(mailId => new MailMoveFailure(mailId, MailMoveFailureDestination.Processed)),
+                .. ErrorMoveFailureMailIds.Select(mailId => new MailMoveFailure(mailId, MailMoveFailureDestination.Error))
+            ];
+            return Task.FromResult(failures);
+        }
+
+        public Task<bool> ContainsAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default) => Task.FromResult(MailIds.Contains(mailId) || ErrorMoveFailureMailIds.Contains(mailId));
 
         public Task AddAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
         {
@@ -262,6 +271,20 @@ public sealed class RequestQueueConsumerTests
             if (!ErrorMoveFailureMailIds.Contains(mailId))
             {
                 ErrorMoveFailureMailIds.Add(mailId);
+            }
+
+            return Task.CompletedTask;
+        }
+
+        public Task RemoveAsync(MailMoveFailure failure, CancellationToken cancellationToken = default)
+        {
+            if (failure.Destination == MailMoveFailureDestination.Processed)
+            {
+                _ = MailIds.Remove(failure.MailId);
+            }
+            else
+            {
+                _ = ErrorMoveFailureMailIds.Remove(failure.MailId);
             }
 
             return Task.CompletedTask;

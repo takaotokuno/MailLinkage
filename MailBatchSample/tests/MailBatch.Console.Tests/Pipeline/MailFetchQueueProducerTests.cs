@@ -17,47 +17,53 @@ public sealed class MailFetchQueueProducerTests
     [Fact]
     public async Task ProduceAsync_WhenFetchFailsWithMimeDamage_CountsAsInvalidFormat()
     {
-        MailFetchQueueProducer producer = CreateProducer(
-            _ =>
-            {
-                throw new ReceivedMailFormatException("MIME message is damaged.");
-            });
+        ReceivedMailId mailId = new(1, 999);
+        FakeReceivedMailSession session = new(_ =>
+        {
+            throw new ReceivedMailFormatException("MIME message is damaged.");
+        });
+        MailFetchQueueProducer producer = CreateProducer(session);
 
-        ProcessResult result = await producer.ProduceAsync([new ReceivedMailId(1, 999)]);
+        ProcessResult result = await producer.ProduceAsync([mailId]);
 
         Assert.Equal(new ProcessResult(Total: 1, InvalidFormat: 1), result);
+        Assert.Equal(mailId, session.ProcessedMailIds.Single());
     }
 
     [Fact]
     public async Task ProduceAsync_WhenExtractKeyIsMissing_CountsAsInvalidFormat()
     {
-        MailFetchQueueProducer producer = CreateProducer(
-            id =>
-            {
-                return new ReceivedMail(id, "sender@example.com", "subject", "body without key");
-            });
+        ReceivedMailId mailId = new(1, 999);
+        FakeReceivedMailSession session = new(id =>
+        {
+            return new ReceivedMail(id, "sender@example.com", "subject", "body without key");
+        });
+        MailFetchQueueProducer producer = CreateProducer(session);
 
-        ProcessResult result = await producer.ProduceAsync([new ReceivedMailId(1, 999)]);
+        ProcessResult result = await producer.ProduceAsync([mailId]);
 
         Assert.Equal(new ProcessResult(Total: 1, InvalidFormat: 1), result);
+        Assert.Equal(mailId, session.ProcessedMailIds.Single());
     }
 
     [Fact]
     public async Task ProduceAsync_WhenDataSizeLimitIsExceeded_CountsAsInvalidFormat()
     {
-        MailFetchQueueProducer producer = CreateProducer(
-            id =>
-            {
-                return new ReceivedMail(
-                                id,
-                                "sender@example.com",
-                                new string('s', ReceivedMail.MaxSubjectLength + 1),
-                                $"Key: ABC123{Environment.NewLine}{new string('b', ReceivedMail.MaxBodyLength + 1)}");
-            });
+        ReceivedMailId mailId = new(1, 999);
+        FakeReceivedMailSession session = new(id =>
+        {
+            return new ReceivedMail(
+                            id,
+                            "sender@example.com",
+                            new string('s', ReceivedMail.MaxSubjectLength + 1),
+                            $"Key: ABC123{Environment.NewLine}{new string('b', ReceivedMail.MaxBodyLength + 1)}");
+        });
+        MailFetchQueueProducer producer = CreateProducer(session);
 
-        ProcessResult result = await producer.ProduceAsync([new ReceivedMailId(1, 999)]);
+        ProcessResult result = await producer.ProduceAsync([mailId]);
 
         Assert.Equal(new ProcessResult(Total: 1, InvalidFormat: 1), result);
+        Assert.Equal(mailId, session.ProcessedMailIds.Single());
     }
 
     [Fact]
@@ -93,17 +99,41 @@ public sealed class MailFetchQueueProducerTests
         });
     }
 
+
+    [Fact]
+    public async Task ProduceAsync_WhenMoveFailureRecordExists_SkipsMailWithoutCreatingRequest()
+    {
+        ReceivedMailId mailId = new(9, 999);
+        FakeReceivedMailSession session = new(_ =>
+        {
+            throw new InvalidOperationException("Request should not be created.");
+        });
+        FakeMoveFailureStore moveFailureStore = new([new MailMoveFailure(mailId, MailMoveFailureDestination.Error)]);
+        MailFetchQueueProducer producer = CreateProducer(session, moveFailureStore: moveFailureStore);
+
+        ProcessResult result = await producer.ProduceAsync([mailId]);
+
+        Assert.Equal(new ProcessResult(Total: 1), result);
+        Assert.Empty(session.ProcessedMailIds);
+    }
+
     private static MailFetchQueueProducer CreateProducer(
         Func<ReceivedMailId, ReceivedMail> mailFactory,
-        ChannelWriter<MailLinkageRequest>? writer = null)
+        ChannelWriter<MailLinkageRequest>? writer = null,
+        IProcessedMailMoveFailureStore? moveFailureStore = null) => CreateProducer(new FakeReceivedMailSession(mailFactory), writer, moveFailureStore);
+
+    private static MailFetchQueueProducer CreateProducer(
+        FakeReceivedMailSession session,
+        ChannelWriter<MailLinkageRequest>? writer = null,
+        IProcessedMailMoveFailureStore? moveFailureStore = null)
     {
         Channel<MailLinkageRequest> channel = Channel.CreateUnbounded<MailLinkageRequest>();
         return new MailFetchQueueProducer(
-            new FakeReceivedMailSession(mailFactory),
+            session,
             writer ?? channel.Writer,
             new FakeMailNotifier(),
             new MailNotificationFactory(CreateNotificationOptions(), new BatchRunContext("test-run")),
-            new EmptyMoveFailureStore(),
+            moveFailureStore ?? new FakeMoveFailureStore(),
             NullLogger<MailFetchQueueProducer>.Instance);
     }
 
@@ -136,17 +166,42 @@ public sealed class MailFetchQueueProducerTests
         public Task DisconnectAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task<IReadOnlyList<ReceivedMailId>> SearchTargetMessagesAsync(MailSearchCondition condition, int maxMessages, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<ReceivedMail> CreateRequestAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default) => Task.FromResult(mailFactory(mailId));
-        public Task MoveToProcessedMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public List<ReceivedMailId> ProcessedMailIds { get; } = [];
+        public Task MoveToProcessedMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
+        {
+            ProcessedMailIds.Add(mailId);
+            return Task.CompletedTask;
+        }
         public Task MoveToErrorMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 
-    private sealed class EmptyMoveFailureStore : IProcessedMailMoveFailureStore
+    private sealed class FakeMoveFailureStore(IEnumerable<MailMoveFailure>? failures = null) : IProcessedMailMoveFailureStore
     {
-        public Task<bool> ContainsAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default) => Task.FromResult(false);
-        public Task AddAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task AddErrorMoveFailureAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task RemoveAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public List<MailMoveFailure> Failures { get; } = failures?.ToList() ?? [];
+
+        public Task<IReadOnlyList<MailMoveFailure>> GetAllAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<MailMoveFailure>>(Failures.ToArray());
+        public Task<bool> ContainsAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default) => Task.FromResult(Failures.Any(failure => failure.MailId == mailId));
+        public Task AddAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
+        {
+            Failures.Add(new MailMoveFailure(mailId, MailMoveFailureDestination.Processed));
+            return Task.CompletedTask;
+        }
+        public Task AddErrorMoveFailureAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
+        {
+            Failures.Add(new MailMoveFailure(mailId, MailMoveFailureDestination.Error));
+            return Task.CompletedTask;
+        }
+        public Task RemoveAsync(MailMoveFailure failure, CancellationToken cancellationToken = default)
+        {
+            _ = Failures.Remove(failure);
+            return Task.CompletedTask;
+        }
+        public Task RemoveAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
+        {
+            _ = Failures.RemoveAll(failure => failure.MailId == mailId && failure.Destination == MailMoveFailureDestination.Processed);
+            return Task.CompletedTask;
+        }
     }
 
     private sealed class FakeMailNotifier : IMailNotifier

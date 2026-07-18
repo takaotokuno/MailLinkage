@@ -5,6 +5,7 @@ using MailBatch.Console.Pipeline;
 using MailBatch.Console.ReceivedMails;
 using MailBatch.Console.ReceivedMails.Processing;
 using MailBatch.Console.ReceivedMails.Searching;
+using MailBatch.Console.ReceivedMails.State;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
@@ -32,6 +33,7 @@ public sealed class BatchRunnerTests
             pipeline,
             notifier,
             session,
+            new FakeMoveFailureStore(),
             new FakeJobExecutionLock(null));
 
         int exitCode = await runner.RunAsync();
@@ -66,6 +68,7 @@ public sealed class BatchRunnerTests
             new FakeReceivedMailPipeline(),
             notifier,
             new FakeReceivedMailSession(),
+            new FakeMoveFailureStore(),
             new FakeJobExecutionLock(null));
 
         int exitCode = await runner.RunAsync();
@@ -94,6 +97,7 @@ public sealed class BatchRunnerTests
             new FakeReceivedMailPipeline(),
             notifier,
             session,
+            new FakeMoveFailureStore(),
             new FakeJobExecutionLock(new JobExecutionLockHandle(new FakeLockRelease())));
 
         InvalidOperationException thrown = await Assert.ThrowsAsync<InvalidOperationException>(() =>
@@ -130,6 +134,7 @@ public sealed class BatchRunnerTests
             pipeline,
             notifier,
             new FakeReceivedMailSession(mailIds: [new ReceivedMailId(1, 1)]),
+            new FakeMoveFailureStore(),
             new FakeJobExecutionLock(new JobExecutionLockHandle(new FakeLockRelease())));
 
         ApplicationException thrown = await Assert.ThrowsAsync<ApplicationException>(() =>
@@ -145,6 +150,38 @@ public sealed class BatchRunnerTests
             Code: nameof(ApplicationException),
             Message: "Producer stopped unexpectedly.",
             Stage: "Processing"), notifier.Notifications[0].Result.FatalError);
+    }
+
+
+    [Fact]
+    public async Task RunAsync_WhenMoveFailureRecordsExist_RecoversBeforeSearchingMessages()
+    {
+        ReceivedMailId processedMailId = new(10, 999);
+        ReceivedMailId errorMailId = new(11, 999);
+        FakeRunStatusNotifier notifier = new();
+        FakeReceivedMailSession session = new();
+        FakeMoveFailureStore moveFailureStore = new();
+        moveFailureStore.Failures.Add(new MailMoveFailure(processedMailId, MailMoveFailureDestination.Processed));
+        moveFailureStore.Failures.Add(new MailMoveFailure(errorMailId, MailMoveFailureDestination.Error));
+        BatchRunner runner = new(
+            new ImapOptions(),
+            new ApiOptions(),
+            new BatchOptions(),
+            new MailSearchOptions(),
+            new BatchRunContext("run-recover-move-failures"),
+            NullLogger<BatchRunner>.Instance,
+            new FakeReceivedMailPipeline(),
+            notifier,
+            session,
+            moveFailureStore,
+            new FakeJobExecutionLock(new JobExecutionLockHandle(new FakeLockRelease())));
+
+        int exitCode = await runner.RunAsync();
+
+        Assert.Equal(0, exitCode);
+        Assert.Equal(processedMailId, session.ProcessedMailIds.Single());
+        Assert.Equal(errorMailId, session.ErrorMailIds.Single());
+        Assert.Empty(moveFailureStore.Failures);
     }
 
     private sealed class FakeLockRelease : IDisposable
@@ -209,10 +246,55 @@ public sealed class BatchRunnerTests
 
         public Task<ReceivedMail> CreateRequestAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
-        public Task MoveToProcessedMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public List<ReceivedMailId> ProcessedMailIds { get; } = [];
 
-        public Task MoveToErrorMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public List<ReceivedMailId> ErrorMailIds { get; } = [];
+
+        public Task MoveToProcessedMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
+        {
+            ProcessedMailIds.Add(mailId);
+            return Task.CompletedTask;
+        }
+
+        public Task MoveToErrorMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
+        {
+            ErrorMailIds.Add(mailId);
+            return Task.CompletedTask;
+        }
 
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
+    private sealed class FakeMoveFailureStore : IProcessedMailMoveFailureStore
+    {
+        public List<MailMoveFailure> Failures { get; } = [];
+
+        public Task<IReadOnlyList<MailMoveFailure>> GetAllAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<MailMoveFailure>>(Failures.ToArray());
+
+        public Task<bool> ContainsAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default) => Task.FromResult(Failures.Any(failure => failure.MailId == mailId));
+
+        public Task AddAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
+        {
+            Failures.Add(new MailMoveFailure(mailId, MailMoveFailureDestination.Processed));
+            return Task.CompletedTask;
+        }
+
+        public Task AddErrorMoveFailureAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
+        {
+            Failures.Add(new MailMoveFailure(mailId, MailMoveFailureDestination.Error));
+            return Task.CompletedTask;
+        }
+
+        public Task RemoveAsync(MailMoveFailure failure, CancellationToken cancellationToken = default)
+        {
+            _ = Failures.Remove(failure);
+            return Task.CompletedTask;
+        }
+
+        public Task RemoveAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
+        {
+            _ = Failures.RemoveAll(failure => failure.MailId == mailId && failure.Destination == MailMoveFailureDestination.Processed);
+            return Task.CompletedTask;
+        }
+    }
+
 }
