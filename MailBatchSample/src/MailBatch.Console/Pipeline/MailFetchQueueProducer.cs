@@ -27,6 +27,7 @@ internal sealed class MailFetchQueueProducer(
     public async Task<ProcessResult> ProduceAsync(IReadOnlyList<ReceivedMailId> targetMailIds, CancellationToken cancellationToken = default)
     {
         ProcessResultAccumulator result = new();
+        Exception? fatalException = null;
 
         try
         {
@@ -37,9 +38,18 @@ internal sealed class MailFetchQueueProducer(
 
             return result.ToResult();
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            fatalException = ex;
+            throw;
+        }
         finally
         {
-            writer.Complete();
+            writer.TryComplete(fatalException);
             logger.LogInformation(
                 "Producer completed queue additions. Enqueued={Enqueued}, InvalidFormat={InvalidFormat}",
                 result.Succeeded,

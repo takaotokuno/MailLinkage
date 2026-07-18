@@ -26,8 +26,13 @@ internal sealed class ReceivedMailPipeline(
         IMailFetchQueueProducer producer = componentFactory.CreateProducer(queue.Writer);
         IRequestQueueConsumer consumer = componentFactory.CreateConsumer(queue.Reader);
 
-        Task<ProcessResult> producerTask = producer.ProduceAsync(targetMailIds, cancellationToken);
-        Task<ProcessResult> consumerTask = consumer.ConsumeAsync(cancellationToken);
+        using CancellationTokenSource linkedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        CancellationToken pipelineCancellationToken = linkedCancellationTokenSource.Token;
+
+        Task<ProcessResult> producerTask = producer.ProduceAsync(targetMailIds, pipelineCancellationToken);
+        Task<ProcessResult> consumerTask = consumer.ConsumeAsync(pipelineCancellationToken);
+
+        await CancelPipelineOnFirstFailureAsync(producerTask, consumerTask, queue.Writer, linkedCancellationTokenSource);
 
         ProcessResult producerResult = await producerTask;
         ProcessResult consumerResult = await consumerTask;
@@ -45,5 +50,27 @@ internal sealed class ReceivedMailPipeline(
             Succeeded: consumerResult.Succeeded,
             InvalidFormat: producerResult.InvalidFormat,
             ApiFailed: consumerResult.ApiFailed + producerResult.ApiFailed);
+    }
+
+    private static async Task CancelPipelineOnFirstFailureAsync(
+        Task<ProcessResult> producerTask,
+        Task<ProcessResult> consumerTask,
+        ChannelWriter<MailLinkageRequest> writer,
+        CancellationTokenSource cancellationTokenSource)
+    {
+        Task<ProcessResult[]> allTasks = Task.WhenAll(producerTask, consumerTask);
+        Task firstCompletedTask = await Task.WhenAny(allTasks, producerTask, consumerTask);
+
+        if (firstCompletedTask.IsFaulted)
+        {
+            writer.TryComplete(firstCompletedTask.Exception);
+            await cancellationTokenSource.CancelAsync();
+        }
+        else if (firstCompletedTask.IsCanceled)
+        {
+            await cancellationTokenSource.CancelAsync();
+        }
+
+        await allTasks;
     }
 }
