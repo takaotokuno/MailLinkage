@@ -27,18 +27,23 @@ internal sealed class MailFetchQueueProducer(
     {
         ProcessResultAccumulator result = new();
 
-        foreach (ReceivedMailId mailId in targetMailIds)
+        try
         {
-            await ProduceSingleAsync(mailId, result, cancellationToken);
+            foreach (ReceivedMailId mailId in targetMailIds)
+            {
+                await ProduceSingleAsync(mailId, result, cancellationToken);
+            }
+
+            return result.ToResult();
         }
-
-        writer.Complete();
-        logger.LogInformation(
-            "Producer completed queue additions. Enqueued={Enqueued}, Failed={Failed}",
-            result.Succeeded,
-            result.Failed);
-
-        return result.ToResult();
+        finally
+        {
+            writer.Complete();
+            logger.LogInformation(
+                "Producer completed queue additions. Enqueued={Enqueued}, Failed={Failed}",
+                result.Succeeded,
+                result.Failed);
+        }
     }
 
     /// <summary>
