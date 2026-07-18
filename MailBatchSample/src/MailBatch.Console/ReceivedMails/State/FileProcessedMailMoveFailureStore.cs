@@ -10,16 +10,34 @@ namespace MailBatch.Console.ReceivedMails.State;
 /// </summary>
 internal interface IProcessedMailMoveFailureStore
 {
+    /// <summary>
+    /// 記録済みのメール移動失敗情報をすべて取得します。
+    /// </summary>
     Task<IReadOnlyList<MailMoveFailure>> GetAllAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// 指定された受信メールIDの移動失敗記録が存在するか判定します。
+    /// </summary>
     Task<bool> ContainsAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// 処理済みメールボックスへの移動失敗記録を追加します。
+    /// </summary>
     Task AddAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// エラーメールボックスへの移動失敗記録を追加します。
+    /// </summary>
     Task AddErrorMoveFailureAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// 指定されたメール移動失敗情報を削除します。
+    /// </summary>
     Task RemoveAsync(MailMoveFailure failure, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// 指定された受信メールIDの処理済み移動失敗記録を削除します。
+    /// </summary>
     Task RemoveAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default);
 }
 
@@ -62,6 +80,9 @@ internal sealed class FileProcessedMailMoveFailureStore(
         }
     }
 
+    /// <summary>
+    /// 記録済みのメール移動失敗情報をすべて取得します。
+    /// </summary>
     public async Task<IReadOnlyList<MailMoveFailure>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         await _semaphore.WaitAsync(cancellationToken);
@@ -76,6 +97,9 @@ internal sealed class FileProcessedMailMoveFailureStore(
         }
     }
 
+    /// <summary>
+    /// 指定された受信メールIDの処理済み移動失敗記録が存在するか判定します。
+    /// </summary>
     public async Task<bool> ContainsAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
     {
         await _semaphore.WaitAsync(cancellationToken);
@@ -93,16 +117,25 @@ internal sealed class FileProcessedMailMoveFailureStore(
         }
     }
 
+    /// <summary>
+    /// メール移動失敗記録を追加します。
+    /// </summary>
     public async Task AddAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default) => await AddAsync(
         MailMoveFailureRecord.Processed(mailId),
         "Recorded processed mailbox move failure. MailId={MailId}",
         cancellationToken);
 
+    /// <summary>
+    /// エラーメールボックスへの移動失敗記録を追加します。
+    /// </summary>
     public async Task AddErrorMoveFailureAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default) => await AddAsync(
         MailMoveFailureRecord.Error(mailId),
         "Recorded error mailbox move failure. MailId={MailId}",
         cancellationToken);
 
+    /// <summary>
+    /// メール移動失敗記録を追加します。
+    /// </summary>
     private async Task AddAsync(MailMoveFailureRecord record, string logMessage, CancellationToken cancellationToken)
     {
         await _semaphore.WaitAsync(cancellationToken);
@@ -121,10 +154,19 @@ internal sealed class FileProcessedMailMoveFailureStore(
         }
     }
 
+    /// <summary>
+    /// メール移動失敗記録を削除します。
+    /// </summary>
     public async Task RemoveAsync(MailMoveFailure failure, CancellationToken cancellationToken = default) => await RemoveAsync(new MailMoveFailureRecord(failure.MailId, failure.Destination), cancellationToken);
 
+    /// <summary>
+    /// メール移動失敗記録を削除します。
+    /// </summary>
     public async Task RemoveAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default) => await RemoveAsync(MailMoveFailureRecord.Processed(mailId), cancellationToken);
 
+    /// <summary>
+    /// メール移動失敗記録を削除します。
+    /// </summary>
     private async Task RemoveAsync(MailMoveFailureRecord record, CancellationToken cancellationToken)
     {
         await _semaphore.WaitAsync(cancellationToken);
@@ -143,6 +185,9 @@ internal sealed class FileProcessedMailMoveFailureStore(
         }
     }
 
+    /// <summary>
+    /// メール移動失敗記録を永続化ファイルから読み込みます。
+    /// </summary>
     private async Task<HashSet<MailMoveFailureRecord>> LoadAsync(CancellationToken cancellationToken)
     {
         string storePath = StorePath;
@@ -180,6 +225,9 @@ internal sealed class FileProcessedMailMoveFailureStore(
         return records;
     }
 
+    /// <summary>
+    /// 保存データから移動先種別の読み取りを試行します。
+    /// </summary>
     private static bool TryGetDestination(JsonElement element, out MailMoveFailureDestination destination)
     {
         destination = MailMoveFailureDestination.Processed;
@@ -193,12 +241,18 @@ internal sealed class FileProcessedMailMoveFailureStore(
             && TryConvertDestination(rawDestination, out destination);
     }
 
+    /// <summary>
+    /// 数値の移動先種別を列挙値へ変換します。
+    /// </summary>
     private static bool TryConvertDestination(int rawDestination, out MailMoveFailureDestination destination)
     {
         destination = (MailMoveFailureDestination)rawDestination;
         return true;
     }
 
+    /// <summary>
+    /// メール移動失敗記録を永続化ファイルへ保存します。
+    /// </summary>
     private async Task SaveAsync(HashSet<MailMoveFailureRecord> records, CancellationToken cancellationToken)
     {
         string storePath = StorePath;
@@ -233,8 +287,14 @@ internal sealed class FileProcessedMailMoveFailureStore(
             }
         }
 
+        /// <summary>
+        /// 処理済みメールボックス向けの移動失敗記録を作成します。
+        /// </summary>
         public static MailMoveFailureRecord Processed(ReceivedMailId mailId) => new(mailId, MailMoveFailureDestination.Processed);
 
+        /// <summary>
+        /// エラーメールボックス向けの移動失敗記録を作成します。
+        /// </summary>
         public static MailMoveFailureRecord Error(ReceivedMailId mailId) => new(mailId, MailMoveFailureDestination.Error);
     }
 

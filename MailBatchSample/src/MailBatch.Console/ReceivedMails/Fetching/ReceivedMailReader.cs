@@ -10,6 +10,9 @@ namespace MailBatch.Console.ReceivedMails.Fetching;
 /// </summary>
 internal interface IReceivedMailReader
 {
+    /// <summary>
+    /// 指定された受信メールIDのメール内容を読み取ります。
+    /// </summary>
     Task<ReceivedMail> ReadAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default);
 }
 
@@ -18,6 +21,9 @@ internal interface IReceivedMailReader
 /// </summary>
 internal sealed class ReceivedMailReader(IMailFolderProvider mailFolderProvider) : IReceivedMailReader
 {
+    /// <summary>
+    /// 指定された受信メールIDのメール内容を読み取ります。
+    /// </summary>
     public async Task<ReceivedMail> ReadAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
     {
         UniqueId uid = MailKitReceivedMailIdMapper.ToUniqueId(mailId);

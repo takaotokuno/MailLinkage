@@ -14,8 +14,14 @@ namespace MailBatch.Console.Pipeline;
 /// </summary>
 internal interface IReceivedMailPipelineComponentFactory
 {
+    /// <summary>
+    /// 指定されたキューWriterを使用するProducerを作成します。
+    /// </summary>
     IMailFetchQueueProducer CreateProducer(ChannelWriter<MailLinkageRequest> writer);
 
+    /// <summary>
+    /// 指定されたキューReaderを使用するConsumerを作成します。
+    /// </summary>
     IRequestQueueConsumer CreateConsumer(ChannelReader<MailLinkageRequest> reader);
 }
 
@@ -32,6 +38,9 @@ internal sealed class ReceivedMailPipelineComponentFactory(
     ILogger<MailLinkageRequest> consumerLogger,
     IProcessedMailMoveFailureStore moveFailureStore) : IReceivedMailPipelineComponentFactory
 {
+    /// <summary>
+    /// 指定されたキューWriterを使用するProducerを作成します。
+    /// </summary>
     public IMailFetchQueueProducer CreateProducer(ChannelWriter<MailLinkageRequest> writer)
     {
         return new MailFetchQueueProducer(
@@ -43,6 +52,9 @@ internal sealed class ReceivedMailPipelineComponentFactory(
             producerLogger);
     }
 
+    /// <summary>
+    /// 指定されたキューReaderを使用するConsumerを作成します。
+    /// </summary>
     public IRequestQueueConsumer CreateConsumer(ChannelReader<MailLinkageRequest> reader)
     {
         return new RequestQueueConsumer(

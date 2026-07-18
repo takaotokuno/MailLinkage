@@ -9,6 +9,9 @@ namespace MailBatch.Console.Api;
 /// </summary>
 internal static class ApiRetryPolicyFactory
 {
+    /// <summary>
+    /// インスタンスまたは処理に必要な値を作成します。
+    /// </summary>
     public static IAsyncPolicy<HttpResponseMessage> Create(ApiOptions apiOptions)
     {
         return HttpPolicyExtensions

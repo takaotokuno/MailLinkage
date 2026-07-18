@@ -13,6 +13,9 @@ namespace MailBatch.Console.Pipeline;
 /// </summary>
 internal interface IRequestQueueConsumer
 {
+    /// <summary>
+    /// API送信用キューのリクエストを消費し、処理結果を返します。
+    /// </summary>
     Task<ProcessResult> ConsumeAsync(CancellationToken cancellationToken = default);
 }
 
@@ -37,34 +40,62 @@ internal sealed class RequestQueueConsumer(
 
         await foreach (MailLinkageRequest request in reader.ReadAllAsync(cancellationToken))
         {
-            using (logger.BeginScope(new Dictionary<string, object> { ["MailId"] = request.MailId }))
-            {
-                bool succeeded = await PostAndHandleResultAsync(request, cancellationToken);
-                if (succeeded)
-                {
-                    if (await TryMoveToProcessedMailboxAsync(request.MailId, cancellationToken))
-                    {
-                        result.IncrementSuccess();
-                    }
-                    else
-                    {
-                        result.IncrementApiFailure();
-                    }
-                }
-                else
-                {
-                    await TryMoveToErrorMailboxAsync(request.MailId, cancellationToken);
-                    result.IncrementApiFailure();
-                }
-            }
+            await ConsumeSingleAsync(request, result, cancellationToken);
         }
 
+        LogCompletion(result);
+        return result.ToResult();
+    }
+
+    /// <summary>
+    /// キューから取得したリクエスト1件をAPIへ送信し、結果を集計します。
+    /// </summary>
+    private async Task ConsumeSingleAsync(
+        MailLinkageRequest request,
+        ProcessResultAccumulator result,
+        CancellationToken cancellationToken)
+    {
+        using (logger.BeginScope(new Dictionary<string, object> { ["MailId"] = request.MailId }))
+        {
+            bool succeeded = await PostAndHandleResultAsync(request, cancellationToken);
+            await HandlePostOutcomeAsync(request.MailId, succeeded, result, cancellationToken);
+        }
+    }
+
+    /// <summary>
+    /// API送信結果に応じてメールを移動し、処理結果を更新します。
+    /// </summary>
+    private async Task HandlePostOutcomeAsync(
+        ReceivedMailId mailId,
+        bool succeeded,
+        ProcessResultAccumulator result,
+        CancellationToken cancellationToken)
+    {
+        if (!succeeded)
+        {
+            await TryMoveToErrorMailboxAsync(mailId, cancellationToken);
+            result.IncrementApiFailure();
+            return;
+        }
+
+        if (await TryMoveToProcessedMailboxAsync(mailId, cancellationToken))
+        {
+            result.IncrementSuccess();
+            return;
+        }
+
+        result.IncrementApiFailure();
+    }
+
+    /// <summary>
+    /// Consumer終了時にAPI送信件数をログへ出力します。
+    /// </summary>
+    private void LogCompletion(ProcessResultAccumulator result)
+    {
         logger.LogInformation(
             "Consumer confirmed no remaining queued data. ApiSucceeded={Succeeded}, ApiFailed={ApiFailed}",
             result.Succeeded,
             result.ApiFailed);
-
-        return result.ToResult();
     }
 
     /// <summary>

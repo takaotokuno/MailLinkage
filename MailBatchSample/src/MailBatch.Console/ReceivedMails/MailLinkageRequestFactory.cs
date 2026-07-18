@@ -5,6 +5,9 @@ namespace MailBatch.Console.ReceivedMails;
 /// </summary>
 internal static class MailLinkageRequestFactory
 {
+    /// <summary>
+    /// インスタンスまたは処理に必要な値を作成します。
+    /// </summary>
     public static MailLinkageRequest Create(ReceivedMail mail, ExtractedMailItem item)
     {
         return new MailLinkageRequest(
@@ -13,6 +16,9 @@ internal static class MailLinkageRequestFactory
             CreateMessage(mail.Subject, mail.Body));
     }
 
+    /// <summary>
+    /// API連携用のメッセージ本文を作成します。
+    /// </summary>
     private static string CreateMessage(string subject, string body)
     {
         int MAX_LENGTH = 500;

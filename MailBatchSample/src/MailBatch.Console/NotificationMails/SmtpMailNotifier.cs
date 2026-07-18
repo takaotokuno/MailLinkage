@@ -58,6 +58,9 @@ internal sealed class SmtpMailNotifier(
         await smtpClient.DisconnectAsync(true, cancellationToken);
     }
 
+    /// <summary>
+    /// API連携用のメッセージ本文を作成します。
+    /// </summary>
     private MimeMessage CreateMessage(MailNotification notification)
     {
         MimeMessage message = new();

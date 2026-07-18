@@ -6,5 +6,8 @@ namespace MailBatch.Console.BatchProcessing.Locking;
 /// </summary>
 internal sealed class JobExecutionLockHandle(IDisposable lockResource) : IDisposable
 {
+    /// <summary>
+    /// 保持しているリソースを解放します。
+    /// </summary>
     public void Dispose() => lockResource.Dispose();
 }

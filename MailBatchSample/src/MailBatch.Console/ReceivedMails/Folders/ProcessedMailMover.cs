@@ -10,8 +10,14 @@ namespace MailBatch.Console.ReceivedMails.Folders;
 /// </summary>
 internal interface IProcessedMailMover
 {
+    /// <summary>
+    /// 指定されたメールを処理済みメールボックスへ移動します。
+    /// </summary>
     Task MoveToProcessedMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// 指定されたメールをエラーメールボックスへ移動します。
+    /// </summary>
     Task MoveToErrorMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default);
 }
 
@@ -23,18 +29,27 @@ internal sealed class ProcessedMailMover(
     IMailFolderProvider mailFolderProvider,
     ILogger<ProcessedMailMover> logger) : IProcessedMailMover
 {
+    /// <summary>
+    /// 指定されたメールを処理済みメールボックスへ移動します。
+    /// </summary>
     public async Task MoveToProcessedMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
     {
         IMailFolder processedFolder = await mailFolderProvider.GetOrCreateProcessedFolderAsync(cancellationToken);
         await MoveToMailboxAsync(mailId, processedFolder, processingOptions.ProcessedMailbox, cancellationToken);
     }
 
+    /// <summary>
+    /// 指定されたメールをエラーメールボックスへ移動します。
+    /// </summary>
     public async Task MoveToErrorMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
     {
         IMailFolder errorFolder = await mailFolderProvider.GetOrCreateErrorFolderAsync(cancellationToken);
         await MoveToMailboxAsync(mailId, errorFolder, processingOptions.ErrorMailbox, cancellationToken);
     }
 
+    /// <summary>
+    /// 指定されたメールを移動先メールボックスへ移動します。
+    /// </summary>
     private async Task MoveToMailboxAsync(
         ReceivedMailId mailId,
         IMailFolder destinationFolder,

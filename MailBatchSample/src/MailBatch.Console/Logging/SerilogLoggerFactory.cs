@@ -8,6 +8,9 @@ namespace MailBatch.Console.Logging;
 /// </summary>
 internal static class SerilogLoggerFactory
 {
+    /// <summary>
+    /// 読み込み済み設定と実行IDからSerilogロガーを作成します。
+    /// </summary>
     public static Serilog.Core.Logger Create(LoadedConfiguration loadedConfiguration, string runId)
     {
         return new LoggerConfiguration()

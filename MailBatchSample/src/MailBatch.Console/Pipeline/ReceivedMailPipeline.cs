@@ -9,6 +9,9 @@ namespace MailBatch.Console.Pipeline;
 /// </summary>
 internal interface IReceivedMailPipeline
 {
+    /// <summary>
+    /// 指定された受信メールID一覧をProducer/Consumerパイプラインで処理します。
+    /// </summary>
     Task<ProcessResult> ProcessAsync(IReadOnlyList<ReceivedMailId> targetMailIds, CancellationToken cancellationToken = default);
 }
 
@@ -20,6 +23,9 @@ internal sealed class ReceivedMailPipeline(
     IReceivedMailPipelineComponentFactory componentFactory,
     ILogger<ReceivedMailPipeline> logger) : IReceivedMailPipeline
 {
+    /// <summary>
+    /// 受信メールID一覧をプロデューサーとコンシューマーで処理します。
+    /// </summary>
     public async Task<ProcessResult> ProcessAsync(IReadOnlyList<ReceivedMailId> targetMailIds, CancellationToken cancellationToken = default)
     {
         if (targetMailIds.Count == 0)
@@ -59,6 +65,9 @@ internal sealed class ReceivedMailPipeline(
             ApiFailed: consumerResult.ApiFailed + producerResult.ApiFailed);
     }
 
+    /// <summary>
+    /// パイプライン内の先行失敗を検知して他方の処理を停止します。
+    /// </summary>
     private static async Task CancelPipelineOnFirstFailureAsync(
         Task<ProcessResult> producerTask,
         Task<ProcessResult> consumerTask,

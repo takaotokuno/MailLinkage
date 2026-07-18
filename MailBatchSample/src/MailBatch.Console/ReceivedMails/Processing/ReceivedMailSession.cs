@@ -134,6 +134,9 @@ internal sealed class ReceivedMailSession(
         }
     }
 
+    /// <summary>
+    /// 非同期リソースを解放します。
+    /// </summary>
     public async ValueTask DisposeAsync()
     {
         await DisconnectAsync();

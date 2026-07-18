@@ -8,6 +8,9 @@ namespace MailBatch.Console.ReceivedMails.MailKit;
 /// </summary>
 internal static class MailKitSearchQueryMapper
 {
+    /// <summary>
+    /// メール検索条件をMailKitの検索クエリへ変換します。
+    /// </summary>
     public static SearchQuery ToSearchQuery(MailSearchCondition condition)
     {
         SearchQuery? query = null;

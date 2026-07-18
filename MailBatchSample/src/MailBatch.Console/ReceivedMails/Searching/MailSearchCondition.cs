@@ -10,6 +10,9 @@ internal sealed record MailSearchCondition(
     string? From,
     DateTime? DeliveredAfter)
 {
+    /// <summary>
+    /// 検索オプションからメール検索条件を作成します。
+    /// </summary>
     public static MailSearchCondition FromOptions(MailSearchOptions options, DateTime utcNow)
     {
         DateTime utcDate = utcNow.ToUniversalTime().Date;

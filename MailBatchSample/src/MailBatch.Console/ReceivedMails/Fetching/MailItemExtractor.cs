@@ -46,6 +46,9 @@ internal static partial class MailItemExtractor
     /// Key行を抽出する正規表現を返します。
     /// </summary>
     [GeneratedRegex(@"^Key:[ \t]*(?<key>[A-Za-z0-9]+)[ \t]*$", RegexOptions.Multiline)]
+    /// <summary>
+    /// キー行を抽出する正規表現を取得します。
+    /// </summary>
     private static partial Regex KeyLineRegex();
 }
 

@@ -13,6 +13,9 @@ internal sealed record ProcessResult(int Total, int Succeeded = 0, int InvalidFo
         }
     }
 
+    /// <summary>
+    /// 処理結果をプロセス終了コードへ変換します。
+    /// </summary>
     public int ConvertToExitCode() => Failed > 0 ? 2 : 0;
 }
 
@@ -38,11 +41,23 @@ internal sealed class ProcessResultAccumulator(int total = 0)
         get; private set;
     }
 
+    /// <summary>
+    /// 成功件数を1件加算します。
+    /// </summary>
     public void IncrementSuccess() => Succeeded++;
 
+    /// <summary>
+    /// 入力形式不正件数を1件加算します。
+    /// </summary>
     public void IncrementInvalidFormat() => InvalidFormat++;
 
+    /// <summary>
+    /// API連携失敗件数を1件加算します。
+    /// </summary>
     public void IncrementApiFailure() => ApiFailed++;
 
+    /// <summary>
+    /// 集計中の値から処理結果を作成します。
+    /// </summary>
     public ProcessResult ToResult() => new(Total, Succeeded, InvalidFormat, ApiFailed);
 }
