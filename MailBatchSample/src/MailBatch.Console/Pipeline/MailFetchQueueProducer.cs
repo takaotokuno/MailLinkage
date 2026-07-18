@@ -27,7 +27,7 @@ internal sealed class MailFetchQueueProducer(
     /// </summary>
     public async Task<ProcessResult> ProduceAsync(IReadOnlyList<ReceivedMailId> targetMailIds, CancellationToken cancellationToken = default)
     {
-        ProcessResultAccumulator result = new();
+        ProcessResultAccumulator result = new(targetMailIds.Count);
         Exception? fatalException = null;
 
         try
@@ -90,12 +90,22 @@ internal sealed class MailFetchQueueProducer(
         }
         catch (Exception ex)
         {
-            result.IncrementInvalidFormat();
-            logger.LogError(
-                ex,
-                "Failed to fetch, transform, validate, or queue message. MailId={MailId}",
-                mailId);
+            RecordInvalidFormat(mailId, result, ex);
         }
+    }
+
+
+    /// <summary>
+    /// メール取得、変換、キュー投入中の業務処理例外はすべて入力メール形式不正として集計します。
+    /// MIME破損、Extract時のキー情報不足、データサイズ上限超過、キュー投入失敗はいずれもここでInvalidFormatへ寄せます。
+    /// </summary>
+    private void RecordInvalidFormat(ReceivedMailId mailId, ProcessResultAccumulator result, Exception exception)
+    {
+        result.IncrementInvalidFormat();
+        logger.LogError(
+            exception,
+            "Failed to fetch, transform, validate, or queue message. Counted as InvalidFormat. MailId={MailId}",
+            mailId);
     }
 
     /// <summary>
