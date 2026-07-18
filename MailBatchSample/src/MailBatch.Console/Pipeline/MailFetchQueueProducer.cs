@@ -74,7 +74,7 @@ internal sealed class MailFetchQueueProducer(
 
             ExtractedMailItem item = await ValidateAndExtractAsync(mail, cancellationToken);
 
-            await QueueRequestAsync(item, cancellationToken);
+            await QueueRequestAsync(mail, item, cancellationToken);
 
             result.IncrementSuccess();
 
@@ -180,9 +180,12 @@ internal sealed class MailFetchQueueProducer(
     /// <summary>
     /// 検証済みの受信メールリクエストを内部キューへ追加します。
     /// </summary>
-    private async Task QueueRequestAsync(ExtractedMailItem item, CancellationToken cancellationToken)
+    private async Task QueueRequestAsync(
+        ReceivedMail mail,
+        ExtractedMailItem item,
+        CancellationToken cancellationToken)
     {
-        MailLinkageRequest request = new(item.MailId, item.Key, string.Empty);
+        MailLinkageRequest request = MailLinkageRequestFactory.Create(mail, item);
         await writer.WriteAsync(request, cancellationToken);
     }
 
