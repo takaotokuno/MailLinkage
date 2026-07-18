@@ -246,8 +246,8 @@ public sealed class RequestQueueConsumerTests
         public Task<IReadOnlyList<MailMoveFailure>> GetAllAsync(CancellationToken cancellationToken = default)
         {
             IReadOnlyList<MailMoveFailure> failures = [
-                .. MailIds.Select(mailId => new MailMoveFailure(mailId, MailMoveFailureDestination.Processed)),
-                .. ErrorMoveFailureMailIds.Select(mailId => new MailMoveFailure(mailId, MailMoveFailureDestination.Error))
+                .. MailIds.Select(mailId => { return new MailMoveFailure(mailId, MailMoveFailureDestination.Processed); }),
+                .. ErrorMoveFailureMailIds.Select(mailId => { return new MailMoveFailure(mailId, MailMoveFailureDestination.Error); })
             ];
             return Task.FromResult(failures);
         }
@@ -278,14 +278,9 @@ public sealed class RequestQueueConsumerTests
 
         public Task RemoveAsync(MailMoveFailure failure, CancellationToken cancellationToken = default)
         {
-            if (failure.Destination == MailMoveFailureDestination.Processed)
-            {
-                _ = MailIds.Remove(failure.MailId);
-            }
-            else
-            {
-                _ = ErrorMoveFailureMailIds.Remove(failure.MailId);
-            }
+            _ = failure.Destination == MailMoveFailureDestination.Processed
+                ? MailIds.Remove(failure.MailId)
+                : ErrorMoveFailureMailIds.Remove(failure.MailId);
 
             return Task.CompletedTask;
         }

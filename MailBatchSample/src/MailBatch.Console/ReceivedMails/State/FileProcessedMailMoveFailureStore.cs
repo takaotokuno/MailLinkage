@@ -55,7 +55,7 @@ internal sealed class FileProcessedMailMoveFailureStore(
         try
         {
             HashSet<MailMoveFailureRecord> records = await LoadAsync(cancellationToken);
-            return [.. records.Select(record => new MailMoveFailure(record.MailId, record.Destination))];
+            return [.. records.Select(record => { return new MailMoveFailure(record.MailId, record.Destination); })];
         }
         finally
         {
@@ -69,7 +69,10 @@ internal sealed class FileProcessedMailMoveFailureStore(
         try
         {
             HashSet<MailMoveFailureRecord> records = await LoadAsync(cancellationToken);
-            return records.Any(record => record.MailId == mailId);
+            return records.Any(record =>
+            {
+                return record.MailId == mailId;
+            });
         }
         finally
         {
@@ -105,15 +108,9 @@ internal sealed class FileProcessedMailMoveFailureStore(
         }
     }
 
-    public async Task RemoveAsync(MailMoveFailure failure, CancellationToken cancellationToken = default)
-    {
-        await RemoveAsync(new MailMoveFailureRecord(failure.MailId, failure.Destination), cancellationToken);
-    }
+    public async Task RemoveAsync(MailMoveFailure failure, CancellationToken cancellationToken = default) => await RemoveAsync(new MailMoveFailureRecord(failure.MailId, failure.Destination), cancellationToken);
 
-    public async Task RemoveAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
-    {
-        await RemoveAsync(MailMoveFailureRecord.Processed(mailId), cancellationToken);
-    }
+    public async Task RemoveAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default) => await RemoveAsync(MailMoveFailureRecord.Processed(mailId), cancellationToken);
 
     private async Task RemoveAsync(MailMoveFailureRecord record, CancellationToken cancellationToken)
     {
@@ -177,12 +174,9 @@ internal sealed class FileProcessedMailMoveFailureStore(
             return false;
         }
 
-        if (destinationElement.ValueKind == JsonValueKind.String)
-        {
-            return Enum.TryParse(destinationElement.GetString(), ignoreCase: true, out destination);
-        }
-
-        return destinationElement.ValueKind == JsonValueKind.Number
+        return destinationElement.ValueKind == JsonValueKind.String
+            ? Enum.TryParse(destinationElement.GetString(), ignoreCase: true, out destination)
+            : destinationElement.ValueKind == JsonValueKind.Number
             && destinationElement.TryGetInt32(out int rawDestination)
             && Enum.IsDefined(typeof(MailMoveFailureDestination), rawDestination)
             && TryConvertDestination(rawDestination, out destination);

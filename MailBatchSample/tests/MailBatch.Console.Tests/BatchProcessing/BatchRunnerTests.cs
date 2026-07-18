@@ -270,7 +270,10 @@ public sealed class BatchRunnerTests
 
         public Task<IReadOnlyList<MailMoveFailure>> GetAllAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<MailMoveFailure>>(Failures.ToArray());
 
-        public Task<bool> ContainsAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default) => Task.FromResult(Failures.Any(failure => failure.MailId == mailId));
+        public Task<bool> ContainsAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default) => Task.FromResult(Failures.Any(failure =>
+        {
+            return failure.MailId == mailId;
+        }));
 
         public Task AddAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
         {
@@ -292,7 +295,10 @@ public sealed class BatchRunnerTests
 
         public Task RemoveAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
         {
-            _ = Failures.RemoveAll(failure => failure.MailId == mailId && failure.Destination == MailMoveFailureDestination.Processed);
+            _ = Failures.RemoveAll(failure =>
+            {
+                return failure.MailId == mailId && failure.Destination == MailMoveFailureDestination.Processed;
+            });
             return Task.CompletedTask;
         }
     }
