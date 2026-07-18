@@ -144,7 +144,22 @@ internal sealed class MailFetchQueueProducer(
 
         MailNotification notification = mailNotificationFactory.CreateValidationErrorNotification(mail, validationErrors);
 
-        await mailNotifier.SendAsync(notification, cancellationToken);
+        try
+        {
+            await mailNotifier.SendAsync(notification, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(
+                ex,
+                "Failed to send validation error notification. MailId={MailId}, NotificationTo={NotificationTo}",
+                mail.MailId,
+                notification.To);
+        }
     }
 
     private class ReceivedMailProcessingException(IReadOnlyCollection<string> errors)
