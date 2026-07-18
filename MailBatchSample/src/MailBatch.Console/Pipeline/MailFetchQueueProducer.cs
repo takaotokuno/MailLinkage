@@ -9,11 +9,17 @@ using Microsoft.Extensions.Logging;
 
 namespace MailBatch.Console.Pipeline;
 
+/// <summary>
+/// メールを読み取りキューへ投入するProducer操作を提供します。
+/// </summary>
 internal interface IMailFetchQueueProducer
 {
     Task<ProcessResult> ProduceAsync(IReadOnlyList<ReceivedMailId> targetMailIds, CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// 処理対象メールを読み取り、API連携リクエストとしてキューへ投入します。
+/// </summary>
 internal sealed class MailFetchQueueProducer(
     IReceivedMailSession receivedMailSession,
     ChannelWriter<MailLinkageRequest> writer,
@@ -231,6 +237,9 @@ internal sealed class MailFetchQueueProducer(
         }
     }
 
+    /// <summary>
+    /// メール単位の入力不備を表します。
+    /// </summary>
     private class ReceivedMailProcessingException(IReadOnlyCollection<string> errors)
         : Exception(string.Join(Environment.NewLine, errors))
     {

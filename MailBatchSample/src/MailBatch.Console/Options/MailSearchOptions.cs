@@ -1,5 +1,8 @@
 namespace MailBatch.Console.Options;
 
+/// <summary>
+/// 処理対象メールの検索条件設定を保持します。
+/// </summary>
 internal sealed class MailSearchOptions
 {
     public string? SubjectContains

@@ -4,6 +4,9 @@ using Microsoft.Extensions.Configuration;
 
 namespace MailBatch.Console.Configuration;
 
+/// <summary>
+/// 設定ファイルと環境変数からアプリケーション設定を読み込みます。
+/// </summary>
 internal static class AppConfiguration
 {
     private const string EnvironmentVariablePrefix = "MAILBATCH_";

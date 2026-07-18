@@ -1,5 +1,8 @@
 namespace MailBatch.Console.Options;
 
+/// <summary>
+/// バッチ実行時のログや件数制御に関する設定を保持します。
+/// </summary>
 internal sealed class BatchOptions
 {
     public string LogDirectory { get; init; } = "MailBatchSample/logs";

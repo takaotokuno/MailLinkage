@@ -1,5 +1,8 @@
 namespace MailBatch.Console.Options;
 
+/// <summary>
+/// 通知メール送信に関する設定を保持します。
+/// </summary>
 internal sealed class MailNotificationOptions
 {
     public const string RunStatusTemplateName = "RunStatus";

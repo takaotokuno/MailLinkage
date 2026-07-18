@@ -2,6 +2,9 @@ using MailBatch.Console.Options;
 
 namespace MailBatch.Console.Logging;
 
+/// <summary>
+/// 保持期間を過ぎたログファイルを削除します。
+/// </summary>
 internal sealed class LogRetentionCleaner(BatchOptions batchOptions, TimeProvider? timeProvider = null)
 {
     private readonly TimeProvider _timeProvider = timeProvider ?? TimeProvider.System;

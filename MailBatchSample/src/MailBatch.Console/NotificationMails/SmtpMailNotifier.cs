@@ -6,6 +6,9 @@ using MimeKit;
 
 namespace MailBatch.Console.NotificationMails;
 
+/// <summary>
+/// SMTPを使用して通知メールを送信します。
+/// </summary>
 internal sealed class SmtpMailNotifier(
     MailNotificationOptions notificationOptions,
     ILogger<SmtpMailNotifier> logger) : IMailNotifier

@@ -5,6 +5,9 @@ using Microsoft.Extensions.Logging;
 
 namespace MailBatch.Console.ReceivedMails.Folders;
 
+/// <summary>
+/// 処理結果に応じてメールを処理済みまたはエラー用メールボックスへ移動します。
+/// </summary>
 internal interface IProcessedMailMover
 {
     Task MoveToProcessedMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default);
@@ -12,6 +15,9 @@ internal interface IProcessedMailMover
     Task MoveToErrorMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// 処理結果に応じたメール移動を実行します。
+/// </summary>
 internal sealed class ProcessedMailMover(
     ProcessingOptions processingOptions,
     IMailFolderProvider mailFolderProvider,

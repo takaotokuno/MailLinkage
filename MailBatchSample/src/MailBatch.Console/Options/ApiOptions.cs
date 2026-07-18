@@ -1,5 +1,8 @@
 namespace MailBatch.Console.Options;
 
+/// <summary>
+/// 連携先APIの接続設定を保持します。
+/// </summary>
 internal sealed class ApiOptions
 {
     public Uri? BaseUrl

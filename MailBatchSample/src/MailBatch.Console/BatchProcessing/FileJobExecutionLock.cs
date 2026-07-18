@@ -17,6 +17,7 @@ internal sealed class FileJobExecutionLock(BatchOptions batchOptions, BatchRunCo
 
         try
         {
+            // OSのファイル共有制御を利用し、別プロセスが同時に同じメールを処理する二重連携を防ぎます。
             FileStream lockFileStream = new(
                 lockFilePath,
                 FileMode.OpenOrCreate,
