@@ -3,7 +3,7 @@ using MailBatch.Console.Options;
 using MailBatch.Console.ReceivedMails;
 using Microsoft.Extensions.Logging;
 
-namespace MailBatch.Console.Pipeline;
+namespace MailBatch.Console.ReceivedMails.State;
 
 internal interface IProcessedMailMoveFailureStore
 {

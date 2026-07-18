@@ -3,6 +3,7 @@ using MailBatch.Console.Api;
 using MailBatch.Console.NotificationMails;
 using MailBatch.Console.Options;
 using MailBatch.Console.ReceivedMails;
+using MailBatch.Console.ReceivedMails.State;
 using MailBatch.Console.ReceivedMails.Processing;
 using Microsoft.Extensions.Logging;
 
