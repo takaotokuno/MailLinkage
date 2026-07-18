@@ -40,9 +40,9 @@ internal sealed class MailFetchQueueProducer(
         {
             writer.Complete();
             logger.LogInformation(
-                "Producer completed queue additions. Enqueued={Enqueued}, Failed={Failed}",
+                "Producer completed queue additions. Enqueued={Enqueued}, InvalidFormat={InvalidFormat}",
                 result.Succeeded,
-                result.Failed);
+                result.InvalidFormat);
         }
     }
 
@@ -69,7 +69,7 @@ internal sealed class MailFetchQueueProducer(
         }
         catch (Exception ex)
         {
-            result.IncrementFailure();
+            result.IncrementInvalidFormat();
             logger.LogError(
                 ex,
                 "Failed to fetch, transform, validate, or queue message. MailId={MailId}",
