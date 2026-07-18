@@ -35,6 +35,7 @@ internal static class MailBatchServiceCollectionExtensions
             .AddPipelineServices()
             .AddRunStatusServices()
             .AddApiClient(options.Api)
+            .AddSingleton<IJobExecutionLock, FileJobExecutionLock>()
             .AddTransient<BatchRunner>();
 
         return services;

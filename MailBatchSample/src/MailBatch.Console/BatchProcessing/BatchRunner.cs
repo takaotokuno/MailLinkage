@@ -17,7 +17,8 @@ internal sealed class BatchRunner(
     ILogger<BatchRunner> logger,
     IReceivedMailPipeline receivedMailPipeline,
     IRunStatusNotifier runStatusNotifier,
-    IReceivedMailSession receivedMailSession)
+    IReceivedMailSession receivedMailSession,
+    IJobExecutionLock jobExecutionLock)
 {
     /// <summary>
     /// メール取得からAPI送信までのバッチ処理全体を実行し、終了コードを返します。
@@ -25,6 +26,20 @@ internal sealed class BatchRunner(
     public async Task<int> RunAsync(CancellationToken cancellationToken = default)
     {
         LogStart();
+
+        using JobExecutionLockHandle? executionLock = jobExecutionLock.TryAcquire();
+        if (executionLock is null)
+        {
+            ProcessResult duplicateRunResult = new(Total: 0, Succeeded: 0, Failed: 1);
+            const int DUPLICATE_RUN_EXIT_CODE = 2;
+
+            await runStatusNotifier.NotifyAsync(duplicateRunResult, DUPLICATE_RUN_EXIT_CODE, cancellationToken);
+            logger.LogError(
+                "Mail batch aborted because another instance is already running. RunId={RunId}",
+                runContext.RunId);
+
+            return DUPLICATE_RUN_EXIT_CODE;
+        }
 
         ProcessResult result;
 
