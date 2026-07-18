@@ -22,7 +22,13 @@ internal sealed class MailKitSearcher(
         IMailFolder folder = mailFolderProvider.GetOpenedReceiveFolder();
         SearchQuery query = MailKitSearchQueryMapper.ToSearchQuery(condition);
         IList<UniqueId> uids = await folder.SearchAsync(query, cancellationToken);
-        List<ReceivedMailId> targetMailIds = uids.Take(maxMessages).Select(MailKitReceivedMailIdMapper.ToReceivedMailId).ToList();
+        IList<IMessageSummary> summaries = await folder.FetchAsync(uids, MessageSummaryItems.UniqueId | MessageSummaryItems.InternalDate, cancellationToken);
+        List<ReceivedMailId> targetMailIds = summaries
+            .OrderBy(summary => summary.InternalDate ?? DateTimeOffset.MaxValue)
+            .ThenBy(summary => summary.UniqueId.Id)
+            .Take(maxMessages)
+            .Select(summary => MailKitReceivedMailIdMapper.ToReceivedMailId(summary.UniqueId))
+            .ToList();
 
         logger.LogInformation(
             "Found {MessageCount} target messages. Mailbox={Mailbox}",
