@@ -74,6 +74,80 @@ public sealed class BatchRunnerTests
         _ = Assert.Single(notifier.Notifications);
     }
 
+    /// <summary>
+    /// 状態: IMAP接続時に例外が発生する。
+    /// 振る舞い: 致命的エラー通知を送信してから例外を再スローする。
+    /// </summary>
+    [Fact]
+    public async Task RunAsync_WhenConnectThrows_SendsFatalErrorNotificationAndRethrows()
+    {
+        InvalidOperationException exception = new("Authentication failed.");
+        FakeRunStatusNotifier notifier = new();
+        FakeReceivedMailSession session = new(connectException: exception);
+        BatchRunner runner = new(
+            new ImapOptions(),
+            new ApiOptions(),
+            new BatchOptions(),
+            new MailSearchOptions(),
+            new BatchRunContext("run-connect-fatal"),
+            NullLogger<BatchRunner>.Instance,
+            new FakeReceivedMailPipeline(),
+            notifier,
+            session,
+            new FakeJobExecutionLock(new JobExecutionLockHandle(new FakeLockRelease())));
+
+        InvalidOperationException thrown = await Assert.ThrowsAsync<InvalidOperationException>(() => runner.RunAsync());
+
+        Assert.Same(exception, thrown);
+        _ = Assert.Single(notifier.Notifications);
+        Assert.Equal(1, notifier.Notifications[0].ExitCode);
+        Assert.Equal(new FatalBatchError(
+            Code: nameof(InvalidOperationException),
+            Message: "Authentication failed.",
+            Stage: "Connection"), notifier.Notifications[0].Result.FatalError);
+    }
+
+    /// <summary>
+    /// 状態: メール検索やProducer/Consumerを含む処理中に例外が発生する。
+    /// 振る舞い: Processing段階の致命的エラーとして通知してから例外を再スローする。
+    /// </summary>
+    [Fact]
+    public async Task RunAsync_WhenUseCaseThrows_SendsFatalErrorNotificationAndRethrows()
+    {
+        ApplicationException exception = new("Producer stopped unexpectedly.");
+        FakeRunStatusNotifier notifier = new();
+        FakeReceivedMailPipeline pipeline = new(processException: exception);
+        BatchRunner runner = new(
+            new ImapOptions(),
+            new ApiOptions(),
+            new BatchOptions(),
+            new MailSearchOptions(),
+            new BatchRunContext("run-processing-fatal"),
+            NullLogger<BatchRunner>.Instance,
+            pipeline,
+            notifier,
+            new FakeReceivedMailSession(mailIds: [new ReceivedMailId(1)]),
+            new FakeJobExecutionLock(new JobExecutionLockHandle(new FakeLockRelease())));
+
+        ApplicationException thrown = await Assert.ThrowsAsync<ApplicationException>(() => runner.RunAsync());
+
+        Assert.Same(exception, thrown);
+        Assert.True(pipeline.Processed);
+        _ = Assert.Single(notifier.Notifications);
+        Assert.Equal(1, notifier.Notifications[0].ExitCode);
+        Assert.Equal(new FatalBatchError(
+            Code: nameof(ApplicationException),
+            Message: "Producer stopped unexpectedly.",
+            Stage: "Processing"), notifier.Notifications[0].Result.FatalError);
+    }
+
+    private sealed class FakeLockRelease : IDisposable
+    {
+        public void Dispose()
+        {
+        }
+    }
+
     private sealed class FakeJobExecutionLock(JobExecutionLockHandle? handle) : IJobExecutionLock
     {
         public JobExecutionLockHandle? TryAcquire() => handle;
@@ -90,7 +164,7 @@ public sealed class BatchRunnerTests
         }
     }
 
-    private sealed class FakeReceivedMailPipeline : IReceivedMailPipeline
+    private sealed class FakeReceivedMailPipeline(Exception? processException = null) : IReceivedMailPipeline
     {
         public bool Processed
         {
@@ -100,11 +174,17 @@ public sealed class BatchRunnerTests
         public Task<ProcessResult> ProcessAsync(IReadOnlyList<ReceivedMailId> targetMailIds, CancellationToken cancellationToken = default)
         {
             Processed = true;
+
+            if (processException is not null)
+            {
+                throw processException;
+            }
+
             return Task.FromResult(new ProcessResult(targetMailIds.Count));
         }
     }
 
-    private sealed class FakeReceivedMailSession : IReceivedMailSession
+    private sealed class FakeReceivedMailSession(Exception? connectException = null, IReadOnlyList<ReceivedMailId>? mailIds = null) : IReceivedMailSession
     {
         public bool Connected
         {
@@ -113,13 +193,18 @@ public sealed class BatchRunnerTests
 
         public Task ConnectAsync(CancellationToken cancellationToken = default)
         {
+            if (connectException is not null)
+            {
+                throw connectException;
+            }
+
             Connected = true;
             return Task.CompletedTask;
         }
 
         public Task DisconnectAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
-        public Task<IReadOnlyList<ReceivedMailId>> SearchTargetMessagesAsync(MailSearchCondition condition, int maxMessages, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<ReceivedMailId>>([]);
+        public Task<IReadOnlyList<ReceivedMailId>> SearchTargetMessagesAsync(MailSearchCondition condition, int maxMessages, CancellationToken cancellationToken = default) => Task.FromResult(mailIds ?? []);
 
         public Task<ReceivedMail> CreateRequestAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 

@@ -47,12 +47,32 @@ internal sealed class BatchRunner(
         }
 
         BatchRunResult runResult;
+        string fatalErrorStage = "Connection";
 
         try
         {
-            await receivedMailSession.ConnectAsync(cancellationToken);
-            ProcessResult processResult = await RunUseCaseAsync(cancellationToken);
-            runResult = new BatchRunResult(processResult);
+            try
+            {
+                await receivedMailSession.ConnectAsync(cancellationToken);
+                fatalErrorStage = "Processing";
+
+                ProcessResult processResult = await RunUseCaseAsync(cancellationToken);
+                runResult = new BatchRunResult(processResult);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                BatchRunResult fatalRunResult = CreateFatalRunResult(ex, fatalErrorStage);
+                int fatalExitCode = fatalRunResult.ConvertToExitCode();
+
+                _ = await runStatusNotifier.TryNotifyAsync(fatalRunResult, fatalExitCode, CancellationToken.None);
+                logger.LogError(
+                    ex,
+                    "Mail batch failed with a fatal error before completion. RunId={RunId}, Stage={Stage}",
+                    runContext.RunId,
+                    fatalErrorStage);
+
+                throw;
+            }
         }
         finally
         {
@@ -65,6 +85,16 @@ internal sealed class BatchRunner(
         LogFinish(runResult.ProcessResult);
 
         return exitCode;
+    }
+
+    private static BatchRunResult CreateFatalRunResult(Exception exception, string stage)
+    {
+        return new BatchRunResult(
+            new ProcessResult(Total: 0),
+            new FatalBatchError(
+                Code: exception.GetType().Name,
+                Message: exception.Message,
+                Stage: stage));
     }
 
     private async Task<ProcessResult> RunUseCaseAsync(CancellationToken cancellationToken)
