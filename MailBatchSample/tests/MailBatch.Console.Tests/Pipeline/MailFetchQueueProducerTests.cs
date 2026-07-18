@@ -129,6 +129,7 @@ public sealed class MailFetchQueueProducerTests
     {
         public Task<bool> ContainsAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default) => Task.FromResult(false);
         public Task AddAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task AddErrorMoveFailureAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task RemoveAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 

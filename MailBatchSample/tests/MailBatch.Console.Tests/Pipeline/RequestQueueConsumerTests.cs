@@ -90,6 +90,34 @@ public sealed class RequestQueueConsumerTests
         Assert.Contains(request.MailId, moveFailureStore.MailIds);
     }
 
+
+    [Fact]
+    public async Task ConsumeAsync_WhenErrorMoveFailsAfterApiFailure_RecordsFailureAndCountsApiFailure()
+    {
+        MailLinkageRequest request = new(new ReceivedMailId(5, 999), "key", "message");
+        ChannelReader<MailLinkageRequest> reader = CreateCompletedReader(request);
+        FakeReceivedMailSession session = new()
+        {
+            ThrowOnMoveToError = true
+        };
+        FakeApiClient apiClient = new(new ApiPostResult(false, 500, "server error"));
+        FakeMoveFailureStore moveFailureStore = new();
+        RequestQueueConsumer consumer = new(
+            new ApiOptions { Endpoint = "/api/received-mails" },
+            session,
+            apiClient,
+            reader,
+            moveFailureStore,
+            NullLogger<MailLinkageRequest>.Instance);
+
+        ProcessResult result = await consumer.ConsumeAsync();
+
+        Assert.Equal(1, result.ApiFailed);
+        Assert.Equal(0, result.Succeeded);
+        Assert.Contains(request.MailId, moveFailureStore.ErrorMoveFailureMailIds);
+        Assert.Empty(session.ErrorMailIds);
+    }
+
     [Fact]
     public async Task ConsumeAsync_DoesNotWriteRequestMessageBodyToApiSendLog()
     {
@@ -148,6 +176,11 @@ public sealed class RequestQueueConsumerTests
             get; init;
         }
 
+        public bool ThrowOnMoveToError
+        {
+            get; init;
+        }
+
         public Task ConnectAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
         public Task DisconnectAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
@@ -169,6 +202,11 @@ public sealed class RequestQueueConsumerTests
 
         public Task MoveToErrorMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
         {
+            if (ThrowOnMoveToError)
+            {
+                throw new InvalidOperationException("error move failed");
+            }
+
             ErrorMailIds.Add(mailId);
             return Task.CompletedTask;
         }
@@ -212,6 +250,18 @@ public sealed class RequestQueueConsumerTests
             if (!MailIds.Contains(mailId))
             {
                 MailIds.Add(mailId);
+            }
+
+            return Task.CompletedTask;
+        }
+
+        public List<ReceivedMailId> ErrorMoveFailureMailIds { get; } = [];
+
+        public Task AddErrorMoveFailureAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
+        {
+            if (!ErrorMoveFailureMailIds.Contains(mailId))
+            {
+                ErrorMoveFailureMailIds.Add(mailId);
             }
 
             return Task.CompletedTask;
