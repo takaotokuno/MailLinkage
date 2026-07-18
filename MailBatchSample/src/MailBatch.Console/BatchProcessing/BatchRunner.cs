@@ -1,3 +1,5 @@
+using MailBatch.Console.BatchProcessing.Locking;
+using MailBatch.Console.BatchProcessing.Result;
 using MailBatch.Console.NotificationMails;
 using MailBatch.Console.Options;
 using MailBatch.Console.Pipeline;
@@ -35,20 +37,7 @@ internal sealed class BatchRunner(
         using JobExecutionLockHandle? executionLock = jobExecutionLock.TryAcquire();
         if (executionLock is null)
         {
-            BatchRunResult duplicateRunResult = new(
-                new ProcessResult(Total: 0),
-                new FatalBatchError(
-                    Code: "DuplicateRun",
-                    Message: "Another mail batch instance is already running.",
-                    Stage: "Startup"));
-            int duplicateRunExitCode = duplicateRunResult.ConvertToExitCode();
-
-            _ = await runStatusNotifier.TryNotifyAsync(duplicateRunResult, duplicateRunExitCode, cancellationToken);
-            logger.LogError(
-                "Mail batch aborted because another instance is already running. RunId={RunId}",
-                runContext.RunId);
-
-            return duplicateRunExitCode;
+            return await HandleDuplicateRunAsync(cancellationToken);
         }
 
         BatchRunResult runResult;
@@ -90,6 +79,33 @@ internal sealed class BatchRunner(
 
         _ = await runStatusNotifier.TryNotifyAsync(runResult, exitCode, cancellationToken);
         LogFinish(runResult.ProcessResult);
+
+        return exitCode;
+    }
+
+    /// <summary>
+    /// 二重起動を検知したエラーを通知し、終了コードを返します。
+    /// </summary>
+    private async Task<int> HandleDuplicateRunAsync(
+        CancellationToken cancellationToken)
+    {
+        BatchRunResult result = new(
+            new ProcessResult(Total: 0),
+            new FatalBatchError(
+                Code: "DuplicateRun",
+                Message: "Another mail batch instance is already running.",
+                Stage: "Startup"));
+
+        int exitCode = result.ConvertToExitCode();
+
+        _ = await runStatusNotifier.TryNotifyAsync(
+            result,
+            exitCode,
+            cancellationToken);
+
+        logger.LogError(
+            "Mail batch aborted because another instance is already running. RunId={RunId}",
+            runContext.RunId);
 
         return exitCode;
     }

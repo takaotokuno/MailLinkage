@@ -1,4 +1,4 @@
-namespace MailBatch.Console.BatchProcessing;
+namespace MailBatch.Console.BatchProcessing.Locking;
 
 /// <summary>
 /// バッチジョブの多重起動を防止するための実行ロックを提供します。

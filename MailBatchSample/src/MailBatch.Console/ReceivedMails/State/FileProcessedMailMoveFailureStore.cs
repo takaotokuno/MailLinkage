@@ -183,12 +183,9 @@ internal sealed class FileProcessedMailMoveFailureStore(
     private static bool TryGetDestination(JsonElement element, out MailMoveFailureDestination destination)
     {
         destination = MailMoveFailureDestination.Processed;
-        if (!element.TryGetProperty(nameof(MailMoveFailureRecord.Destination), out JsonElement destinationElement))
-        {
-            return false;
-        }
-
-        return destinationElement.ValueKind == JsonValueKind.String
+        return !element.TryGetProperty(nameof(MailMoveFailureRecord.Destination), out JsonElement destinationElement)
+            ? false
+            : destinationElement.ValueKind == JsonValueKind.String
             ? Enum.TryParse(destinationElement.GetString(), ignoreCase: true, out destination)
             : destinationElement.ValueKind == JsonValueKind.Number
             && destinationElement.TryGetInt32(out int rawDestination)

@@ -1,5 +1,4 @@
 using System.Threading.Channels;
-using MailBatch.Console.BatchProcessing;
 using MailBatch.Console.NotificationMails;
 using MailBatch.Console.ReceivedMails;
 using MailBatch.Console.ReceivedMails.Fetching;

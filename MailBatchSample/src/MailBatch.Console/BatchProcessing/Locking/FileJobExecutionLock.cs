@@ -1,23 +1,29 @@
 using MailBatch.Console.Options;
 using Microsoft.Extensions.Logging;
 
-namespace MailBatch.Console.BatchProcessing;
+namespace MailBatch.Console.BatchProcessing.Locking;
 
 /// <summary>
 /// ロックファイルの排他オープンにより、同一環境内のバッチ多重起動を防止します。
 /// </summary>
-internal sealed class FileJobExecutionLock(BatchOptions batchOptions, BatchRunContext runContext, ILogger<FileJobExecutionLock> logger) : IJobExecutionLock
+internal sealed class FileJobExecutionLock(
+    BatchOptions batchOptions,
+    BatchRunContext runContext,
+    ILogger<FileJobExecutionLock> logger)
+     : IJobExecutionLock
 {
-    private const string LockFileName = "MailBatch.Console.lock";
+    private const string LOCK_FILE_NAME = "MailBatch.Console.lock";
 
     public JobExecutionLockHandle? TryAcquire()
     {
         _ = Directory.CreateDirectory(batchOptions.LogDirectory);
-        string lockFilePath = Path.Combine(batchOptions.LogDirectory, LockFileName);
+        string lockFilePath = Path.Combine(batchOptions.LogDirectory, LOCK_FILE_NAME);
 
         try
         {
             // OSのファイル共有制御を利用し、別プロセスが同時に同じメールを処理する二重連携を防ぎます。
+            // 「同プロセスが起動済か検索し、起動済だった場合終了する」という処理では、バッチを2回同時に起動した場合に競合が起こり得ます。
+            // ファイルオープンはOS内で排他的に判定されるため、同時に2プロセスが成功しないことが保証されます。
             FileStream lockFileStream = new(
                 lockFilePath,
                 FileMode.OpenOrCreate,
@@ -46,3 +52,4 @@ internal sealed class FileJobExecutionLock(BatchOptions batchOptions, BatchRunCo
         }
     }
 }
+

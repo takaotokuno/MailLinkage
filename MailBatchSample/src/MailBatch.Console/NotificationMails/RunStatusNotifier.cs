@@ -1,4 +1,4 @@
-using MailBatch.Console.BatchProcessing;
+using MailBatch.Console.BatchProcessing.Result;
 using Microsoft.Extensions.Logging;
 
 namespace MailBatch.Console.NotificationMails;
