@@ -30,6 +30,9 @@ internal sealed class ImapConnection(
         }
     }
 
+    /// <summary>
+    /// IMAPサーバーへ接続して認証します。
+    /// </summary>
     public async Task ConnectAsync(CancellationToken cancellationToken = default)
     {
         if (IsConnected)
@@ -55,6 +58,9 @@ internal sealed class ImapConnection(
         await imapClient.AuthenticateAsync(imapOptions.UserName, imapOptions.Password, cancellationToken);
     }
 
+    /// <summary>
+    /// IMAPサーバーとの接続を切断します。
+    /// </summary>
     public async Task DisconnectAsync(CancellationToken cancellationToken = default)
     {
         if (imapClient?.IsConnected == true)
@@ -67,5 +73,8 @@ internal sealed class ImapConnection(
         imapClient = null;
     }
 
+    /// <summary>
+    /// 非同期リソースを解放します。
+    /// </summary>
     public async ValueTask DisposeAsync() => await DisconnectAsync();
 }

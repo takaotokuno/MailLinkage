@@ -17,7 +17,13 @@ internal interface IImapConnection : IAsyncDisposable
         get;
     }
 
+    /// <summary>
+    /// IMAPサーバーへ接続して認証します。
+    /// </summary>
     Task ConnectAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// IMAPサーバーとの接続を切断します。
+    /// </summary>
     Task DisconnectAsync(CancellationToken cancellationToken = default);
 }

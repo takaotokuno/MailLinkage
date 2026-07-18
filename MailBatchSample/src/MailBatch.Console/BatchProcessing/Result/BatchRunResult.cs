@@ -13,6 +13,9 @@ internal sealed record BatchRunResult(ProcessResult ProcessResult, FatalBatchErr
         }
     }
 
+    /// <summary>
+    /// 処理結果をプロセス終了コードへ変換します。
+    /// </summary>
     public int ConvertToExitCode() => HasFatalError ? 1 : ProcessResult.ConvertToExitCode();
 }
 

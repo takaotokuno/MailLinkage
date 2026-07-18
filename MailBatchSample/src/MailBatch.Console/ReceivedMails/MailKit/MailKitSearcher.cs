@@ -12,6 +12,9 @@ namespace MailBatch.Console.ReceivedMails.MailKit;
 /// </summary>
 internal interface IMailKitSearcher
 {
+    /// <summary>
+    /// 検索条件に一致する受信メールIDを検索します。
+    /// </summary>
     Task<IReadOnlyList<ReceivedMailId>> SearchTargetMessagesAsync(MailSearchCondition condition, int maxMessages, CancellationToken cancellationToken = default);
 }
 
@@ -23,6 +26,9 @@ internal sealed class MailKitSearcher(
     IMailFolderProvider mailFolderProvider,
     ILogger<MailKitSearcher> logger) : IMailKitSearcher
 {
+    /// <summary>
+    /// 検索条件に一致する受信メールIDを検索します。
+    /// </summary>
     public async Task<IReadOnlyList<ReceivedMailId>> SearchTargetMessagesAsync(MailSearchCondition condition, int maxMessages, CancellationToken cancellationToken = default)
     {
         IMailFolder folder = mailFolderProvider.GetOpenedReceiveFolder();

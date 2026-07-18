@@ -44,6 +44,9 @@ internal sealed class MailNotificationOptions
         RequireTemplate(ValidationErrorTemplateName);
     }
 
+    /// <summary>
+    /// 指定名の通知テンプレート設定を取得します。
+    /// </summary>
     public MailNotificationTemplateOptions GetTemplate(string name)
     {
         return Templates.First(template =>
@@ -52,6 +55,9 @@ internal sealed class MailNotificationOptions
         });
     }
 
+    /// <summary>
+    /// 指定名の通知テンプレート設定が有効か検証します。
+    /// </summary>
     private void RequireTemplate(string name)
     {
         if (!Templates.Any(template =>

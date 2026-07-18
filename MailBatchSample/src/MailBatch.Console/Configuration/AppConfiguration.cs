@@ -41,6 +41,9 @@ internal static class AppConfiguration
         return new LoadedConfiguration(configuration, options);
     }
 
+    /// <summary>
+    /// アプリケーション設定を読み込むための基本ビルダーを作成します。
+    /// </summary>
     private static IConfigurationBuilder CreateBaseBuilder(string[] args)
     {
         string environmentName = GetEnvironmentName();
@@ -53,8 +56,14 @@ internal static class AppConfiguration
             .AddCommandLine(args);
     }
 
+    /// <summary>
+    /// Azure Key Vault連携が有効かどうかを判定します。
+    /// </summary>
     private static bool IsAzureKeyVaultEnabled(IConfiguration configuration) => configuration.GetValue<bool>(AzureKeyVaultEnabledKey);
 
+    /// <summary>
+    /// 実行環境名を取得します。
+    /// </summary>
     private static string GetEnvironmentName()
     {
         return Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT")

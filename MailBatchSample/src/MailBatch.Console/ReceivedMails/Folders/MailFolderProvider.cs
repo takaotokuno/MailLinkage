@@ -29,6 +29,9 @@ internal sealed class MailFolderProvider(
         get; private set;
     }
 
+    /// <summary>
+    /// 受信、処理済み、エラー用メールボックスを準備します。
+    /// </summary>
     public async Task PrepareFoldersAsync(
         CancellationToken cancellationToken = default)
     {
@@ -53,6 +56,9 @@ internal sealed class MailFolderProvider(
             processingOptions.ErrorMailbox);
     }
 
+    /// <summary>
+    /// オープン済みの受信メールボックスを取得します。
+    /// </summary>
     public IMailFolder GetOpenedReceiveFolder()
     {
         return ReceiveFolder?.IsOpen != true
@@ -61,6 +67,9 @@ internal sealed class MailFolderProvider(
             : ReceiveFolder;
     }
 
+    /// <summary>
+    /// 処理済みメールボックスを取得または作成します。
+    /// </summary>
     public async Task<IMailFolder> GetOrCreateProcessedFolderAsync(
         CancellationToken cancellationToken = default)
     {
@@ -77,6 +86,9 @@ internal sealed class MailFolderProvider(
         return ProcessedFolder;
     }
 
+    /// <summary>
+    /// エラーメールボックスを取得または作成します。
+    /// </summary>
     public async Task<IMailFolder> GetOrCreateErrorFolderAsync(
         CancellationToken cancellationToken = default)
     {
@@ -93,6 +105,9 @@ internal sealed class MailFolderProvider(
         return ErrorFolder;
     }
 
+    /// <summary>
+    /// 保持しているメールボックス参照をクリアします。
+    /// </summary>
     public void Clear()
     {
         ReceiveFolder = null;
@@ -100,6 +115,9 @@ internal sealed class MailFolderProvider(
         ErrorFolder = null;
     }
 
+    /// <summary>
+    /// 受信メールボックスを取得または作成して開きます。
+    /// </summary>
     private async Task<IMailFolder> GetOrCreateReceiveFolderAsync(
         CancellationToken cancellationToken)
     {
@@ -119,6 +137,9 @@ internal sealed class MailFolderProvider(
         }
     }
 
+    /// <summary>
+    /// 設定されたサブフォルダーを取得または作成します。
+    /// </summary>
     private static async Task<IMailFolder> GetOrCreateConfiguredSubfolderAsync(
         IMailFolder receiveFolder,
         string folderName,
@@ -139,6 +160,9 @@ internal sealed class MailFolderProvider(
         }
     }
 
+    /// <summary>
+    /// 個人名前空間のルートメールボックスを取得します。
+    /// </summary>
     private IMailFolder GetPersonalNamespaceRoot()
     {
         if (imapConnection.Client.PersonalNamespaces.Count == 0)
@@ -153,6 +177,9 @@ internal sealed class MailFolderProvider(
         return imapConnection.Client.GetFolder(personalNamespace);
     }
 
+    /// <summary>
+    /// 指定された親メールボックス配下にフォルダーを作成します。
+    /// </summary>
     private static async Task<IMailFolder> CreateFolderAsync(
         IMailFolder parentFolder,
         string folderName,

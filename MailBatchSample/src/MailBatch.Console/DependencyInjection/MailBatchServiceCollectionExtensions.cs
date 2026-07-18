@@ -20,6 +20,9 @@ namespace MailBatch.Console.DependencyInjection;
 /// </summary>
 internal static class BatchServiceCollectionExtensions
 {
+    /// <summary>
+    /// バッチアプリケーションで使用するサービスをDIコンテナへ登録します。
+    /// </summary>
     public static IServiceCollection AddBatchApplication(
         this IServiceCollection services,
         AppOptions options,
@@ -45,6 +48,9 @@ internal static class BatchServiceCollectionExtensions
         return services;
     }
 
+    /// <summary>
+    /// メールバッチの設定オブジェクトをDIコンテナへ登録します。
+    /// </summary>
     private static IServiceCollection AddMailBatchOptions(this IServiceCollection services, AppOptions options)
     {
         return services
@@ -56,6 +62,9 @@ internal static class BatchServiceCollectionExtensions
             .AddSingleton(options.Notification);
     }
 
+    /// <summary>
+    /// 通知メール関連サービスをDIコンテナへ登録します。
+    /// </summary>
     private static IServiceCollection AddNotificationServices(this IServiceCollection services)
     {
         return services
@@ -63,6 +72,9 @@ internal static class BatchServiceCollectionExtensions
             .AddTransient<MailNotificationFactory>();
     }
 
+    /// <summary>
+    /// 受信メール処理関連サービスをDIコンテナへ登録します。
+    /// </summary>
     private static IServiceCollection AddReceivedMailServices(this IServiceCollection services)
     {
         return services
@@ -74,6 +86,9 @@ internal static class BatchServiceCollectionExtensions
             .AddScoped<IReceivedMailSession, ReceivedMailSession>();
     }
 
+    /// <summary>
+    /// 受信メールパイプライン関連サービスをDIコンテナへ登録します。
+    /// </summary>
     private static IServiceCollection AddPipelineServices(this IServiceCollection services)
     {
         return services
@@ -83,8 +98,14 @@ internal static class BatchServiceCollectionExtensions
             .AddTransient<IReceivedMailPipeline, ReceivedMailPipeline>();
     }
 
+    /// <summary>
+    /// 実行結果通知サービスをDIコンテナへ登録します。
+    /// </summary>
     private static IServiceCollection AddRunStatusServices(this IServiceCollection services) => services.AddTransient<IRunStatusNotifier, RunStatusNotifier>();
 
+    /// <summary>
+    /// APIクライアントとリトライポリシーをDIコンテナへ登録します。
+    /// </summary>
     private static IServiceCollection AddApiClient(this IServiceCollection services, ApiOptions apiOptions)
     {
         _ = services

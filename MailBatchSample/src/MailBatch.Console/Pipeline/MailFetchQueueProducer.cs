@@ -13,6 +13,9 @@ namespace MailBatch.Console.Pipeline;
 /// </summary>
 internal interface IMailFetchQueueProducer
 {
+    /// <summary>
+    /// 指定された受信メールID一覧を取得し、API送信用キューへ投入します。
+    /// </summary>
     Task<ProcessResult> ProduceAsync(IReadOnlyList<ReceivedMailId> targetMailIds, CancellationToken cancellationToken = default);
 }
 
@@ -151,6 +154,9 @@ internal sealed class MailFetchQueueProducer(
     /// <summary>
     /// 受信メールを検証して連携項目を抽出します。
     /// エラーがある場合は、すべてのエラーをまとめて通知します。
+    /// </summary>
+    /// <summary>
+    /// ValidateAndExtractAsyncを実行します。
     /// </summary>
     private async Task<ExtractedMailItem> ValidateAndExtractAsync(ReceivedMail mail, CancellationToken cancellationToken)
     {

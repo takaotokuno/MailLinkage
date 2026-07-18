@@ -45,6 +45,9 @@ internal sealed class MailNotificationFactory(MailNotificationOptions notificati
             ApplyValidationErrorTemplate(template.Body, mail, validationErrorsText));
     }
 
+    /// <summary>
+    /// 実行結果通知テンプレートへバッチ結果を差し込みます。
+    /// </summary>
     private string ApplyRunStatusTemplate(string template, BatchRunResult result, int exitCode)
     {
         string status = ToRunStatus(exitCode);
@@ -65,6 +68,9 @@ internal sealed class MailNotificationFactory(MailNotificationOptions notificati
             .Replace("{FatalErrorStage}", fatalError?.Stage ?? string.Empty, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// 入力エラー通知テンプレートへ検証結果を差し込みます。
+    /// </summary>
     private static string ApplyValidationErrorTemplate(
         string template,
         ReceivedMail mail,
@@ -76,11 +82,17 @@ internal sealed class MailNotificationFactory(MailNotificationOptions notificati
             .Replace("{ValidationErrors}", validationErrors, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// 通知に含める本文プレビューを作成します。
+    /// </summary>
     private static string CreatePreview(string value)
     {
         const int MAX_PREVIEW_LENGTH = 200;
         return value.Length <= MAX_PREVIEW_LENGTH ? value : $"{value[..MAX_PREVIEW_LENGTH]}...";
     }
 
+    /// <summary>
+    /// 終了コードを通知用の実行ステータス文字列へ変換します。
+    /// </summary>
     private static string ToRunStatus(int exitCode) => exitCode == 0 ? "succeeded" : "failed";
 }

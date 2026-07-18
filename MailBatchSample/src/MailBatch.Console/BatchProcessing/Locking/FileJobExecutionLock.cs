@@ -14,6 +14,9 @@ internal sealed class FileJobExecutionLock(
 {
     private const string LOCK_FILE_NAME = "MailBatch.Console.lock";
 
+    /// <summary>
+    /// バッチ実行ロックの取得を試行します。
+    /// </summary>
     public JobExecutionLockHandle? TryAcquire()
     {
         _ = Directory.CreateDirectory(batchOptions.LogDirectory);

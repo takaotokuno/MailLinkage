@@ -40,7 +40,15 @@ internal sealed class BatchRunner(
             return await HandleDuplicateRunAsync(cancellationToken);
         }
 
-        BatchRunResult runResult;
+        BatchRunResult runResult = await ExecuteLockedRunAsync(cancellationToken);
+        return await CompleteRunAsync(runResult, cancellationToken);
+    }
+
+    /// <summary>
+    /// 実行ロック取得後の接続、復旧、メール処理を実行します。
+    /// </summary>
+    private async Task<BatchRunResult> ExecuteLockedRunAsync(CancellationToken cancellationToken)
+    {
         string fatalErrorStage = "Connection";
 
         try
@@ -53,20 +61,11 @@ internal sealed class BatchRunner(
                 await RecoverMailboxMoveFailuresAsync(cancellationToken);
 
                 ProcessResult processResult = await RunUseCaseAsync(cancellationToken);
-                runResult = new BatchRunResult(processResult);
+                return new BatchRunResult(processResult);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                BatchRunResult fatalRunResult = CreateFatalRunResult(ex, fatalErrorStage);
-                int fatalExitCode = fatalRunResult.ConvertToExitCode();
-
-                _ = await runStatusNotifier.TryNotifyAsync(fatalRunResult, fatalExitCode, CancellationToken.None);
-                logger.LogError(
-                    ex,
-                    "Mail batch failed with a fatal error before completion. RunId={RunId}, Stage={Stage}",
-                    runContext.RunId,
-                    fatalErrorStage);
-
+                await NotifyFatalErrorAsync(ex, fatalErrorStage);
                 throw;
             }
         }
@@ -74,7 +73,29 @@ internal sealed class BatchRunner(
         {
             await receivedMailSession.DisconnectAsync(CancellationToken.None);
         }
+    }
 
+    /// <summary>
+    /// 致命的なエラーを実行結果として通知し、ログに記録します。
+    /// </summary>
+    private async Task NotifyFatalErrorAsync(Exception exception, string stage)
+    {
+        BatchRunResult fatalRunResult = CreateFatalRunResult(exception, stage);
+        int fatalExitCode = fatalRunResult.ConvertToExitCode();
+
+        _ = await runStatusNotifier.TryNotifyAsync(fatalRunResult, fatalExitCode, CancellationToken.None);
+        logger.LogError(
+            exception,
+            "Mail batch failed with a fatal error before completion. RunId={RunId}, Stage={Stage}",
+            runContext.RunId,
+            stage);
+    }
+
+    /// <summary>
+    /// 通常の実行結果を通知し、終了ログを出力したうえで終了コードを返します。
+    /// </summary>
+    private async Task<int> CompleteRunAsync(BatchRunResult runResult, CancellationToken cancellationToken)
+    {
         int exitCode = runResult.ConvertToExitCode();
 
         _ = await runStatusNotifier.TryNotifyAsync(runResult, exitCode, cancellationToken);
@@ -110,6 +131,9 @@ internal sealed class BatchRunner(
         return exitCode;
     }
 
+    /// <summary>
+    /// 例外情報から致命的なバッチ実行結果を作成します。
+    /// </summary>
     private static BatchRunResult CreateFatalRunResult(Exception exception, string stage)
     {
         return new BatchRunResult(
@@ -120,43 +144,63 @@ internal sealed class BatchRunner(
                 Stage: stage));
     }
 
+    /// <summary>
+    /// 前回実行でメールボックス移動に失敗したメールの移動を再試行します。
+    /// </summary>
     private async Task RecoverMailboxMoveFailuresAsync(CancellationToken cancellationToken)
     {
         IReadOnlyList<MailMoveFailure> failures = await moveFailureStore.GetAllAsync(cancellationToken);
         foreach (MailMoveFailure failure in failures)
         {
-            try
-            {
-                if (failure.Destination == MailMoveFailureDestination.Processed)
-                {
-                    await receivedMailSession.MoveToProcessedMailboxAsync(failure.MailId, cancellationToken);
-                }
-                else
-                {
-                    await receivedMailSession.MoveToErrorMailboxAsync(failure.MailId, cancellationToken);
-                }
-
-                await moveFailureStore.RemoveAsync(failure, cancellationToken);
-                logger.LogInformation(
-                    "Recovered mailbox move failure. MailId={MailId}, Destination={Destination}",
-                    failure.MailId,
-                    failure.Destination);
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(
-                    ex,
-                    "Failed to recover mailbox move failure. MailId={MailId}, Destination={Destination}",
-                    failure.MailId,
-                    failure.Destination);
-            }
+            await RecoverMailboxMoveFailureAsync(failure, cancellationToken);
         }
     }
 
+    /// <summary>
+    /// メールボックス移動失敗レコード1件に対する再移動と記録削除を実行します。
+    /// </summary>
+    private async Task RecoverMailboxMoveFailureAsync(MailMoveFailure failure, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await MoveRecoveredMailAsync(failure, cancellationToken);
+            await moveFailureStore.RemoveAsync(failure, cancellationToken);
+            logger.LogInformation(
+                "Recovered mailbox move failure. MailId={MailId}, Destination={Destination}",
+                failure.MailId,
+                failure.Destination);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(
+                ex,
+                "Failed to recover mailbox move failure. MailId={MailId}, Destination={Destination}",
+                failure.MailId,
+                failure.Destination);
+        }
+    }
+
+    /// <summary>
+    /// 失敗レコードの移動先に応じて受信メールを移動します。
+    /// </summary>
+    private async Task MoveRecoveredMailAsync(MailMoveFailure failure, CancellationToken cancellationToken)
+    {
+        if (failure.Destination == MailMoveFailureDestination.Processed)
+        {
+            await receivedMailSession.MoveToProcessedMailboxAsync(failure.MailId, cancellationToken);
+            return;
+        }
+
+        await receivedMailSession.MoveToErrorMailboxAsync(failure.MailId, cancellationToken);
+    }
+
+    /// <summary>
+    /// 検索条件に一致するメールを取得し、受信メールパイプラインで処理します。
+    /// </summary>
     private async Task<ProcessResult> RunUseCaseAsync(CancellationToken cancellationToken)
     {
         MailSearchCondition condition = MailSearchCondition.FromOptions(mailSearchOptions, DateTime.UtcNow);
