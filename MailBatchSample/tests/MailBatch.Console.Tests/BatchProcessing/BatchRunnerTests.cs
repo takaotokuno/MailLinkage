@@ -14,10 +14,10 @@ public sealed class BatchRunnerTests
 {
     /// <summary>
     /// 状態: 実行ロックを取得できず、多重起動が検知される。
-    /// 振る舞い: IMAP接続やパイプライン処理を行わず、異常終了通知を送信して終了コード2を返す。
+    /// 振る舞い: IMAP接続やパイプライン処理を行わず、致命的エラー通知を送信して終了コード1を返す。
     /// </summary>
     [Fact]
-    public async Task RunAsync_WhenExecutionLockIsAlreadyHeld_SendsFailureNotificationAndReturnsExitCode2()
+    public async Task RunAsync_WhenExecutionLockIsAlreadyHeld_SendsFatalErrorNotificationAndReturnsExitCode1()
     {
         FakeRunStatusNotifier notifier = new();
         FakeReceivedMailSession session = new();
@@ -36,12 +36,16 @@ public sealed class BatchRunnerTests
 
         int exitCode = await runner.RunAsync();
 
-        Assert.Equal(2, exitCode);
+        Assert.Equal(1, exitCode);
         Assert.False(session.Connected);
         Assert.False(pipeline.Processed);
         _ = Assert.Single(notifier.Notifications);
-        Assert.Equal(new ProcessResult(Total: 0, Succeeded: 0, InvalidFormat: 0, ApiFailed: 1), notifier.Notifications[0].Result);
-        Assert.Equal(2, notifier.Notifications[0].ExitCode);
+        Assert.Equal(new ProcessResult(Total: 0), notifier.Notifications[0].Result.ProcessResult);
+        Assert.Equal(new FatalBatchError(
+            Code: "DuplicateRun",
+            Message: "Another mail batch instance is already running.",
+            Stage: "Startup"), notifier.Notifications[0].Result.FatalError);
+        Assert.Equal(1, notifier.Notifications[0].ExitCode);
     }
 
     private sealed class FakeJobExecutionLock(JobExecutionLockHandle? handle) : IJobExecutionLock
@@ -51,9 +55,9 @@ public sealed class BatchRunnerTests
 
     private sealed class FakeRunStatusNotifier : IRunStatusNotifier
     {
-        public List<(ProcessResult Result, int ExitCode)> Notifications { get; } = [];
+        public List<(BatchRunResult Result, int ExitCode)> Notifications { get; } = [];
 
-        public Task NotifyAsync(ProcessResult result, int exitCode, CancellationToken cancellationToken = default)
+        public Task NotifyAsync(BatchRunResult result, int exitCode, CancellationToken cancellationToken = default)
         {
             Notifications.Add((result, exitCode));
             return Task.CompletedTask;

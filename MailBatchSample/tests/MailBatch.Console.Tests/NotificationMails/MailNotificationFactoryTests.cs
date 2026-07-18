@@ -16,13 +16,35 @@ public sealed class MailNotificationFactoryTests
     public void CreateRunStatusNotification_AppliesRunStatusTemplate()
     {
         MailNotificationFactory factory = new(CreateOptions(), new BatchRunContext("run-001"));
-        ProcessResult result = new(Total: 3, Succeeded: 2, InvalidFormat: 1, ApiFailed: 0);
+        BatchRunResult result = new(new ProcessResult(Total: 3, Succeeded: 2, InvalidFormat: 1, ApiFailed: 0));
 
         MailNotification notification = factory.CreateRunStatusNotification(result, exitCode: 1);
 
         Assert.Equal("admin@example.com", notification.To);
         Assert.Equal("Run run-001 failed", notification.Subject);
-        Assert.Equal("Exit=1 Total=3 Succeeded=2 InvalidFormat=1 ApiFailed=0", notification.Body);
+        Assert.Equal("Exit=1 Total=3 Succeeded=2 InvalidFormat=1 ApiFailed=0 Fatal=  ", notification.Body);
+    }
+
+    /// <summary>
+    /// 状態: 致命的エラーを含むバッチ実行結果が設定されている。
+    /// 振る舞い: 致命的エラー用のプレースホルダーを置換する。
+    /// </summary>
+    [Fact]
+    public void CreateRunStatusNotification_WhenFatalErrorExists_AppliesFatalErrorPlaceholders()
+    {
+        MailNotificationFactory factory = new(CreateOptions(), new BatchRunContext("run-001"));
+        BatchRunResult result = new(
+            new ProcessResult(Total: 0),
+            new FatalBatchError(
+                Code: "DuplicateRun",
+                Message: "Another mail batch instance is already running.",
+                Stage: "Startup"));
+
+        MailNotification notification = factory.CreateRunStatusNotification(result, exitCode: 1);
+
+        Assert.Equal(
+            "Exit=1 Total=0 Succeeded=0 InvalidFormat=0 ApiFailed=0 Fatal=DuplicateRun Another mail batch instance is already running. Startup",
+            notification.Body);
     }
 
     /// <summary>
@@ -59,7 +81,7 @@ public sealed class MailNotificationFactoryTests
                 {
                     Name = MailNotificationOptions.RunStatusTemplateName,
                     Subject = "Run {RunId} {Status}",
-                    Body = "Exit={ExitCode} Total={Total} Succeeded={Succeeded} InvalidFormat={InvalidFormat} ApiFailed={ApiFailed}"
+                    Body = "Exit={ExitCode} Total={Total} Succeeded={Succeeded} InvalidFormat={InvalidFormat} ApiFailed={ApiFailed} Fatal={FatalErrorCode} {FatalErrorMessage} {FatalErrorStage}"
                 },
                 new MailNotificationTemplateOptions
                 {

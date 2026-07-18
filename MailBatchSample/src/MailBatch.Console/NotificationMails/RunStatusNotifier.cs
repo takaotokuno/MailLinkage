@@ -8,9 +8,9 @@ namespace MailBatch.Console.NotificationMails;
 internal interface IRunStatusNotifier
 {
     /// <summary>
-    /// 処理結果と終了コードから実行結果通知を送信します。
+    /// バッチ実行結果と終了コードから実行結果通知を送信します。
     /// </summary>
-    Task NotifyAsync(ProcessResult result, int exitCode, CancellationToken cancellationToken = default);
+    Task NotifyAsync(BatchRunResult result, int exitCode, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -21,9 +21,9 @@ internal sealed class RunStatusNotifier(
     MailNotificationFactory mailNotificationFactory) : IRunStatusNotifier
 {
     /// <summary>
-    /// 処理結果と終了コードから実行結果通知を作成し送信します。
+    /// バッチ実行結果と終了コードから実行結果通知を作成し送信します。
     /// </summary>
-    public async Task NotifyAsync(ProcessResult result, int exitCode, CancellationToken cancellationToken = default)
+    public async Task NotifyAsync(BatchRunResult result, int exitCode, CancellationToken cancellationToken = default)
     {
         MailNotification notification = mailNotificationFactory.CreateRunStatusNotification(result, exitCode);
         await mailNotifier.SendAsync(notification, cancellationToken);
