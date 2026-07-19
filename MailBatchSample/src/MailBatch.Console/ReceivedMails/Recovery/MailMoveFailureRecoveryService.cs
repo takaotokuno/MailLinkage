@@ -53,6 +53,7 @@ internal sealed class MailMoveFailureRecoveryService(
         }
         catch (Exception ex)
         {
+            await moveFailureStore.RecordRecoveryFailureAsync(failure, cancellationToken);
             logger.LogError(
                 ex,
                 "Failed to recover mailbox move failure. MailId={MailId}, Destination={Destination}",

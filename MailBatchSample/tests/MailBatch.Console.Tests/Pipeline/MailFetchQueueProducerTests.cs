@@ -196,6 +196,7 @@ public sealed class MailFetchQueueProducerTests
             Failures.Add(new MailMoveFailure(mailId, MailMoveFailureDestination.Error));
             return Task.CompletedTask;
         }
+        public Task RecordRecoveryFailureAsync(MailMoveFailure failure, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task RemoveAsync(MailMoveFailure failure, CancellationToken cancellationToken = default)
         {
             _ = Failures.Remove(failure);

@@ -276,6 +276,8 @@ public sealed class RequestQueueConsumerTests
             return Task.CompletedTask;
         }
 
+        public Task RecordRecoveryFailureAsync(MailMoveFailure failure, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
         public Task RemoveAsync(MailMoveFailure failure, CancellationToken cancellationToken = default)
         {
             _ = failure.Destination == MailMoveFailureDestination.Processed
