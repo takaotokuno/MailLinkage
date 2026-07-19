@@ -1,6 +1,6 @@
-using MailKit.Security;
 using MailBatch.Console.Options;
 using MailBatch.Console.ReceivedMails.Imap;
+using MailKit.Security;
 using Polly;
 using Xunit;
 

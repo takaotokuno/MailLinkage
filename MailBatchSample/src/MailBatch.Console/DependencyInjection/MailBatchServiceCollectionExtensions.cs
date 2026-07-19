@@ -90,9 +90,18 @@ internal static class BatchServiceCollectionExtensions
             .AddScoped<IMailKitReader, MailKitReader>()
             .AddScoped<IMailKitMailMover, MailKitMailMover>()
             .AddScoped<ReceivedMailSession>()
-            .AddScoped<IReceivedMailSession>(provider => provider.GetRequiredService<ReceivedMailSession>())
-            .AddScoped<IReceivedMailSearcher>(provider => provider.GetRequiredService<ReceivedMailSession>())
-            .AddScoped<IReceivedMailMover>(provider => provider.GetRequiredService<ReceivedMailSession>())
+            .AddScoped<IReceivedMailSession>(provider =>
+            {
+                return provider.GetRequiredService<ReceivedMailSession>();
+            })
+            .AddScoped<IReceivedMailSearcher>(provider =>
+            {
+                return provider.GetRequiredService<ReceivedMailSession>();
+            })
+            .AddScoped<IReceivedMailMover>(provider =>
+            {
+                return provider.GetRequiredService<ReceivedMailSession>();
+            })
             .AddScoped<IMailMoveFailureRecoveryService, MailMoveFailureRecoveryService>();
     }
 
@@ -103,8 +112,14 @@ internal static class BatchServiceCollectionExtensions
     {
         return services
             .AddSingleton<SqliteMailProcessingStore>()
-            .AddSingleton<IProcessedMailStore>(provider => provider.GetRequiredService<SqliteMailProcessingStore>())
-            .AddSingleton<IMailMoveFailureStore>(provider => provider.GetRequiredService<SqliteMailProcessingStore>())
+            .AddSingleton<IProcessedMailStore>(provider =>
+            {
+                return provider.GetRequiredService<SqliteMailProcessingStore>();
+            })
+            .AddSingleton<IMailMoveFailureStore>(provider =>
+            {
+                return provider.GetRequiredService<SqliteMailProcessingStore>();
+            })
             .AddSingleton<IBatchRunHistoryStore, SqliteBatchRunHistoryStore>()
             .AddSingleton<IApiExecutionResultStore, SqliteApiExecutionResultStore>()
             .AddTransient<IReceivedMailQueueFactory, ReceivedMailQueueFactory>()

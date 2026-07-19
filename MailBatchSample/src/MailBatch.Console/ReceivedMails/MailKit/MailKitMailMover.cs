@@ -1,4 +1,5 @@
 using MailBatch.Console.Options;
+using MailBatch.Console.ReceivedMails.Folders;
 using MailKit;
 using Microsoft.Extensions.Logging;
 

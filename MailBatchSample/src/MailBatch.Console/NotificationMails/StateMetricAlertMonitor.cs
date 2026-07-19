@@ -27,7 +27,10 @@ internal sealed class StateMetricAlertMonitor(
     {
         DateTimeOffset threshold = timeProvider.GetUtcNow().AddDays(-THRESHOLD_DAYS);
         MailMoveFailure[] stalledFailures = failures
-            .Where(failure => failure.CreatedAtUtc <= threshold)
+            .Where(failure =>
+            {
+                return failure.CreatedAtUtc <= threshold;
+            })
             .ToArray();
         if (stalledFailures.Length == 0)
         {
@@ -37,7 +40,9 @@ internal sealed class StateMetricAlertMonitor(
         string details = string.Join(
             Environment.NewLine,
             stalledFailures.Select(failure =>
-                $"- MailId={failure.MailId}, Destination={failure.Destination}, CreatedAt={failure.CreatedAtUtc:O}, LastFailedAt={failure.LastFailedAtUtc:O}"));
+            {
+                return $"- MailId={failure.MailId}, Destination={failure.Destination}, CreatedAt={failure.CreatedAtUtc:O}, LastFailedAt={failure.LastFailedAtUtc:O}";
+            }));
         string message = $"The following mail moves remain unrecovered for {THRESHOLD_DAYS} days or more. Please investigate the mailbox and batch logs."
             + $"{Environment.NewLine}Count: {stalledFailures.Length}{Environment.NewLine}{details}";
 

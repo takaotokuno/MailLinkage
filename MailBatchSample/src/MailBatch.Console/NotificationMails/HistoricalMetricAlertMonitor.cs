@@ -38,7 +38,10 @@ internal sealed class HistoricalMetricAlertMonitor(
         IReadOnlyList<BatchRunHistory> history,
         CancellationToken cancellationToken)
     {
-        int failedCount = history.Count(run => run.ExitCode != BatchExitCodes.SUCCESS);
+        int failedCount = history.Count(run =>
+        {
+            return run.ExitCode != BatchExitCodes.SUCCESS;
+        });
         if (failedCount * 2 <= RUN_COUNT)
         {
             return true;
@@ -53,7 +56,10 @@ internal sealed class HistoricalMetricAlertMonitor(
         IReadOnlyList<BatchRunHistory> history,
         CancellationToken cancellationToken)
     {
-        int exceededCount = history.Count(run => run.Duration > DurationThreshold);
+        int exceededCount = history.Count(run =>
+        {
+            return run.Duration > DurationThreshold;
+        });
         if (exceededCount * 2 <= RUN_COUNT)
         {
             return true;

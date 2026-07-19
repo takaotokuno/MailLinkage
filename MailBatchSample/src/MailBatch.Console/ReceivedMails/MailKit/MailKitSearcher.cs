@@ -37,10 +37,19 @@ internal sealed class MailKitSearcher(
         IList<IMessageSummary> summaries = await folder.FetchAsync(uids, MessageSummaryItems.UniqueId | MessageSummaryItems.InternalDate, cancellationToken);
         // 受信日時とUIDで処理順を固定し、同じ検索条件でも再実行時の処理対象がぶれないようにします。
         List<ReceivedMailId> targetMailIds = summaries
-            .OrderBy(summary => summary.InternalDate ?? DateTimeOffset.MaxValue)
-            .ThenBy(summary => summary.UniqueId.Id)
+            .OrderBy(summary =>
+            {
+                return summary.InternalDate ?? DateTimeOffset.MaxValue;
+            })
+            .ThenBy(summary =>
+            {
+                return summary.UniqueId.Id;
+            })
             .Take(maxMessages)
-            .Select(summary => MailKitReceivedMailIdMapper.ToReceivedMailId(summary.UniqueId, folder.UidValidity))
+            .Select(summary =>
+            {
+                return MailKitReceivedMailIdMapper.ToReceivedMailId(summary.UniqueId, folder.UidValidity);
+            })
             .ToList();
 
         logger.LogInformation(

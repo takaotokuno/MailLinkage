@@ -6,7 +6,6 @@ using MailBatch.Console.Options;
 using MailBatch.Console.Pipeline;
 using MailBatch.Console.ReceivedMails;
 using MailBatch.Console.ReceivedMails.Processing;
-using MailBatch.Console.ReceivedMails.Searching;
 using MailBatch.Console.ReceivedMails.State;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
@@ -110,7 +109,7 @@ public sealed class MailFetchQueueProducerTests
             throw new InvalidOperationException("Request should not be created.");
         });
         FakeMoveFailureStore moveFailureStore = new([new MailMoveFailure(mailId, MailMoveFailureDestination.Error)]);
-        MailFetchQueueProducer producer = CreateProducer(session, moveFailureStore: moveFailureStore);
+        MailFetchQueueProducer producer = CreateProducer(session, stateStore: moveFailureStore);
 
         ProcessResult result = await producer.ProduceAsync([mailId]);
 

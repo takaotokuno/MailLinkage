@@ -73,7 +73,9 @@ internal sealed class MailNotificationOptions
     public MailNotificationTemplateOptions GetTemplate(string name)
     {
         return Templates.First(template =>
-            string.Equals(template.Name, name, StringComparison.OrdinalIgnoreCase));
+        {
+            return string.Equals(template.Name, name, StringComparison.OrdinalIgnoreCase);
+        });
     }
 
     /// <summary>
@@ -82,7 +84,9 @@ internal sealed class MailNotificationOptions
     private void RequireTemplate(string name)
     {
         if (!Templates.Any(template =>
-            string.Equals(template.Name, name, StringComparison.OrdinalIgnoreCase)))
+        {
+            return string.Equals(template.Name, name, StringComparison.OrdinalIgnoreCase);
+        }))
         {
             throw new InvalidOperationException($"Notification:Templates requires a template named '{name}'.");
         }

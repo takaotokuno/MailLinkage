@@ -25,9 +25,15 @@ internal static class ImapRetryPolicyFactory
             .Or<TimeoutException>()
             .WaitAndRetryAsync(
                 imapOptions.RetryCount,
-                retryAttempt => TimeSpan.FromSeconds(
-                    imapOptions.RetryDelaySeconds
-                    * Math.Pow(EXPONENTIAL_BACKOFF_BASE, retryAttempt - RETRY_ATTEMPT_OFFSET)),
-                (exception, delay, retryAttempt, _) => onRetry?.Invoke(exception, delay, retryAttempt));
+                retryAttempt =>
+                {
+                    return TimeSpan.FromSeconds(
+                                        imapOptions.RetryDelaySeconds
+                                        * Math.Pow(EXPONENTIAL_BACKOFF_BASE, retryAttempt - RETRY_ATTEMPT_OFFSET));
+                },
+                (exception, delay, retryAttempt, _) =>
+                {
+                    onRetry?.Invoke(exception, delay, retryAttempt);
+                });
     }
 }

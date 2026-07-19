@@ -23,8 +23,11 @@ internal static class ApiRetryPolicyFactory
             // 短時間の連続リクエストを避け、障害中のAPIへ負荷を集中させることも防ぎます。
             .WaitAndRetryAsync(
                 apiOptions.RetryCount,
-                retryAttempt => TimeSpan.FromSeconds(
-                    apiOptions.RetryDelaySeconds
-                    * Math.Pow(EXPONENTIAL_BACKOFF_BASE, retryAttempt - RETRY_ATTEMPT_OFFSET)));
+                retryAttempt =>
+                {
+                    return TimeSpan.FromSeconds(
+                                        apiOptions.RetryDelaySeconds
+                                        * Math.Pow(EXPONENTIAL_BACKOFF_BASE, retryAttempt - RETRY_ATTEMPT_OFFSET));
+                });
     }
 }

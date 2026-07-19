@@ -38,7 +38,10 @@ internal sealed class MailNotificationFactory(MailNotificationOptions notificati
 
         string validationErrorsText = string.Join(
             Environment.NewLine,
-            validationErrors.Select(error => $"- {error}"));
+            validationErrors.Select(error =>
+            {
+                return $"- {error}";
+            }));
 
         return new MailNotification(
             mail.Sender,
