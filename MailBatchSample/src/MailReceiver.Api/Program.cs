@@ -311,8 +311,11 @@ static async Task InitializeDatabaseAsync(WebApplication app)
     EnsureSqliteDirectoryExists(connectionString, logger);
 
     MailReceiverDbContext dbContext = scope.ServiceProvider.GetRequiredService<MailReceiverDbContext>();
+    bool databaseDeleted = await dbContext.Database.EnsureDeletedAsync();
     _ = await dbContext.Database.EnsureCreatedAsync();
-    logger.LogInformation("MailReceiver database was initialized.");
+    logger.LogInformation(
+        "MailReceiver database was initialized. ExistingDatabaseDeleted: {ExistingDatabaseDeleted}",
+        databaseDeleted);
 }
 
 /// <summary>
