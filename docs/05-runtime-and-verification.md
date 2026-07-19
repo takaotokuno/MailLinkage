@@ -94,6 +94,8 @@ dotnet run --project MailBatchSample/src/MailBatch.Console/MailBatch.Console.csp
 | 対象件名 | `連携対象` |
 | 対象送信元 | `sender@example.local` |
 | 処理済みメールボックス | `Processed` |
+| API 失敗メールボックス | `Error` |
+| IMAP / API 再試行回数 | 各 3 回（2、4、8 秒待機） |
 | ログ出力先 | `MailBatchSample/logs/` |
 
 バッチ実行後、ログは日次ファイルとして `MailBatchSample/logs/batch-yyyyMMdd.log` に出力される。
@@ -125,7 +127,7 @@ cat MailBatchSample/logs/batch-$(date +%Y%m%d).log
 2. 対象メールを投入する。
 3. `MailBatch.Console` を実行する。
 4. API 連携失敗がログに出力されることを確認する。
-5. 初期スコープでは複雑なリトライは行わず、失敗をログで追跡できることを確認する。
+5. API 呼び出しが 2、4、8 秒の待機後に再試行され、最終失敗時は `Error` へ移動して終了コード `2` となることを確認する。
 
 ### 重複メール
 
