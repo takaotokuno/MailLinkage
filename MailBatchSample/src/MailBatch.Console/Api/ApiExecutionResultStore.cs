@@ -35,7 +35,7 @@ internal sealed class SqliteApiExecutionResultStore(
     BatchOptions batchOptions,
     BatchRunContext batchRunContext) : IApiExecutionResultStore
 {
-    private const string DatabaseFileName = "mail-processing.db";
+    private const string DATABASE_FILE_NAME = "mail-processing.db";
     private readonly SemaphoreSlim _initializationLock = new(1, 1);
     private bool _initialized;
 
@@ -43,7 +43,7 @@ internal sealed class SqliteApiExecutionResultStore(
     {
         get
         {
-            return Path.Combine(batchOptions.LogDirectory, DatabaseFileName);
+            return Path.Combine(batchOptions.LogDirectory, DATABASE_FILE_NAME);
         }
     }
 

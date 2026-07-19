@@ -5,6 +5,9 @@ namespace MailBatch.Console.Options;
 /// </summary>
 internal sealed class MailSearchOptions
 {
+    private const int DEFAULT_SINCE_DAYS = 7;
+    private const int DEFAULT_MAX_MESSAGES = 100;
+
     public string? SubjectContains
     {
         get; init;
@@ -13,8 +16,8 @@ internal sealed class MailSearchOptions
     {
         get; init;
     }
-    public int? SinceDays { get; init; } = 7;
-    public int MaxMessages { get; init; } = 100;
+    public int? SinceDays { get; init; } = DEFAULT_SINCE_DAYS;
+    public int MaxMessages { get; init; } = DEFAULT_MAX_MESSAGES;
 
     /// <summary>
     /// 必須項目と値の範囲を検証します。

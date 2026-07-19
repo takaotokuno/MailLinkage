@@ -25,18 +25,18 @@ public sealed class MailReceiverDbContext(DbContextOptions<MailReceiverDbContext
         _ = receivedMail.Property(mail => mail.Id).HasColumnName("id");
         _ = receivedMail.Property(mail => mail.MessageId)
             .HasColumnName("message_id")
-            .HasMaxLength(255)
+            .HasMaxLength(ReceivedMail.MESSAGE_ID_MAX_LENGTH)
             .IsRequired();
         _ = receivedMail.HasIndex(mail => mail.MessageId)
             .IsUnique()
             .HasDatabaseName("ux_received_mails_message_id");
         _ = receivedMail.Property(mail => mail.Sender)
             .HasColumnName("sender")
-            .HasMaxLength(320)
+            .HasMaxLength(ReceivedMail.SENDER_MAX_LENGTH)
             .IsRequired();
         _ = receivedMail.Property(mail => mail.Subject)
             .HasColumnName("subject")
-            .HasMaxLength(500)
+            .HasMaxLength(ReceivedMail.SUBJECT_MAX_LENGTH)
             .IsRequired();
         _ = receivedMail.Property(mail => mail.Body).HasColumnName("body");
         _ = receivedMail.Property(mail => mail.ReceivedAt)

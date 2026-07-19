@@ -165,11 +165,7 @@ internal sealed class MailFetchQueueProducer(
     }
 
     /// <summary>
-    /// 受信メールを検証して連携項目を抽出します。
-    /// エラーがある場合は、すべてのエラーをまとめて通知します。
-    /// </summary>
-    /// <summary>
-    /// ValidateAndExtractAsyncを実行します。
+    /// 受信メールを検証して連携項目を抽出し、エラーがある場合はまとめて通知します。
     /// </summary>
     private async Task<ExtractedMailItem> ValidateAndExtractAsync(ReceivedMail mail, CancellationToken cancellationToken)
     {

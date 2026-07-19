@@ -5,9 +5,11 @@ namespace MailBatch.Console.Options;
 /// </summary>
 internal sealed class BatchOptions
 {
+    private const int DEFAULT_LOG_RETENTION_DAYS = 30;
+
     public string LogDirectory { get; init; } = "MailBatchSample/logs";
 
-    public int LogRetentionDays { get; init; } = 30;
+    public int LogRetentionDays { get; init; } = DEFAULT_LOG_RETENTION_DAYS;
 
     /// <summary>
     /// 必須項目と値の範囲を検証します。

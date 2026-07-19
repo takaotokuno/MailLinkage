@@ -7,12 +7,14 @@ namespace MailBatch.Console.Options;
 /// </summary>
 internal sealed class MailNotificationOptions
 {
+    private const int DEFAULT_SMTP_PORT = 25;
+
     public const string RUN_STATUS_TEMPLATE_NAME = "RunStatus";
     public const string VALIDATION_ERROR_TEMPLATE_NAME = "ValidationError";
     public const string METRIC_ALERT_TEMPLATE_NAME = "MetricAlert";
 
     public string SmtpHost { get; init; } = string.Empty;
-    public int SmtpPort { get; init; } = 25;
+    public int SmtpPort { get; init; } = DEFAULT_SMTP_PORT;
     public SecureSocketOptions SocketOptions { get; init; } = SecureSocketOptions.SslOnConnect;
     public string? UserName
     {
@@ -32,7 +34,11 @@ internal sealed class MailNotificationOptions
     public void Validate()
     {
         OptionValidation.Require(SmtpHost, "Notification:SmtpHost");
-        OptionValidation.RequireRange(SmtpPort, 1, 65535, "Notification:SmtpPort");
+        OptionValidation.RequireRange(
+            SmtpPort,
+            OptionValidation.MINIMUM_NETWORK_PORT,
+            OptionValidation.MAXIMUM_NETWORK_PORT,
+            "Notification:SmtpPort");
         OptionValidation.RequireDefined(SocketOptions, "Notification:SocketOptions");
         OptionValidation.Require(From, "Notification:From");
         OptionValidation.Require(AdminAddress, "Notification:AdminAddress");
@@ -56,9 +62,7 @@ internal sealed class MailNotificationOptions
     public MailNotificationTemplateOptions GetTemplate(string name)
     {
         return Templates.First(template =>
-        {
-            return string.Equals(template.Name, name, StringComparison.OrdinalIgnoreCase);
-        });
+            string.Equals(template.Name, name, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>
@@ -67,9 +71,7 @@ internal sealed class MailNotificationOptions
     private void RequireTemplate(string name)
     {
         if (!Templates.Any(template =>
-        {
-            return string.Equals(template.Name, name, StringComparison.OrdinalIgnoreCase);
-        }))
+            string.Equals(template.Name, name, StringComparison.OrdinalIgnoreCase)))
         {
             throw new InvalidOperationException($"Notification:Templates requires a template named '{name}'.");
         }

@@ -2,6 +2,10 @@ namespace MailReceiver.Api.Models;
 
 public sealed class ReceivedMail
 {
+    public const int MESSAGE_ID_MAX_LENGTH = 255;
+    public const int SENDER_MAX_LENGTH = 320;
+    public const int SUBJECT_MAX_LENGTH = 500;
+
     public long Id
     {
         get; set;
