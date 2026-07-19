@@ -102,6 +102,7 @@ internal static class BatchServiceCollectionExtensions
         return services
             .AddSingleton<IProcessedMailMoveFailureStore, SqliteMailProcessingStore>()
             .AddSingleton<IBatchRunHistoryStore, SqliteBatchRunHistoryStore>()
+            .AddSingleton<IApiExecutionResultStore, SqliteApiExecutionResultStore>()
             .AddTransient<IReceivedMailQueueFactory, ReceivedMailQueueFactory>()
             .AddTransient<IReceivedMailPipelineComponentFactory, ReceivedMailPipelineComponentFactory>()
             .AddTransient<IReceivedMailPipeline, ReceivedMailPipeline>();

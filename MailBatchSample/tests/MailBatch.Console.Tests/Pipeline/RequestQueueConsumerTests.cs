@@ -29,6 +29,7 @@ public sealed class RequestQueueConsumerTests
             apiClient,
             reader,
             moveFailureStore,
+            new FakeApiExecutionResultStore(),
             NullLogger<MailLinkageRequest>.Instance);
 
         ProcessResult result = await consumer.ConsumeAsync();
@@ -53,6 +54,7 @@ public sealed class RequestQueueConsumerTests
             apiClient,
             reader,
             moveFailureStore,
+            new FakeApiExecutionResultStore(),
             NullLogger<MailLinkageRequest>.Instance);
 
         ProcessResult result = await consumer.ConsumeAsync();
@@ -81,6 +83,7 @@ public sealed class RequestQueueConsumerTests
             apiClient,
             reader,
             moveFailureStore,
+            new FakeApiExecutionResultStore(),
             NullLogger<MailLinkageRequest>.Instance);
 
         ProcessResult result = await consumer.ConsumeAsync();
@@ -108,6 +111,7 @@ public sealed class RequestQueueConsumerTests
             apiClient,
             reader,
             moveFailureStore,
+            new FakeApiExecutionResultStore(),
             NullLogger<MailLinkageRequest>.Instance);
 
         ProcessResult result = await consumer.ConsumeAsync();
@@ -134,6 +138,7 @@ public sealed class RequestQueueConsumerTests
             apiClient,
             reader,
             moveFailureStore,
+            new FakeApiExecutionResultStore(),
             logger);
 
         _ = await consumer.ConsumeAsync();
@@ -236,6 +241,17 @@ public sealed class RequestQueueConsumerTests
             public void Dispose()
             {
             }
+        }
+    }
+
+    private sealed class FakeApiExecutionResultStore : IApiExecutionResultStore
+    {
+        public List<ApiExecutionResult> Results { get; } = [];
+
+        public Task RecordAsync(ApiExecutionResult result, CancellationToken cancellationToken = default)
+        {
+            Results.Add(result);
+            return Task.CompletedTask;
         }
     }
 
