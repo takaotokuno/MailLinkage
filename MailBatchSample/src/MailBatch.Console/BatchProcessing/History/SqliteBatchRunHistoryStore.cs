@@ -4,10 +4,13 @@ using Microsoft.Data.Sqlite;
 
 namespace MailBatch.Console.BatchProcessing.History;
 
+/// <summary>バッチ実行履歴の保存と参照を提供します。</summary>
 internal interface IBatchRunHistoryStore
 {
+    /// <summary>一回のバッチ実行履歴を保存します。</summary>
     Task AddAsync(BatchRunHistory history, CancellationToken cancellationToken = default);
 
+    /// <summary>終了日時の新しい順に指定件数の実行履歴を取得します。</summary>
     Task<IReadOnlyList<BatchRunHistory>> GetRecentAsync(int count, CancellationToken cancellationToken = default);
 }
 
@@ -28,6 +31,7 @@ internal sealed class SqliteBatchRunHistoryStore(BatchOptions batchOptions) : IB
         }
     }
 
+    /// <inheritdoc />
     public async Task AddAsync(BatchRunHistory history, CancellationToken cancellationToken = default)
     {
         await using SqliteConnection connection = await OpenConnectionAsync(cancellationToken);
@@ -55,6 +59,7 @@ internal sealed class SqliteBatchRunHistoryStore(BatchOptions batchOptions) : IB
         _ = await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
+    /// <inheritdoc />
     public async Task<IReadOnlyList<BatchRunHistory>> GetRecentAsync(int count, CancellationToken cancellationToken = default)
     {
         await using SqliteConnection connection = await OpenConnectionAsync(cancellationToken);

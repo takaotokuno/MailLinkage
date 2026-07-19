@@ -17,6 +17,7 @@ internal sealed record BatchRunHistory(
     string? FatalErrorCode,
     string? FatalErrorStage)
 {
+    /// <summary>バッチの開始から終了までに要した時間を取得します。</summary>
     public TimeSpan Duration
     {
         get
@@ -25,6 +26,7 @@ internal sealed record BatchRunHistory(
         }
     }
 
+    /// <summary>バッチ実行結果から永続化用の履歴を作成します。</summary>
     public static BatchRunHistory From(string runId, BatchRunResult result, int exitCode) => new(
         runId,
         result.StartedAt,

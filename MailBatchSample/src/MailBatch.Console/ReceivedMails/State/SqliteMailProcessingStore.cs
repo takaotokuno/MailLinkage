@@ -20,21 +20,29 @@ internal interface IProcessedMailStore
 /// </summary>
 internal interface IMailMoveFailureStore
 {
+    /// <summary>記録されているすべてのメール移動失敗を取得します。</summary>
     Task<IReadOnlyList<MailMoveFailure>> GetAllAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>指定したメールの移動失敗が記録されているか判定します。</summary>
     Task<bool> ContainsAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default);
 
+    /// <summary>処理済みメールボックスへの移動失敗を記録します。</summary>
     Task AddAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default);
 
+    /// <summary>エラーメールボックスへの移動失敗を記録します。</summary>
     Task AddErrorMoveFailureAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default);
 
+    /// <summary>復旧処理で再度失敗した日時を更新します。</summary>
     Task RecordRecoveryFailureAsync(MailMoveFailure failure, CancellationToken cancellationToken = default);
 
+    /// <summary>指定したメール移動失敗の記録を削除します。</summary>
     Task RemoveAsync(MailMoveFailure failure, CancellationToken cancellationToken = default);
 
+    /// <summary>指定したメールの処理済みフォルダーへの移動失敗記録を削除します。</summary>
     Task RemoveAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default);
 }
 
+/// <summary>メールボックスへの移動に失敗したメールと失敗日時を表します。</summary>
 internal readonly record struct MailMoveFailure(
     ReceivedMailId MailId,
     MailMoveFailureDestination Destination,
@@ -47,9 +55,12 @@ internal readonly record struct MailMoveFailure(
     }
 }
 
+/// <summary>メール移動に失敗した際の移動先を表します。</summary>
 internal enum MailMoveFailureDestination
 {
+    /// <summary>正常処理済みメールの移動先です。</summary>
     Processed,
+    /// <summary>処理失敗メールの移動先です。</summary>
     Error
 }
 
@@ -72,6 +83,7 @@ internal sealed class SqliteMailProcessingStore(
         }
     }
 
+    /// <inheritdoc />
     public async Task<IReadOnlyList<MailMoveFailure>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         await using SqliteConnection connection = await OpenConnectionAsync(cancellationToken);
@@ -99,6 +111,7 @@ internal sealed class SqliteMailProcessingStore(
         return failures;
     }
 
+    /// <inheritdoc />
     public async Task<bool> ContainsAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
     {
         await using SqliteConnection connection = await OpenConnectionAsync(cancellationToken);
@@ -108,15 +121,19 @@ internal sealed class SqliteMailProcessingStore(
         return Convert.ToInt64(await command.ExecuteScalarAsync(cancellationToken), CultureInfo.InvariantCulture) == 1;
     }
 
+    /// <inheritdoc />
     public Task AddAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default) =>
         AddFailureAsync(mailId, MailMoveFailureDestination.Processed, cancellationToken);
 
+    /// <inheritdoc />
     public Task AddErrorMoveFailureAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default) =>
         AddFailureAsync(mailId, MailMoveFailureDestination.Error, cancellationToken);
 
+    /// <inheritdoc />
     public Task RecordRecoveryFailureAsync(MailMoveFailure failure, CancellationToken cancellationToken = default) =>
         UpdateLastFailedAtAsync(failure, cancellationToken);
 
+    /// <inheritdoc />
     public async Task RemoveAsync(MailMoveFailure failure, CancellationToken cancellationToken = default)
     {
         await using SqliteConnection connection = await OpenConnectionAsync(cancellationToken);
@@ -130,6 +147,7 @@ internal sealed class SqliteMailProcessingStore(
         }
     }
 
+    /// <inheritdoc />
     public Task RemoveAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default) =>
         RemoveAsync(new MailMoveFailure(mailId, MailMoveFailureDestination.Processed, default, default), cancellationToken);
 

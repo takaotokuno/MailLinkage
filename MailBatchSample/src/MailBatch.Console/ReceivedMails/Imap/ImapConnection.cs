@@ -14,6 +14,7 @@ internal sealed class ImapConnection(
 {
     private ImapClient? _imapClient;
 
+    /// <summary>接続済みのIMAPクライアントを取得します。</summary>
     public ImapClient Client
     {
         get
@@ -23,6 +24,7 @@ internal sealed class ImapConnection(
         }
     }
 
+    /// <summary>IMAPサーバーへ接続済みかどうかを取得します。</summary>
     public bool IsConnected
     {
         get

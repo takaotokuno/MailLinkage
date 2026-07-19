@@ -5,6 +5,7 @@ namespace MailBatch.Console.BatchProcessing.Result;
 /// </summary>
 internal sealed record ProcessResult(int Total, int Succeeded = 0, int InvalidFormat = 0, int ApiFailed = 0)
 {
+    /// <summary>入力形式不正とAPI連携失敗を合計した失敗件数を取得します。</summary>
     public int Failed
     {
         get
@@ -24,18 +25,22 @@ internal sealed record ProcessResult(int Total, int Succeeded = 0, int InvalidFo
 /// </summary>
 internal sealed class ProcessResultAccumulator(int total = 0)
 {
+    /// <summary>処理対象の総件数を取得します。</summary>
     public int Total { get; private set; } = total;
 
+    /// <summary>正常に完了した件数を取得します。</summary>
     public int Succeeded
     {
         get; private set;
     }
 
+    /// <summary>入力形式が不正だった件数を取得します。</summary>
     public int InvalidFormat
     {
         get; private set;
     }
 
+    /// <summary>API連携に失敗した件数を取得します。</summary>
     public int ApiFailed
     {
         get; private set;

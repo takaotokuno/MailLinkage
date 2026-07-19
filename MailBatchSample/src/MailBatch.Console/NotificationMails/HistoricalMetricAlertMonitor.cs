@@ -3,8 +3,10 @@ using MailBatch.Console.BatchProcessing.Result;
 
 namespace MailBatch.Console.NotificationMails;
 
+/// <summary>蓄積したバッチ実行履歴に基づくメトリクスを監視します。</summary>
 internal interface IHistoricalMetricAlertMonitor
 {
+    /// <summary>直近の実行履歴を評価し、閾値超過時に通知を試みます。</summary>
     Task<bool> TryCheckAsync(CancellationToken cancellationToken = default);
 }
 
@@ -18,6 +20,7 @@ internal sealed class HistoricalMetricAlertMonitor(
     internal const int RUN_COUNT = 10;
     internal static readonly TimeSpan DurationThreshold = TimeSpan.FromHours(1);
 
+    /// <inheritdoc />
     public async Task<bool> TryCheckAsync(CancellationToken cancellationToken = default)
     {
         IReadOnlyList<BatchRunHistory> history = await historyStore.GetRecentAsync(RUN_COUNT, cancellationToken);

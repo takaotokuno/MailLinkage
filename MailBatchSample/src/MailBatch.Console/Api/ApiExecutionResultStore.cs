@@ -11,9 +11,11 @@ namespace MailBatch.Console.Api;
 /// </summary>
 internal interface IApiExecutionResultStore
 {
+    /// <summary>確定したAPI実行結果を永続化します。</summary>
     Task RecordAsync(ApiExecutionResult result, CancellationToken cancellationToken = default);
 }
 
+/// <summary>一回のAPI要求について保存する実行結果を表します。</summary>
 internal sealed record ApiExecutionResult(
     string ExecutionId,
     ReceivedMailId MailId,
@@ -47,6 +49,7 @@ internal sealed class SqliteApiExecutionResultStore(
         }
     }
 
+    /// <inheritdoc />
     public async Task RecordAsync(ApiExecutionResult result, CancellationToken cancellationToken = default)
     {
         await using SqliteConnection connection = await OpenConnectionAsync(cancellationToken);

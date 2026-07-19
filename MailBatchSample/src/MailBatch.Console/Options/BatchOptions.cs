@@ -7,8 +7,10 @@ internal sealed class BatchOptions
 {
     private const int DEFAULT_LOG_RETENTION_DAYS = 30;
 
+    /// <summary>ログと処理状態データベースを保存するディレクトリを取得します。</summary>
     public string LogDirectory { get; init; } = "MailBatchSample/logs";
 
+    /// <summary>ログを保持する日数を取得します。</summary>
     public int LogRetentionDays { get; init; } = DEFAULT_LOG_RETENTION_DAYS;
 
     /// <summary>
