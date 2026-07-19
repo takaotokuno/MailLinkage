@@ -13,6 +13,8 @@ internal sealed class ImapOptions
     public string UserName { get; init; } = "";
     public string Password { get; init; } = "";
     public string Mailbox { get; init; } = "INBOX";
+    public int RetryCount { get; init; } = 3;
+    public int RetryDelaySeconds { get; init; } = 2;
 
     /// <summary>
     /// IMAP接続に必要な設定値を検証します。
@@ -24,6 +26,8 @@ internal sealed class ImapOptions
         OptionValidation.Require(UserName, "Imap:UserName");
         OptionValidation.Require(Password, "Imap:Password");
         OptionValidation.Require(Mailbox, "Imap:Mailbox");
+        OptionValidation.RequireNonNegative(RetryCount, "Imap:RetryCount");
+        OptionValidation.RequirePositive(RetryDelaySeconds, "Imap:RetryDelaySeconds");
 
         OptionValidation.RequireDefined(SocketOptions, "Imap:SocketOptions");
     }

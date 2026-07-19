@@ -1,6 +1,7 @@
 using MailBatch.Console.Options;
 using MailKit.Net.Imap;
 using Microsoft.Extensions.Logging;
+using Polly;
 
 namespace MailBatch.Console.ReceivedMails.Imap;
 
@@ -40,22 +41,37 @@ internal sealed class ImapConnection(
             return;
         }
 
-        _imapClient?.Dispose();
-        _imapClient = new ImapClient();
+        IAsyncPolicy retryPolicy = ImapRetryPolicyFactory.Create(
+            imapOptions,
+            (exception, delay, retryAttempt) =>
+            {
+                logger.LogWarning(
+                    exception,
+                    "IMAP connection failed. Retrying after {RetryDelay}. RetryAttempt={RetryAttempt}, RetryCount={RetryCount}",
+                    delay,
+                    retryAttempt,
+                    imapOptions.RetryCount);
+            });
 
-        logger.LogInformation(
-            "Connecting to IMAP server. Host={Host}, Port={Port}, SocketOptions={SocketOptions}",
-            imapOptions.Host,
-            imapOptions.Port,
-            imapOptions.SocketOptions);
+        await retryPolicy.ExecuteAsync(async token =>
+        {
+            _imapClient?.Dispose();
+            _imapClient = new ImapClient();
 
-        await _imapClient.ConnectAsync(
-            imapOptions.Host,
-            imapOptions.Port,
-            imapOptions.SocketOptions,
-            cancellationToken);
+            logger.LogInformation(
+                "Connecting to IMAP server. Host={Host}, Port={Port}, SocketOptions={SocketOptions}",
+                imapOptions.Host,
+                imapOptions.Port,
+                imapOptions.SocketOptions);
 
-        await _imapClient.AuthenticateAsync(imapOptions.UserName, imapOptions.Password, cancellationToken);
+            await _imapClient.ConnectAsync(
+                imapOptions.Host,
+                imapOptions.Port,
+                imapOptions.SocketOptions,
+                token);
+
+            await _imapClient.AuthenticateAsync(imapOptions.UserName, imapOptions.Password, token);
+        }, cancellationToken);
     }
 
     /// <summary>
