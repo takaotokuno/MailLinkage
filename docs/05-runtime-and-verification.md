@@ -149,12 +149,14 @@ logs/batch-yyyyMMdd.log
 MailBatch.Console は処理済みメール台帳とメール移動失敗を `Batch:LogDirectory` 配下の
 `mail-processing.db` に保存する。処理済みメールは `processed_mails`、再移動待ちのメールは
 `mail_move_failures` で確認できる。UID はメールボックスの UIDVALIDITY と組み合わせて識別する。
+移動失敗が滞留し始めた日時は `created_at_utc`、通常処理または復旧処理で最後に移動に失敗した日時は
+`last_failed_at_utc` で確認する。
 
 ```bash
 sqlite3 MailBatchSample/logs/mail-processing.db \
   "select uid, uid_validity, processed_at_utc from processed_mails order by processed_at_utc;"
 sqlite3 MailBatchSample/logs/mail-processing.db \
-  "select uid, uid_validity, destination, failed_at_utc from mail_move_failures order by failed_at_utc;"
+  "select uid, uid_validity, destination, created_at_utc, last_failed_at_utc from mail_move_failures order by created_at_utc;"
 ```
 
 SQLite CLI を利用できる場合は次のように確認する。

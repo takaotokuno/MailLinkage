@@ -1,5 +1,6 @@
 using MailBatch.Console.Options;
 using MailBatch.Console.ReceivedMails.State;
+using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
@@ -24,9 +25,73 @@ public sealed class SqliteMailProcessingStoreTests : IDisposable
         MailMoveFailure failure = Assert.Single(await reopenedStore.GetAllAsync());
         Assert.Equal(failedMailId, failure.MailId);
         Assert.Equal(MailMoveFailureDestination.Error, failure.Destination);
+        Assert.True(failure.CreatedAtUtc <= failure.LastFailedAtUtc);
 
         await reopenedStore.RemoveAsync(failure);
         Assert.Empty(await reopenedStore.GetAllAsync());
+    }
+
+    [Fact]
+    public async Task AddFailure_WhenRecordAlreadyExists_PreservesCreatedAtAndUpdatesLastFailedAt()
+    {
+        ReceivedMailId mailId = new(30, 1000);
+        SqliteMailProcessingStore store = CreateStore();
+
+        await store.AddAsync(mailId);
+        MailMoveFailure firstFailure = Assert.Single(await store.GetAllAsync());
+        await Task.Delay(20);
+        await store.AddAsync(mailId);
+        MailMoveFailure updatedFailure = Assert.Single(await store.GetAllAsync());
+
+        Assert.Equal(firstFailure.CreatedAtUtc, updatedFailure.CreatedAtUtc);
+        Assert.True(updatedFailure.LastFailedAtUtc > firstFailure.LastFailedAtUtc);
+    }
+
+    [Fact]
+    public async Task RecordRecoveryFailure_UpdatesOnlyLastFailedAt()
+    {
+        ReceivedMailId mailId = new(40, 1000);
+        SqliteMailProcessingStore store = CreateStore();
+        await store.AddAsync(mailId);
+        MailMoveFailure firstFailure = Assert.Single(await store.GetAllAsync());
+        await Task.Delay(20);
+
+        await store.RecordRecoveryFailureAsync(firstFailure);
+        MailMoveFailure updatedFailure = Assert.Single(await store.GetAllAsync());
+
+        Assert.Equal(firstFailure.CreatedAtUtc, updatedFailure.CreatedAtUtc);
+        Assert.True(updatedFailure.LastFailedAtUtc > firstFailure.LastFailedAtUtc);
+    }
+
+    [Fact]
+    public async Task Store_WhenLegacyFailureExists_BackfillsBothTimestamps()
+    {
+        _ = Directory.CreateDirectory(_directory);
+        string databasePath = Path.Combine(_directory, "mail-processing.db");
+        const string legacyTimestamp = "2026-07-01T01:02:03.0000000+00:00";
+        await using (SqliteConnection connection = new($"Data Source={databasePath}"))
+        {
+            await connection.OpenAsync();
+            await using SqliteCommand command = connection.CreateCommand();
+            command.CommandText = $"""
+                CREATE TABLE mail_move_failures (
+                    uid INTEGER NOT NULL,
+                    uid_validity INTEGER NOT NULL,
+                    destination TEXT NOT NULL,
+                    failed_at_utc TEXT NOT NULL,
+                    PRIMARY KEY (uid, uid_validity, destination)
+                );
+                INSERT INTO mail_move_failures (uid, uid_validity, destination, failed_at_utc)
+                VALUES (50, 1000, 'Processed', '{legacyTimestamp}');
+                """;
+            _ = await command.ExecuteNonQueryAsync();
+        }
+
+        MailMoveFailure failure = Assert.Single(await CreateStore().GetAllAsync());
+
+        DateTimeOffset expected = DateTimeOffset.Parse(legacyTimestamp);
+        Assert.Equal(expected, failure.CreatedAtUtc);
+        Assert.Equal(expected, failure.LastFailedAtUtc);
     }
 
     public void Dispose()

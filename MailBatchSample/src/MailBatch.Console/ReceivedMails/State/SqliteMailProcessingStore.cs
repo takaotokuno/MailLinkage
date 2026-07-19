@@ -18,6 +18,8 @@ internal interface IProcessedMailMoveFailureStore
 
     Task AddErrorMoveFailureAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default);
 
+    Task RecordRecoveryFailureAsync(MailMoveFailure failure, CancellationToken cancellationToken = default);
+
     Task RemoveAsync(MailMoveFailure failure, CancellationToken cancellationToken = default);
 
     Task RemoveAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default);
@@ -33,7 +35,17 @@ internal interface IProcessedMailMoveFailureStore
     Task<bool> IsProcessedAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default) => Task.FromResult(false);
 }
 
-internal readonly record struct MailMoveFailure(ReceivedMailId MailId, MailMoveFailureDestination Destination);
+internal readonly record struct MailMoveFailure(
+    ReceivedMailId MailId,
+    MailMoveFailureDestination Destination,
+    DateTimeOffset CreatedAtUtc,
+    DateTimeOffset LastFailedAtUtc)
+{
+    public MailMoveFailure(ReceivedMailId mailId, MailMoveFailureDestination destination)
+        : this(mailId, destination, default, default)
+    {
+    }
+}
 
 internal enum MailMoveFailureDestination
 {
@@ -58,7 +70,7 @@ internal sealed class SqliteMailProcessingStore(
     {
         await using SqliteConnection connection = await OpenConnectionAsync(cancellationToken);
         await using SqliteCommand command = connection.CreateCommand();
-        command.CommandText = "SELECT uid, uid_validity, destination FROM mail_move_failures ORDER BY uid_validity, uid, destination;";
+        command.CommandText = "SELECT uid, uid_validity, destination, created_at_utc, last_failed_at_utc FROM mail_move_failures ORDER BY uid_validity, uid, destination;";
 
         List<MailMoveFailure> failures = [];
         await using SqliteDataReader reader = await command.ExecuteReaderAsync(cancellationToken);
@@ -66,7 +78,9 @@ internal sealed class SqliteMailProcessingStore(
         {
             failures.Add(new MailMoveFailure(
                 new ReceivedMailId(ToUInt32(reader.GetInt64(0)), ToUInt32(reader.GetInt64(1))),
-                Enum.Parse<MailMoveFailureDestination>(reader.GetString(2), ignoreCase: true)));
+                Enum.Parse<MailMoveFailureDestination>(reader.GetString(2), ignoreCase: true),
+                ParseTimestamp(reader.GetString(3)),
+                ParseTimestamp(reader.GetString(4))));
         }
 
         return failures;
@@ -87,6 +101,9 @@ internal sealed class SqliteMailProcessingStore(
     public Task AddErrorMoveFailureAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default) =>
         AddFailureAsync(mailId, MailMoveFailureDestination.Error, cancellationToken);
 
+    public Task RecordRecoveryFailureAsync(MailMoveFailure failure, CancellationToken cancellationToken = default) =>
+        UpdateLastFailedAtAsync(failure, cancellationToken);
+
     public async Task RemoveAsync(MailMoveFailure failure, CancellationToken cancellationToken = default)
     {
         await using SqliteConnection connection = await OpenConnectionAsync(cancellationToken);
@@ -101,7 +118,7 @@ internal sealed class SqliteMailProcessingStore(
     }
 
     public Task RemoveAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default) =>
-        RemoveAsync(new MailMoveFailure(mailId, MailMoveFailureDestination.Processed), cancellationToken);
+        RemoveAsync(new MailMoveFailure(mailId, MailMoveFailureDestination.Processed, default, default), cancellationToken);
 
     public async Task RecordProcessedAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
     {
@@ -128,14 +145,29 @@ internal sealed class SqliteMailProcessingStore(
     {
         await using SqliteConnection connection = await OpenConnectionAsync(cancellationToken);
         await using SqliteCommand command = CreateMailIdCommand(connection, """
-            INSERT INTO mail_move_failures (uid, uid_validity, destination, failed_at_utc)
-            VALUES ($uid, $uidValidity, $destination, $failedAtUtc)
-            ON CONFLICT(uid, uid_validity, destination) DO UPDATE SET failed_at_utc = excluded.failed_at_utc;
+            INSERT INTO mail_move_failures (uid, uid_validity, destination, failed_at_utc, created_at_utc, last_failed_at_utc)
+            VALUES ($uid, $uidValidity, $destination, $failedAtUtc, $failedAtUtc, $failedAtUtc)
+            ON CONFLICT(uid, uid_validity, destination) DO UPDATE SET
+                failed_at_utc = excluded.failed_at_utc,
+                last_failed_at_utc = excluded.last_failed_at_utc;
             """, mailId);
         _ = command.Parameters.AddWithValue("$destination", destination.ToString());
         _ = command.Parameters.AddWithValue("$failedAtUtc", DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture));
         _ = await command.ExecuteNonQueryAsync(cancellationToken);
         logger.LogWarning("Recorded mailbox move failure. MailId={MailId}, Destination={Destination}", mailId, destination);
+    }
+
+    private async Task UpdateLastFailedAtAsync(MailMoveFailure failure, CancellationToken cancellationToken)
+    {
+        await using SqliteConnection connection = await OpenConnectionAsync(cancellationToken);
+        await using SqliteCommand command = CreateMailIdCommand(connection, """
+            UPDATE mail_move_failures
+            SET failed_at_utc = $failedAtUtc, last_failed_at_utc = $failedAtUtc
+            WHERE uid = $uid AND uid_validity = $uidValidity AND destination = $destination;
+            """, failure.MailId);
+        _ = command.Parameters.AddWithValue("$destination", failure.Destination.ToString());
+        _ = command.Parameters.AddWithValue("$failedAtUtc", DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture));
+        _ = await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
     private async Task<SqliteConnection> OpenConnectionAsync(CancellationToken cancellationToken)
@@ -177,10 +209,21 @@ internal sealed class SqliteMailProcessingStore(
                     uid_validity INTEGER NOT NULL,
                     destination TEXT NOT NULL CHECK (destination IN ('Processed', 'Error')),
                     failed_at_utc TEXT NOT NULL,
+                    created_at_utc TEXT NOT NULL,
+                    last_failed_at_utc TEXT NOT NULL,
                     PRIMARY KEY (uid, uid_validity, destination)
                 );
                 """;
             _ = await command.ExecuteNonQueryAsync(cancellationToken);
+            await AddTimestampColumnIfMissingAsync(connection, "created_at_utc", cancellationToken);
+            await AddTimestampColumnIfMissingAsync(connection, "last_failed_at_utc", cancellationToken);
+            await using SqliteCommand backfillCommand = connection.CreateCommand();
+            backfillCommand.CommandText = """
+                UPDATE mail_move_failures
+                SET created_at_utc = COALESCE(created_at_utc, failed_at_utc),
+                    last_failed_at_utc = COALESCE(last_failed_at_utc, failed_at_utc);
+                """;
+            _ = await backfillCommand.ExecuteNonQueryAsync(cancellationToken);
             _initialized = true;
         }
         finally
@@ -197,6 +240,34 @@ internal sealed class SqliteMailProcessingStore(
         _ = command.Parameters.AddWithValue("$uidValidity", (long)mailId.UidValidity);
         return command;
     }
+
+    private static async Task AddTimestampColumnIfMissingAsync(SqliteConnection connection, string columnName, CancellationToken cancellationToken)
+    {
+        await using SqliteCommand columnsCommand = connection.CreateCommand();
+        columnsCommand.CommandText = "PRAGMA table_info(mail_move_failures);";
+        bool exists = false;
+        await using (SqliteDataReader reader = await columnsCommand.ExecuteReaderAsync(cancellationToken))
+        {
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                if (string.Equals(reader.GetString(1), columnName, StringComparison.Ordinal))
+                {
+                    exists = true;
+                    break;
+                }
+            }
+        }
+
+        if (!exists)
+        {
+            await using SqliteCommand alterCommand = connection.CreateCommand();
+            alterCommand.CommandText = $"ALTER TABLE mail_move_failures ADD COLUMN {columnName} TEXT;";
+            _ = await alterCommand.ExecuteNonQueryAsync(cancellationToken);
+        }
+    }
+
+    private static DateTimeOffset ParseTimestamp(string value) =>
+        DateTimeOffset.Parse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
 
     private static uint ToUInt32(long value) => checked((uint)value);
 }
