@@ -61,8 +61,8 @@ internal sealed class RequestQueueConsumer(
     {
         using (logger.BeginScope(new Dictionary<string, object> { ["MailId"] = request.MailId }))
         {
-            bool succeeded = await PostAndHandleResultAsync(request, cancellationToken);
-            await HandlePostOutcomeAsync(request.MailId, succeeded, result, cancellationToken);
+            (bool succeeded, string executionId) = await PostAndHandleResultAsync(request, cancellationToken);
+            await HandlePostOutcomeAsync(request.MailId, executionId, succeeded, result, cancellationToken);
         }
     }
 
@@ -71,25 +71,24 @@ internal sealed class RequestQueueConsumer(
     /// </summary>
     private async Task HandlePostOutcomeAsync(
         ReceivedMailId mailId,
+        string executionId,
         bool succeeded,
         ProcessResultAccumulator result,
         CancellationToken cancellationToken)
     {
-        if (!succeeded)
+        if (succeeded)
         {
-            await TryMoveToErrorMailboxAsync(mailId, cancellationToken);
-            result.IncrementApiFailure();
-            return;
-        }
-
-        await processedMailStore.RecordAsync(mailId, cancellationToken);
-        if (await TryMoveToProcessedMailboxAsync(mailId, cancellationToken))
-        {
+            await processedMailStore.RecordAsync(mailId, cancellationToken);
+            ReceivedMailId? movedMailId = await TryMoveToProcessedMailboxAsync(mailId, cancellationToken);
+            await RecordMovedMailIdAsync(executionId, movedMailId, cancellationToken);
             result.IncrementSuccess();
-            return;
         }
-
-        result.IncrementApiFailure();
+        else
+        {
+            ReceivedMailId? movedMailId = await TryMoveToErrorMailboxAsync(mailId, cancellationToken);
+            await RecordMovedMailIdAsync(executionId, movedMailId, cancellationToken);
+            result.IncrementApiFailure();
+        }
     }
 
     /// <summary>
@@ -106,7 +105,7 @@ internal sealed class RequestQueueConsumer(
     /// <summary>
     /// メール送信処理を実行し、予期しない例外をログに記録して失敗として扱います。
     /// </summary>
-    private async Task<bool> PostAndHandleResultAsync(MailLinkageRequest request, CancellationToken cancellationToken)
+    private async Task<(bool Succeeded, string ExecutionId)> PostAndHandleResultAsync(MailLinkageRequest request, CancellationToken cancellationToken)
     {
         string executionId = Guid.NewGuid().ToString("N");
         DateTimeOffset startedAtUtc = DateTimeOffset.UtcNow;
@@ -143,7 +142,7 @@ internal sealed class RequestQueueConsumer(
                 request.MailId,
                 stopwatch.ElapsedMilliseconds);
 
-            return false;
+            return (false, executionId);
         }
 
         DateTimeOffset resultCompletedAtUtc = DateTimeOffset.UtcNow;
@@ -164,7 +163,7 @@ internal sealed class RequestQueueConsumer(
             executionId,
             result.IsSuccess ? "Succeeded" : "Failed",
             stopwatch.ElapsedMilliseconds);
-        return result.IsSuccess;
+        return (result.IsSuccess, executionId);
     }
 
     /// <summary>
@@ -219,13 +218,13 @@ internal sealed class RequestQueueConsumer(
     /// <summary>
     /// API送信成功後、処理済みメールボックスへ移動します。移動失敗時は再送防止用に記録します。
     /// </summary>
-    private async Task<bool> TryMoveToProcessedMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken)
+    private async Task<ReceivedMailId?> TryMoveToProcessedMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken)
     {
         try
         {
-            await MoveToProcessedMailboxAsync(mailId, cancellationToken);
+            ReceivedMailId? movedMailId = await MoveToProcessedMailboxAsync(mailId, cancellationToken);
             await moveFailureStore.RemoveAsync(mailId, cancellationToken);
-            return true;
+            return movedMailId;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -239,18 +238,18 @@ internal sealed class RequestQueueConsumer(
                 "API post succeeded but moving mail to processed mailbox failed. MailId={MailId}",
                 mailId);
 
-            return false;
+            return null;
         }
     }
 
     /// <summary>
     /// API送信失敗後、エラーメールボックスへ移動します。移動失敗時は再処理抑止用に記録します。
     /// </summary>
-    private async Task TryMoveToErrorMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken)
+    private async Task<ReceivedMailId?> TryMoveToErrorMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken)
     {
         try
         {
-            await MoveToErrorMailboxAsync(mailId, cancellationToken);
+            return await MoveToErrorMailboxAsync(mailId, cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -263,16 +262,25 @@ internal sealed class RequestQueueConsumer(
                 ex,
                 "API post failed and moving mail to error mailbox failed. MailId={MailId}",
                 mailId);
+            return null;
+        }
+    }
+
+    private async Task RecordMovedMailIdAsync(string executionId, ReceivedMailId? movedMailId, CancellationToken cancellationToken)
+    {
+        if (movedMailId is not null)
+        {
+            await apiExecutionResultStore.RecordMovedMailIdAsync(executionId, movedMailId.Value, cancellationToken);
         }
     }
 
     /// <summary>
     /// 処理済みメールを設定されたメールボックスへ移動します。
     /// </summary>
-    private async Task MoveToProcessedMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken) => await receivedMailMover.MoveToProcessedMailboxAsync(mailId, cancellationToken);
+    private async Task<ReceivedMailId?> MoveToProcessedMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken) => await receivedMailMover.MoveToProcessedMailboxAsync(mailId, cancellationToken);
 
     /// <summary>
     /// API連携に失敗したメールを設定されたエラーメールボックスへ移動します。
     /// </summary>
-    private async Task MoveToErrorMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken) => await receivedMailMover.MoveToErrorMailboxAsync(mailId, cancellationToken);
+    private async Task<ReceivedMailId?> MoveToErrorMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken) => await receivedMailMover.MoveToErrorMailboxAsync(mailId, cancellationToken);
 }

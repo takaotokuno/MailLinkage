@@ -105,12 +105,12 @@ internal sealed class ReceivedMailSession(
     /// <summary>
     /// 処理済みメールを設定されたメールボックスへ移動します。
     /// </summary>
-    public async Task MoveToProcessedMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
+    public async Task<ReceivedMailId?> MoveToProcessedMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
     {
         await _imapLock.WaitAsync(cancellationToken);
         try
         {
-            await mailKitMailMover.MoveToProcessedMailboxAsync(mailId, cancellationToken);
+            return await mailKitMailMover.MoveToProcessedMailboxAsync(mailId, cancellationToken);
         }
         finally
         {
@@ -121,12 +121,12 @@ internal sealed class ReceivedMailSession(
     /// <summary>
     /// API連携に失敗したメールを設定されたエラーメールボックスへ移動します。
     /// </summary>
-    public async Task MoveToErrorMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
+    public async Task<ReceivedMailId?> MoveToErrorMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
     {
         await _imapLock.WaitAsync(cancellationToken);
         try
         {
-            await mailKitMailMover.MoveToErrorMailboxAsync(mailId, cancellationToken);
+            return await mailKitMailMover.MoveToErrorMailboxAsync(mailId, cancellationToken);
         }
         finally
         {

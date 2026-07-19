@@ -13,12 +13,12 @@ internal interface IMailKitMailMover
     /// <summary>
     /// 指定されたメールを処理済みメールボックスへ移動します。
     /// </summary>
-    Task MoveToProcessedMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default);
+    Task<ReceivedMailId?> MoveToProcessedMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 指定されたメールをエラーメールボックスへ移動します。
     /// </summary>
-    Task MoveToErrorMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default);
+    Task<ReceivedMailId?> MoveToErrorMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -32,25 +32,25 @@ internal sealed class MailKitMailMover(
     /// <summary>
     /// 指定されたメールを処理済みメールボックスへ移動します。
     /// </summary>
-    public async Task MoveToProcessedMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
+    public async Task<ReceivedMailId?> MoveToProcessedMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
     {
         IMailFolder processedFolder = await mailFolderProvider.GetOrCreateProcessedFolderAsync(cancellationToken);
-        await MoveToMailboxAsync(mailId, processedFolder, processingOptions.ProcessedMailbox, cancellationToken);
+        return await MoveToMailboxAsync(mailId, processedFolder, processingOptions.ProcessedMailbox, cancellationToken);
     }
 
     /// <summary>
     /// 指定されたメールをエラーメールボックスへ移動します。
     /// </summary>
-    public async Task MoveToErrorMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
+    public async Task<ReceivedMailId?> MoveToErrorMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
     {
         IMailFolder errorFolder = await mailFolderProvider.GetOrCreateErrorFolderAsync(cancellationToken);
-        await MoveToMailboxAsync(mailId, errorFolder, processingOptions.ErrorMailbox, cancellationToken);
+        return await MoveToMailboxAsync(mailId, errorFolder, processingOptions.ErrorMailbox, cancellationToken);
     }
 
     /// <summary>
     /// 指定されたメールを移動先メールボックスへ移動します。
     /// </summary>
-    private async Task MoveToMailboxAsync(
+    private async Task<ReceivedMailId?> MoveToMailboxAsync(
         ReceivedMailId mailId,
         IMailFolder destinationFolder,
         string destinationMailbox,
@@ -67,5 +67,9 @@ internal sealed class MailKitMailMover(
             sourceUid.Id,
             sourceUid.Validity,
             destinationUid?.Id);
+
+        return destinationUid is null
+            ? null
+            : MailKitReceivedMailIdMapper.ToReceivedMailId(destinationUid.Value, destinationFolder.UidValidity);
     }
 }

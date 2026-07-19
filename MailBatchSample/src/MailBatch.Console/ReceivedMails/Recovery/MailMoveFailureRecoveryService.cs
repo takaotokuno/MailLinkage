@@ -79,10 +79,10 @@ internal sealed class MailMoveFailureRecoveryService(
     {
         if (failure.Destination == MailMoveFailureDestination.Processed)
         {
-            await receivedMailMover.MoveToProcessedMailboxAsync(failure.MailId, cancellationToken);
+            _ = await receivedMailMover.MoveToProcessedMailboxAsync(failure.MailId, cancellationToken);
             return;
         }
 
-        await receivedMailMover.MoveToErrorMailboxAsync(failure.MailId, cancellationToken);
+        _ = await receivedMailMover.MoveToErrorMailboxAsync(failure.MailId, cancellationToken);
     }
 }

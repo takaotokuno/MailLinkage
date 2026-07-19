@@ -175,12 +175,12 @@ public sealed class MailFetchQueueProducerTests
         public Task DisconnectAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task<ReceivedMail> CreateRequestAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default) => Task.FromResult(mailFactory(mailId));
         public List<ReceivedMailId> ProcessedMailIds { get; } = [];
-        public Task MoveToProcessedMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
+        public Task<ReceivedMailId?> MoveToProcessedMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
         {
             ProcessedMailIds.Add(mailId);
-            return Task.CompletedTask;
+            return Task.FromResult<ReceivedMailId?>(mailId);
         }
-        public Task MoveToErrorMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task<ReceivedMailId?> MoveToErrorMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default) => Task.FromResult<ReceivedMailId?>(mailId);
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 
