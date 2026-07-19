@@ -92,8 +92,8 @@ public sealed class RequestQueueConsumerTests
 
         ProcessResult result = await consumer.ConsumeAsync();
 
-        Assert.Equal(1, result.ApiFailed);
-        Assert.Equal(0, result.Succeeded);
+        Assert.Equal(0, result.ApiFailed);
+        Assert.Equal(1, result.Succeeded);
         Assert.Contains(request.MailId, moveFailureStore.MailIds);
     }
 

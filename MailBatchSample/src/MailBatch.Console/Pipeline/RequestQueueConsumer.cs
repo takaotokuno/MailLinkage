@@ -76,24 +76,19 @@ internal sealed class RequestQueueConsumer(
         ProcessResultAccumulator result,
         CancellationToken cancellationToken)
     {
-        if (!succeeded)
+        if (succeeded)
+        {
+            await processedMailStore.RecordAsync(mailId, cancellationToken);
+            ReceivedMailId? movedMailId = await TryMoveToProcessedMailboxAsync(mailId, cancellationToken);
+            await RecordMovedMailIdAsync(executionId, movedMailId, cancellationToken);
+            result.IncrementSuccess();
+        }
+        else
         {
             ReceivedMailId? movedMailId = await TryMoveToErrorMailboxAsync(mailId, cancellationToken);
             await RecordMovedMailIdAsync(executionId, movedMailId, cancellationToken);
             result.IncrementApiFailure();
-            return;
         }
-
-        await processedMailStore.RecordAsync(mailId, cancellationToken);
-        (bool moved, ReceivedMailId? movedMailId) = await TryMoveToProcessedMailboxAsync(mailId, cancellationToken);
-        await RecordMovedMailIdAsync(executionId, movedMailId, cancellationToken);
-        if (moved)
-        {
-            result.IncrementSuccess();
-            return;
-        }
-
-        result.IncrementApiFailure();
     }
 
     /// <summary>
@@ -223,13 +218,13 @@ internal sealed class RequestQueueConsumer(
     /// <summary>
     /// API送信成功後、処理済みメールボックスへ移動します。移動失敗時は再送防止用に記録します。
     /// </summary>
-    private async Task<(bool Moved, ReceivedMailId? MovedMailId)> TryMoveToProcessedMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken)
+    private async Task<ReceivedMailId?> TryMoveToProcessedMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken)
     {
         try
         {
             ReceivedMailId? movedMailId = await MoveToProcessedMailboxAsync(mailId, cancellationToken);
             await moveFailureStore.RemoveAsync(mailId, cancellationToken);
-            return (true, movedMailId);
+            return movedMailId;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -243,7 +238,7 @@ internal sealed class RequestQueueConsumer(
                 "API post succeeded but moving mail to processed mailbox failed. MailId={MailId}",
                 mailId);
 
-            return (false, null);
+            return null;
         }
     }
 

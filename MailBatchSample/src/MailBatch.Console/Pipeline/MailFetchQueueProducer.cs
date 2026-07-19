@@ -146,7 +146,7 @@ internal sealed class MailFetchQueueProducer(
         try
         {
             await processedMailStore.RecordAsync(mailId, cancellationToken);
-            await receivedMailMover.MoveToProcessedMailboxAsync(mailId, cancellationToken);
+            _ = await receivedMailMover.MoveToProcessedMailboxAsync(mailId, cancellationToken);
             await moveFailureStore.RemoveAsync(mailId, cancellationToken);
             logger.LogDebug(
                 "Moved invalid format message to processed mailbox. MailId={MailId}",
