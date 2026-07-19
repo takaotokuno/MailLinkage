@@ -9,7 +9,7 @@ internal sealed class ImapOptions
 {
     public string Host { get; init; } = "";
     public int Port { get; init; } = 993;
-    public string SecureSocketOption { get; init; } = "SslOnConnect";
+    public SecureSocketOptions SocketOptions { get; init; } = SecureSocketOptions.SslOnConnect;
     public string UserName { get; init; } = "";
     public string Password { get; init; } = "";
     public string Mailbox { get; init; } = "INBOX";
@@ -25,20 +25,6 @@ internal sealed class ImapOptions
         OptionValidation.Require(Password, "Imap:Password");
         OptionValidation.Require(Mailbox, "Imap:Mailbox");
 
-        if (!Enum.TryParse<SecureSocketOptions>(SecureSocketOption, ignoreCase: true, out _))
-        {
-            throw new InvalidOperationException(
-                "Imap:SecureSocketOption must be a valid SecureSocketOptions value.");
-        }
-    }
-
-    /// <summary>
-    /// 設定文字列をMailKitのSecureSocketOptionsへ変換します。
-    /// </summary>
-    public SecureSocketOptions GetSecureSocketOptions()
-    {
-        return Enum.Parse<SecureSocketOptions>(
-            SecureSocketOption,
-            ignoreCase: true);
+        OptionValidation.RequireDefined(SocketOptions, "Imap:SocketOptions");
     }
 }

@@ -1,6 +1,5 @@
 using MailBatch.Console.Options;
 using MailKit.Net.Smtp;
-using MailKit.Security;
 using Microsoft.Extensions.Logging;
 using MimeKit;
 
@@ -34,7 +33,7 @@ internal sealed class SmtpMailNotifier(
         await smtpClient.ConnectAsync(
             notificationOptions.SmtpHost,
             notificationOptions.SmtpPort,
-            SecureSocketOptions.SslOnConnect,
+            notificationOptions.SocketOptions,
             cancellationToken);
 
         if (!string.IsNullOrWhiteSpace(notificationOptions.UserName))

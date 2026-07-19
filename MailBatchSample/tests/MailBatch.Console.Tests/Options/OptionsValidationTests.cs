@@ -60,32 +60,31 @@ public sealed class OptionsValidationTests
     }
 
     /// <summary>
-    /// 状態: IMAP接続に必要な値がすべて設定され、SecureSocketOptionが小文字で指定されている。
-    /// 振る舞い: 検証エラーを送出せず、大文字小文字を区別せずにSecureSocketOptionsへ変換する。
+    /// 状態: IMAP接続に必要な値とSocketOptionsがすべて設定されている。
+    /// 振る舞い: 検証エラーを送出しない。
     /// </summary>
     [Fact]
-    public void ImapOptionsValidate_WithValidOptions_DoesNotThrowAndParsesSecureSocketOptionIgnoringCase()
+    public void ImapOptionsValidate_WithValidOptions_DoesNotThrow()
     {
-        ImapOptions options = CreateValidImapOptions(secureSocketOption: "starttls");
+        ImapOptions options = CreateValidImapOptions(SecureSocketOptions.StartTls);
 
         Exception? exception = Record.Exception(options.Validate);
 
         Assert.Null(exception);
-        Assert.Equal(SecureSocketOptions.StartTls, options.GetSecureSocketOptions());
     }
 
     /// <summary>
-    /// 状態: IMAP接続設定のSecureSocketOptionに不正な値が設定されている。
-    /// 振る舞い: MailKitで扱える値ではないため、Imap:SecureSocketOptionの検証エラーを送出する。
+    /// 状態: IMAP接続設定のSocketOptionsに不正な値が設定されている。
+    /// 振る舞い: MailKitで扱える値ではないため、Imap:SocketOptionsの検証エラーを送出する。
     /// </summary>
     [Fact]
-    public void ImapOptionsValidate_WithInvalidSecureSocketOption_ThrowsInvalidOperationException()
+    public void ImapOptionsValidate_WithInvalidSocketOptions_ThrowsInvalidOperationException()
     {
-        ImapOptions options = CreateValidImapOptions(secureSocketOption: "invalid");
+        ImapOptions options = CreateValidImapOptions((SecureSocketOptions)(-1));
 
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(options.Validate);
 
-        Assert.Equal("Imap:SecureSocketOption must be a valid SecureSocketOptions value.", exception.Message);
+        Assert.Equal("Imap:SocketOptions must be a valid SecureSocketOptions value.", exception.Message);
     }
 
     /// <summary>
@@ -179,13 +178,13 @@ public sealed class OptionsValidationTests
         Assert.Equal("Notification:Templates:0:Body is required.", exception.Message);
     }
 
-    private static ImapOptions CreateValidImapOptions(string secureSocketOption)
+    private static ImapOptions CreateValidImapOptions(SecureSocketOptions socketOptions)
     {
         return new ImapOptions
         {
             Host = "imap.example.local",
             Port = 993,
-            SecureSocketOption = secureSocketOption,
+            SocketOptions = socketOptions,
             UserName = "user",
             Password = "password",
             Mailbox = "INBOX"

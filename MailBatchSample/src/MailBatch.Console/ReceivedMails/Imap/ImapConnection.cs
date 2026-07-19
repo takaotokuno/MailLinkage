@@ -44,15 +44,15 @@ internal sealed class ImapConnection(
         _imapClient = new ImapClient();
 
         logger.LogInformation(
-            "Connecting to IMAP server. Host={Host}, Port={Port}, SecureSocketOption={SecureSocketOption}",
+            "Connecting to IMAP server. Host={Host}, Port={Port}, SocketOptions={SocketOptions}",
             imapOptions.Host,
             imapOptions.Port,
-            imapOptions.SecureSocketOption);
+            imapOptions.SocketOptions);
 
         await _imapClient.ConnectAsync(
             imapOptions.Host,
             imapOptions.Port,
-            imapOptions.GetSecureSocketOptions(),
+            imapOptions.SocketOptions,
             cancellationToken);
 
         await _imapClient.AuthenticateAsync(imapOptions.UserName, imapOptions.Password, cancellationToken);

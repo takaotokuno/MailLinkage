@@ -1,4 +1,5 @@
 using MailBatch.Console.Options;
+using MailKit.Security;
 using Xunit;
 
 namespace MailBatch.Console.Tests.Options;
@@ -34,6 +35,20 @@ public sealed class MailNotificationOptionsTests
     }
 
     /// <summary>
+    /// 状態: 通知メール接続設定のSocketOptionsに不正な値が設定されている。
+    /// 振る舞い: MailKitで扱える値ではないため、Notification:SocketOptionsの検証エラーを送出する。
+    /// </summary>
+    [Fact]
+    public void Validate_WithInvalidSocketOptions_ThrowsInvalidOperationException()
+    {
+        MailNotificationOptions options = CreateValidOptions(socketOptions: (SecureSocketOptions)(-1));
+
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(options.Validate);
+
+        Assert.Equal("Notification:SocketOptions must be a valid SecureSocketOptions value.", exception.Message);
+    }
+
+    /// <summary>
     /// 状態: 通知メール設定に検証エラー通知テンプレートが含まれていない。
     /// 振る舞い: 期待される結果を返す。
     /// </summary>
@@ -57,7 +72,8 @@ public sealed class MailNotificationOptionsTests
 
     private static MailNotificationOptions CreateValidOptions(
         string adminAddress = "admin@example.local",
-        List<MailNotificationTemplateOptions>? templates = null)
+        List<MailNotificationTemplateOptions>? templates = null,
+        SecureSocketOptions socketOptions = SecureSocketOptions.SslOnConnect)
     {
         templates ??=
         [
@@ -79,6 +95,7 @@ public sealed class MailNotificationOptionsTests
         {
             SmtpHost = "mailserver",
             SmtpPort = 3025,
+            SocketOptions = socketOptions,
             From = "mailbatch@example.local",
             AdminAddress = adminAddress,
             Templates = templates

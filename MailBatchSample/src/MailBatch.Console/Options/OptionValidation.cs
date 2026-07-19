@@ -59,4 +59,16 @@ internal static class OptionValidation
             throw new InvalidOperationException($"{key} must be greater than or equal to 0.");
         }
     }
+
+    /// <summary>
+    /// 列挙値が定義済みの値であることを検証します。
+    /// </summary>
+    public static void RequireDefined<TEnum>(TEnum value, string key)
+        where TEnum : struct, Enum
+    {
+        if (!Enum.IsDefined(value))
+        {
+            throw new InvalidOperationException($"{key} must be a valid {typeof(TEnum).Name} value.");
+        }
+    }
 }
