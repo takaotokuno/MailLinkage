@@ -4,101 +4,65 @@
 
 ### 責務
 
-- IMAP サーバへ接続する。
-- 対象条件に一致するメールを検索・取得する。
-- メールから連携項目を抽出し、必要に応じて API 送信用データへ加工する。
-- API 送信用データを内部キューへ追加する。
-- 内部キューから API 送信用データを取り出し、API へ POST する。
-- 処理状況とエラーをログファイルへ出力する。
+- IMAP セッションを接続し、対象 UID を検索する。
+- メールを読み取り・検証・加工して bounded channel へ追加する。
+- キューを並行消費して API へ POST し、結果を SQLite とログへ記録する。
+- 処理済み台帳と移動失敗台帳で二重送信を防ぎ、メールを `Processed` / `Error` へ移動する。
+- 実行履歴を保存し、実行結果・入力不正・メトリクス異常を SMTP 通知する。
 
 ### 処理フロー
 
-`MailBatch.Console` は、メール取得処理と API 連携処理を分離する。メールをそのまま API へ送る前提にはせず、メール本文の一部抽出や形式変換などを行ったうえで、API のリクエスト型に合わせたデータを内部キューへ追加する。API 連携処理はキューを監視し、データがある限り POST を継続する。
-
 ```mermaid
 sequenceDiagram
-    participant Batch as MailBatch.Console
-    participant IMAP as IMAP Server
-    participant Producer as Mail Fetch / Transform
-    participant Queue as Internal Queue
-    participant Consumer as API Worker
-    participant API as MailReceiver.Api
-    participant Log as Log File
+    participant Batch
+    participant Session as IMAP Session
+    participant Producer
+    participant Queue as Bounded Channel
+    participant Consumer
+    participant API
 
-    Batch->>Log: 処理開始を出力
-    Batch->>IMAP: 接続・認証
-    Batch->>IMAP: 対象メール検索
-    IMAP-->>Batch: メール一覧
-    Batch->>Log: メール取得件数を出力
-    alt 対象メールが 0 件
-        Batch->>IMAP: 切断
-        Batch->>Log: 処理終了を出力
-    else 対象メールが 1 件以上
-        par ① メール取得・加工・キュー追加
-            loop 対象メールごと
-                Producer->>IMAP: メール取得
-                Producer->>Producer: 必要部分の抽出・加工
-                Producer->>Producer: API リクエスト型へ変換
-                Producer->>Queue: 送信用データを追加
-                Producer->>Log: キュー追加結果を出力
-            end
-            Producer->>Queue: 追加完了を通知
-            Producer->>IMAP: 切断
-        and ② アプリケーション接続・キュー処理
-            Consumer->>API: 接続確認または送信準備
-            loop 追加完了前、またはキューに残データあり
-                Consumer->>Queue: 送信用データを取得
-                alt データあり
-                    Consumer->>API: POST /api/received-mails
-                    API-->>Consumer: 201 Created またはエラー
-                    Consumer->>Log: API 連携結果を出力
-                else データなし
-                    Consumer->>Consumer: 短時間待機して再確認
-                end
-            end
+    Batch->>Batch: 実行ロック取得
+    Batch->>Session: 接続・対象 UID 検索
+    Batch->>Batch: 移動失敗を復旧
+    par Producer
+        loop UID ごと
+            Producer->>Session: 読取・検証・抽出
+            Producer->>Queue: MailLinkageRequest
         end
-        Batch->>Log: キュー追加完了かつ残データなしを確認
-        Batch->>Log: 処理終了を出力
+        Producer->>Queue: Writer 完了
+    and Consumer
+        loop ReadAllAsync
+            Consumer->>API: POST（指数バックオフ再試行）
+            Consumer->>Session: Processed / Error へ移動
+        end
     end
+    Batch->>Session: 切断
+    Batch->>Batch: 履歴保存・通知・終了コード返却
 ```
 
-### キュー処理方針
+`IReceivedMailSession` は接続ライフサイクルとメール読取を担い、検索は `IReceivedMailSearcher`、移動は `IReceivedMailMover` に分離する。同じ IMAP 接続をバッチ実行中に共有し、開始時に未復旧の移動を再試行する。
 
-- キューに格納するデータは、メールオブジェクトそのものではなく、`MailReceiver.Api` の POST API に合わせたリクエスト型とする。
-- メール取得・加工側を Producer、API 連携側を Consumer として分離する。
-- 対象メールが 1 件以上ある場合のみ、Producer と Consumer を並行実行する。
-- Producer は対象メールごとに「メール取得 → 必要部分の抽出・加工 → API リクエスト型への変換 → キュー追加」を行う。
-- Consumer はアプリケーション接続後、Producer の追加完了通知を受け取るまで、またはキューに残データがある限り、キューを while で確認し続ける。
-- キューが一時的に空でも Producer が追加完了していない場合は、バッチを終了せず短時間待機して再確認する。
-- Producer の追加完了後、キューに残データがなくなった時点で Consumer を終了し、バッチ全体を終了する。
-- API 連携失敗時の扱いは初期スコープでは既存方針どおりログ出力を中心とし、複雑なリトライや永続キューは対象外とする。
+### キューとエラー処理
 
-### メール抽出方針
+- `Processing:RequestQueueCapacity` を容量とする `Channel<T>` で Producer / Consumer を並行実行する。ポーリングせず、Writer の完了まで `ReadAllAsync` で待つ。
+- 片側の致命的失敗時は共有キャンセルトークンで他方も停止する。入力形式不正は通知後に処理済みとし、バッチは継続する。
+- API の一時エラーと IMAP の接続エラーは設定回数だけ指数バックオフで再試行する。API 最終失敗は `Error`、成功と入力不正は `Processed` へ移動する。
+- API 成功後の移動失敗は台帳へ残す。次回起動時に移動を復旧し、未復旧中の UID は再送しない。
+- 終了コードは成功 `0`、致命的エラー `1`、一部処理失敗 `2`、キャンセル `130` とする。ファイルロックを取得できない二重起動は致命的エラーとする。
 
-| 項目 | 取得元 | 備考 |
-| --- | --- | --- |
-| Message-Id | メールヘッダ `Message-Id` | 重複検知の候補キーにする。 |
-| Sender | `From` ヘッダ | 表示名とメールアドレスの扱いは実装時に統一する。 |
-| Subject | `Subject` ヘッダ | MIME デコード後の値を送信する。 |
-| Body | text/plain 優先 | text/plain がなければ HTML から簡易テキスト化を検討する。 |
-| ReceivedAt | IMAP の内部日付または `Date` ヘッダ | 初期実装では取得しやすい値を採用し、仕様として明記する。 |
+### 保存・通知・ログ
 
-### ログ方針
+`Batch:LogDirectory` の `mail-processing.db` に `processed_mails`、`mail_move_failures`、`batch_runs`、`api_execution_results` を保存する。ログと保持対象の台帳は `Batch:LogRetentionDays` 日後に削除し、移動失敗台帳は復旧成功時だけ削除する。
 
-Serilog を使用し、`logs/batch-yyyyMMdd.log` に日次ファイルを出力する。
+Serilog の日次ログには RunId、UID / UIDVALIDITY、件数、API の実行 ID・ステータス・所要時間、例外を記録し、パスワードや本文全体は出力しない。SMTP 通知は管理者向け実行結果、送信者向け入力エラー、管理者向けメトリクスアラートの3テンプレートを設定から生成する。
 
-出力イベント例は次の通り。
+### メール抽出
 
-- バッチ開始
-- 設定読み込み完了。ただしパスワードなどの秘匿値は出力しない。
-- IMAP 接続開始・成功・失敗
-- 対象メール取得件数
-- キュー追加成功・失敗。Message-Id、キュー追加件数、加工結果の概要を記録する。
-- Producer の追加完了、Consumer のキュー残データなし確認。
-- API 連携成功。Message-Id、HTTP ステータス、保存 ID を記録する。
-- API 連携失敗。Message-Id、HTTP ステータス、エラーメッセージを記録する。
-- 例外発生時の例外種別、メッセージ、スタックトレース
-- バッチ終了
+| 項目 | 生成方法 |
+| --- | --- |
+| MailId | IMAP の UID と UIDVALIDITY |
+| Key | 本文中で唯一の `Key: 英数字` 行 |
+| Message | 件名と MIME 本文を連結した先頭 500 文字 |
 
 ## MailReceiver.Api
 
