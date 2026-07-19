@@ -11,7 +11,7 @@ public sealed class SqliteRetentionCleanerTests : IDisposable
     private readonly string _directory = Path.Combine(Path.GetTempPath(), $"mail-processing-retention-{Guid.NewGuid():N}");
 
     [Fact]
-    public void DeleteExpiredRecords_DeletesOldRecordsAndVacuumsDatabase()
+    public void DeleteExpiredRecords_DeletesOldRecordsExceptMailMoveFailuresAndVacuumsDatabase()
     {
         _ = Directory.CreateDirectory(_directory);
         string databasePath = Path.Combine(_directory, "mail-processing.db");
@@ -45,7 +45,10 @@ public sealed class SqliteRetentionCleanerTests : IDisposable
         using SqliteConnection verificationConnection = new($"Data Source={databasePath}");
         verificationConnection.Open();
         Assert.Equal(2L, ExecuteScalar(verificationConnection, "SELECT uid FROM processed_mails;"));
-        Assert.Equal(4L, ExecuteScalar(verificationConnection, "SELECT uid FROM mail_move_failures;"));
+        Assert.Equal(2L, ExecuteScalar(verificationConnection, "SELECT COUNT(*) FROM mail_move_failures;"));
+        Assert.Equal(1L, ExecuteScalar(
+            verificationConnection,
+            "SELECT COUNT(*) FROM mail_move_failures WHERE uid = 3 AND last_failed_at_utc < '2026-06-19T00:00:00.0000000+00:00';"));
         Assert.Equal("new", ExecuteStringScalar(verificationConnection, "SELECT run_id FROM batch_runs;"));
         Assert.Equal("current", ExecuteStringScalar(verificationConnection, "SELECT execution_id FROM api_execution_results;"));
         Assert.Equal(0L, ExecuteScalar(verificationConnection, "PRAGMA freelist_count;"));
