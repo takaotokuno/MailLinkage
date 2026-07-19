@@ -22,10 +22,13 @@ public sealed class SqliteRetentionCleanerTests : IDisposable
             command.CommandText = """
                 CREATE TABLE processed_mails (uid INTEGER, processed_at_utc TEXT NOT NULL);
                 CREATE TABLE mail_move_failures (uid INTEGER, last_failed_at_utc TEXT NOT NULL);
+                CREATE TABLE api_execution_results (execution_id TEXT, completed_at_utc TEXT NOT NULL);
                 INSERT INTO processed_mails VALUES (1, '2026-06-18T00:00:00.0000000+00:00');
                 INSERT INTO processed_mails VALUES (2, '2026-06-19T00:00:00.0000000+00:00');
                 INSERT INTO mail_move_failures VALUES (3, '2026-06-01T00:00:00.0000000+00:00');
                 INSERT INTO mail_move_failures VALUES (4, '2026-07-18T00:00:00.0000000+00:00');
+                INSERT INTO api_execution_results VALUES ('old', '2026-06-01T00:00:00.0000000+00:00');
+                INSERT INTO api_execution_results VALUES ('current', '2026-07-18T00:00:00.0000000+00:00');
                 """;
             _ = command.ExecuteNonQuery();
         }
@@ -40,6 +43,7 @@ public sealed class SqliteRetentionCleanerTests : IDisposable
         verificationConnection.Open();
         Assert.Equal(2L, ExecuteScalar(verificationConnection, "SELECT uid FROM processed_mails;"));
         Assert.Equal(4L, ExecuteScalar(verificationConnection, "SELECT uid FROM mail_move_failures;"));
+        Assert.Equal("current", ExecuteStringScalar(verificationConnection, "SELECT execution_id FROM api_execution_results;"));
         Assert.Equal(0L, ExecuteScalar(verificationConnection, "PRAGMA freelist_count;"));
     }
 
@@ -67,5 +71,12 @@ public sealed class SqliteRetentionCleanerTests : IDisposable
         using SqliteCommand command = connection.CreateCommand();
         command.CommandText = commandText;
         return Convert.ToInt64(command.ExecuteScalar());
+    }
+
+    private static string ExecuteStringScalar(SqliteConnection connection, string commandText)
+    {
+        using SqliteCommand command = connection.CreateCommand();
+        command.CommandText = commandText;
+        return Convert.ToString(command.ExecuteScalar())!;
     }
 }

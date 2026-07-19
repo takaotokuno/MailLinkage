@@ -1,4 +1,5 @@
 using System.Threading.Channels;
+using System.Diagnostics;
 using MailBatch.Console.Api;
 using MailBatch.Console.BatchProcessing.Result;
 using MailBatch.Console.Options;
@@ -29,6 +30,7 @@ internal sealed class RequestQueueConsumer(
     IApiClient receivedMailApiClient,
     ChannelReader<MailLinkageRequest> reader,
     IProcessedMailMoveFailureStore moveFailureStore,
+    IApiExecutionResultStore apiExecutionResultStore,
     ILogger<MailLinkageRequest> logger) : IRequestQueueConsumer
 {
     /// <summary>
@@ -105,10 +107,14 @@ internal sealed class RequestQueueConsumer(
     /// </summary>
     private async Task<bool> PostAndHandleResultAsync(MailLinkageRequest request, CancellationToken cancellationToken)
     {
+        string executionId = Guid.NewGuid().ToString("N");
+        DateTimeOffset startedAtUtc = DateTimeOffset.UtcNow;
+        Stopwatch stopwatch = Stopwatch.StartNew();
+        ApiPostResult result;
         try
         {
             ApiRequest apiRequest = new(request.Message);
-            return await PostMessageAsync(apiRequest, cancellationToken);
+            result = await PostMessageAsync(apiRequest, executionId, cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -116,45 +122,83 @@ internal sealed class RequestQueueConsumer(
         }
         catch (Exception ex)
         {
+            DateTimeOffset completedAtUtc = DateTimeOffset.UtcNow;
+            await apiExecutionResultStore.RecordAsync(new ApiExecutionResult(
+                executionId,
+                request.MailId,
+                apiOptions.Endpoint,
+                "Exception",
+                null,
+                null,
+                null,
+                ex.GetType().FullName,
+                startedAtUtc,
+                completedAtUtc,
+                stopwatch.ElapsedMilliseconds), cancellationToken);
             logger.LogError(
                 ex,
-                "Unexpected error while processing queued API request. MailId={MailId}",
-                request.MailId);
+                "Unexpected error while processing queued API request. ExecutionId={ExecutionId}, MailId={MailId}, DurationMs={DurationMs}",
+                executionId,
+                request.MailId,
+                stopwatch.ElapsedMilliseconds);
 
             return false;
         }
+
+        DateTimeOffset resultCompletedAtUtc = DateTimeOffset.UtcNow;
+        await apiExecutionResultStore.RecordAsync(new ApiExecutionResult(
+            executionId,
+            request.MailId,
+            apiOptions.Endpoint,
+            result.IsSuccess ? "Succeeded" : "Failed",
+            result.StatusCode,
+            result.IsSuccess ? ApiResponseSummary.ExtractSavedId(result.ResponseBody) : null,
+            result.IsSuccess ? null : ApiResponseSummary.Summarize(result.ResponseBody),
+            null,
+            startedAtUtc,
+            resultCompletedAtUtc,
+            stopwatch.ElapsedMilliseconds), cancellationToken);
+        logger.LogInformation(
+            "API execution result recorded. ExecutionId={ExecutionId}, Outcome={Outcome}, DurationMs={DurationMs}",
+            executionId,
+            result.IsSuccess ? "Succeeded" : "Failed",
+            stopwatch.ElapsedMilliseconds);
+        return result.IsSuccess;
     }
 
     /// <summary>
     /// 受信メールリクエストをAPIへ送信します。
     /// </summary>
-    private async Task<bool> PostMessageAsync(ApiRequest request, CancellationToken cancellationToken)
+    private async Task<ApiPostResult> PostMessageAsync(ApiRequest request, string executionId, CancellationToken cancellationToken)
     {
         logger.LogInformation(
-            "Posting queued API request. MessageLength={MessageLength}",
+            "Posting queued API request. ExecutionId={ExecutionId}, Endpoint={Endpoint}, MessageLength={MessageLength}",
+            executionId,
+            apiOptions.Endpoint,
             request.Message.Length);
 
         ApiPostResult result = await receivedMailApiClient.PostReceivedMailAsync(request, cancellationToken);
 
         if (result.IsSuccess)
         {
-            LogApiSuccess(result.StatusCode, result.ResponseBody);
-            return true;
+            LogApiSuccess(executionId, result.StatusCode, result.ResponseBody);
         }
         else
         {
-            LogApiFailure(result.StatusCode, result.ResponseBody);
-            return false;
+            LogApiFailure(executionId, result.StatusCode, result.ResponseBody);
         }
+
+        return result;
     }
 
     /// <summary>
     /// API送信成功時のステータスコードと保存済みIDをログに出力します。
     /// </summary>
-    private void LogApiSuccess(int statusCode, string responseBody)
+    private void LogApiSuccess(string executionId, int statusCode, string responseBody)
     {
         logger.LogInformation(
-            "API post succeeded. StatusCode={StatusCode}, SavedId={SavedId}",
+            "API post succeeded. ExecutionId={ExecutionId}, StatusCode={StatusCode}, SavedId={SavedId}",
+            executionId,
             statusCode,
             ApiResponseSummary.ExtractSavedId(responseBody));
     }
@@ -162,10 +206,11 @@ internal sealed class RequestQueueConsumer(
     /// <summary>
     /// API送信失敗時のステータスコードとレスポンス概要をログに出力します。
     /// </summary>
-    private void LogApiFailure(int statusCode, string responseBody)
+    private void LogApiFailure(string executionId, int statusCode, string responseBody)
     {
         logger.LogWarning(
-            "API post failed. StatusCode={StatusCode}, Response={ResponseSummary}",
+            "API post failed. ExecutionId={ExecutionId}, StatusCode={StatusCode}, Response={ResponseSummary}",
+            executionId,
             statusCode,
             ApiResponseSummary.Summarize(responseBody));
     }
