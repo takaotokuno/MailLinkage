@@ -225,10 +225,10 @@ internal sealed class MailFetchQueueProducer(
     /// </summary>
     private async Task NotifyValidationErrorAsync(ReceivedMail mail, IReadOnlyList<string> validationErrors, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(mail.Sender))
+        if (string.IsNullOrWhiteSpace(mail.From))
         {
             logger.LogWarning(
-                "Cannot send validation error notification because sender is empty. MailId={MailId}",
+                "Cannot send validation error notification because From is empty. MailId={MailId}",
                 mail.MailId);
             return;
         }
