@@ -22,7 +22,7 @@ internal sealed class BatchRunner(
     BatchRunContext runContext,
     ILogger<BatchRunner> logger,
     IReceivedMailPipeline receivedMailPipeline,
-    IRunStatusNotifier runStatusNotifier,
+    IBatchRunCompletionService runCompletionService,
     IReceivedMailSession receivedMailSession,
     IMailMoveFailureRecoveryService mailMoveFailureRecoveryService,
     IJobExecutionLock jobExecutionLock)
@@ -86,7 +86,7 @@ internal sealed class BatchRunner(
         BatchRunResult fatalRunResult = CreateFatalRunResult(exception, stage, startedAt);
         int fatalExitCode = fatalRunResult.ConvertToExitCode();
 
-        _ = await runStatusNotifier.TryNotifyAsync(fatalRunResult, fatalExitCode, CancellationToken.None);
+        await runCompletionService.CompleteAsync(fatalRunResult, fatalExitCode, CancellationToken.None);
         logger.LogError(
             exception,
             "Mail batch failed with a fatal error before completion. RunId={RunId}, Stage={Stage}",
@@ -101,7 +101,7 @@ internal sealed class BatchRunner(
     {
         int exitCode = runResult.ConvertToExitCode();
 
-        _ = await runStatusNotifier.TryNotifyAsync(runResult, exitCode, cancellationToken);
+        await runCompletionService.CompleteAsync(runResult, exitCode, cancellationToken);
         LogFinish(runResult.ProcessResult);
 
         return exitCode;
@@ -125,7 +125,7 @@ internal sealed class BatchRunner(
 
         int exitCode = result.ConvertToExitCode();
 
-        _ = await runStatusNotifier.TryNotifyAsync(
+        await runCompletionService.CompleteAsync(
             result,
             exitCode,
             cancellationToken);

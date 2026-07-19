@@ -50,6 +50,8 @@ internal sealed class SqliteRetentionCleaner(
             deletedRecordCount += DeleteExpiredRecordsFromExistingTable(
                 connection,
                 transaction,
+                "batch_runs",
+                "ended_at_utc",
                 "api_execution_results",
                 "completed_at_utc",
                 expirationThreshold);

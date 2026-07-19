@@ -22,7 +22,7 @@ internal interface IMailMoveFailureRecoveryService
 internal sealed class MailMoveFailureRecoveryService(
     IReceivedMailSession receivedMailSession,
     IProcessedMailMoveFailureStore moveFailureStore,
-    IMetricAlertMonitor metricAlertMonitor,
+    IStateMetricAlertMonitor metricAlertMonitor,
     ILogger<MailMoveFailureRecoveryService> logger) : IMailMoveFailureRecoveryService
 {
     /// <inheritdoc />
