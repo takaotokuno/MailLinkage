@@ -1,3 +1,5 @@
+using MailKit.Security;
+
 namespace MailBatch.Console.Options;
 
 /// <summary>
@@ -10,6 +12,7 @@ internal sealed class MailNotificationOptions
 
     public string SmtpHost { get; init; } = string.Empty;
     public int SmtpPort { get; init; } = 25;
+    public SecureSocketOptions SocketOptions { get; init; } = SecureSocketOptions.SslOnConnect;
     public string? UserName
     {
         get; init;
@@ -29,6 +32,7 @@ internal sealed class MailNotificationOptions
     {
         OptionValidation.Require(SmtpHost, "Notification:SmtpHost");
         OptionValidation.RequireRange(SmtpPort, 1, 65535, "Notification:SmtpPort");
+        OptionValidation.RequireDefined(SocketOptions, "Notification:SocketOptions");
         OptionValidation.Require(From, "Notification:From");
         OptionValidation.Require(AdminAddress, "Notification:AdminAddress");
         OptionValidation.RequireNotEmpty(Templates, "Notification:Templates");
