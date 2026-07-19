@@ -17,13 +17,20 @@ public sealed class MailNotificationFactoryTests
     public void CreateRunStatusNotification_AppliesRunStatusTemplate()
     {
         MailNotificationFactory factory = new(CreateOptions(), new BatchRunContext("run-001"));
-        BatchRunResult result = new(new ProcessResult(Total: 3, Succeeded: 2, InvalidFormat: 1, ApiFailed: 0));
+        DateTimeOffset startedAt = new(2026, 7, 19, 10, 20, 30, TimeSpan.Zero);
+        DateTimeOffset endedAt = new(2026, 7, 19, 10, 21, 45, TimeSpan.Zero);
+        BatchRunResult result = new(
+            new ProcessResult(Total: 3, Succeeded: 2, InvalidFormat: 1, ApiFailed: 0),
+            startedAt,
+            endedAt);
 
         MailNotification notification = factory.CreateRunStatusNotification(result, exitCode: 1);
 
         Assert.Equal("admin@example.com", notification.To);
         Assert.Equal("Run run-001 failed", notification.Subject);
-        Assert.Equal("Exit=1 Total=3 Succeeded=2 InvalidFormat=1 ApiFailed=0 Fatal=  ", notification.Body);
+        Assert.Equal(
+            "StartedAt=2026-07-19T10:20:30.0000000+00:00 EndedAt=2026-07-19T10:21:45.0000000+00:00 Exit=1 Total=3 Succeeded=2 InvalidFormat=1 ApiFailed=0 Fatal=  ",
+            notification.Body);
     }
 
     /// <summary>
@@ -36,6 +43,8 @@ public sealed class MailNotificationFactoryTests
         MailNotificationFactory factory = new(CreateOptions(), new BatchRunContext("run-001"));
         BatchRunResult result = new(
             new ProcessResult(Total: 0),
+            DateTimeOffset.UnixEpoch,
+            DateTimeOffset.UnixEpoch,
             new FatalBatchError(
                 Code: "DuplicateRun",
                 Message: "Another mail batch instance is already running.",
@@ -44,7 +53,7 @@ public sealed class MailNotificationFactoryTests
         MailNotification notification = factory.CreateRunStatusNotification(result, exitCode: 1);
 
         Assert.Equal(
-            "Exit=1 Total=0 Succeeded=0 InvalidFormat=0 ApiFailed=0 Fatal=DuplicateRun Another mail batch instance is already running. Startup",
+            "StartedAt=1970-01-01T00:00:00.0000000+00:00 EndedAt=1970-01-01T00:00:00.0000000+00:00 Exit=1 Total=0 Succeeded=0 InvalidFormat=0 ApiFailed=0 Fatal=DuplicateRun Another mail batch instance is already running. Startup",
             notification.Body);
     }
 
@@ -82,7 +91,7 @@ public sealed class MailNotificationFactoryTests
                 {
                     Name = MailNotificationOptions.RUN_STATUS_TEMPLATE_NAME,
                     Subject = "Run {RunId} {Status}",
-                    Body = "Exit={ExitCode} Total={Total} Succeeded={Succeeded} InvalidFormat={InvalidFormat} ApiFailed={ApiFailed} Fatal={FatalErrorCode} {FatalErrorMessage} {FatalErrorStage}"
+                    Body = "StartedAt={StartedAt} EndedAt={EndedAt} Exit={ExitCode} Total={Total} Succeeded={Succeeded} InvalidFormat={InvalidFormat} ApiFailed={ApiFailed} Fatal={FatalErrorCode} {FatalErrorMessage} {FatalErrorStage}"
                 },
                 new MailNotificationTemplateOptions
                 {

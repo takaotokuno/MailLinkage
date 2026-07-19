@@ -22,6 +22,7 @@ public sealed class BatchRunnerTests
     [Fact]
     public async Task RunAsync_WhenExecutionLockIsAlreadyHeld_SendsFatalErrorNotificationAndReturnsExitCode1()
     {
+        DateTimeOffset beforeRun = DateTimeOffset.UtcNow;
         FakeRunStatusNotifier notifier = new();
         FakeReceivedMailSession session = new();
         FakeReceivedMailPipeline pipeline = new();
@@ -50,6 +51,11 @@ public sealed class BatchRunnerTests
             Message: "Another mail batch instance is already running.",
             Stage: "Startup"), notifier.Notifications[0].Result.FatalError);
         Assert.Equal(1, notifier.Notifications[0].ExitCode);
+        Assert.InRange(notifier.Notifications[0].Result.StartedAt, beforeRun, DateTimeOffset.UtcNow);
+        Assert.InRange(
+            notifier.Notifications[0].Result.EndedAt,
+            notifier.Notifications[0].Result.StartedAt,
+            DateTimeOffset.UtcNow);
     }
 
     /// <summary>
@@ -181,6 +187,8 @@ public sealed class BatchRunnerTests
         Assert.Equal(0, exitCode);
         Assert.True(recoveryService.Recovered);
         Assert.True(session.SearchedAfterRecovery);
+        _ = Assert.Single(notifier.Notifications);
+        Assert.True(notifier.Notifications[0].Result.EndedAt >= notifier.Notifications[0].Result.StartedAt);
     }
 
     private sealed class FakeLockRelease : IDisposable

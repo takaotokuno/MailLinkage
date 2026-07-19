@@ -46,7 +46,10 @@ public sealed class RunStatusNotifierTests
         Assert.False(notified);
     }
 
-    private static BatchRunResult CreateRunResult() => new(new ProcessResult(Total: 1, Succeeded: 1));
+    private static BatchRunResult CreateRunResult() => new(
+        new ProcessResult(Total: 1, Succeeded: 1),
+        DateTimeOffset.UnixEpoch,
+        DateTimeOffset.UnixEpoch);
 
     private static MailNotificationFactory CreateFactory()
     {

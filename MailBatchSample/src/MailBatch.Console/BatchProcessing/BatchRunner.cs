@@ -32,22 +32,26 @@ internal sealed class BatchRunner(
     /// </summary>
     public async Task<int> RunAsync(CancellationToken cancellationToken = default)
     {
+        DateTimeOffset startedAt = DateTimeOffset.UtcNow;
         LogStart();
 
         using JobExecutionLockHandle? executionLock = jobExecutionLock.TryAcquire();
         if (executionLock is null)
         {
-            return await HandleDuplicateRunAsync(cancellationToken);
+            return await HandleDuplicateRunAsync(startedAt, cancellationToken);
         }
 
-        BatchRunResult runResult = await ExecuteLockedRunAsync(cancellationToken);
+        ProcessResult processResult = await ExecuteLockedRunAsync(startedAt, cancellationToken);
+        BatchRunResult runResult = new(processResult, startedAt, DateTimeOffset.UtcNow);
         return await CompleteRunAsync(runResult, cancellationToken);
     }
 
     /// <summary>
     /// 実行ロック取得後の接続、復旧、メール処理を実行します。
     /// </summary>
-    private async Task<BatchRunResult> ExecuteLockedRunAsync(CancellationToken cancellationToken)
+    private async Task<ProcessResult> ExecuteLockedRunAsync(
+        DateTimeOffset startedAt,
+        CancellationToken cancellationToken)
     {
         string fatalErrorStage = "Connection";
 
@@ -60,12 +64,11 @@ internal sealed class BatchRunner(
 
                 await mailMoveFailureRecoveryService.RecoverAsync(cancellationToken);
 
-                ProcessResult processResult = await RunUseCaseAsync(cancellationToken);
-                return new BatchRunResult(processResult);
+                return await RunUseCaseAsync(cancellationToken);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                await NotifyFatalErrorAsync(ex, fatalErrorStage);
+                await NotifyFatalErrorAsync(ex, fatalErrorStage, startedAt);
                 throw;
             }
         }
@@ -78,9 +81,9 @@ internal sealed class BatchRunner(
     /// <summary>
     /// 致命的なエラーを実行結果として通知し、ログに記録します。
     /// </summary>
-    private async Task NotifyFatalErrorAsync(Exception exception, string stage)
+    private async Task NotifyFatalErrorAsync(Exception exception, string stage, DateTimeOffset startedAt)
     {
-        BatchRunResult fatalRunResult = CreateFatalRunResult(exception, stage);
+        BatchRunResult fatalRunResult = CreateFatalRunResult(exception, stage, startedAt);
         int fatalExitCode = fatalRunResult.ConvertToExitCode();
 
         _ = await runStatusNotifier.TryNotifyAsync(fatalRunResult, fatalExitCode, CancellationToken.None);
@@ -108,10 +111,13 @@ internal sealed class BatchRunner(
     /// 二重起動を検知したエラーを通知し、終了コードを返します。
     /// </summary>
     private async Task<int> HandleDuplicateRunAsync(
+        DateTimeOffset startedAt,
         CancellationToken cancellationToken)
     {
         BatchRunResult result = new(
             new ProcessResult(Total: 0),
+            startedAt,
+            DateTimeOffset.UtcNow,
             new FatalBatchError(
                 Code: "DuplicateRun",
                 Message: "Another mail batch instance is already running.",
@@ -134,10 +140,15 @@ internal sealed class BatchRunner(
     /// <summary>
     /// 例外情報から致命的なバッチ実行結果を作成します。
     /// </summary>
-    private static BatchRunResult CreateFatalRunResult(Exception exception, string stage)
+    private static BatchRunResult CreateFatalRunResult(
+        Exception exception,
+        string stage,
+        DateTimeOffset startedAt)
     {
         return new BatchRunResult(
             new ProcessResult(Total: 0),
+            startedAt,
+            DateTimeOffset.UtcNow,
             new FatalBatchError(
                 Code: exception.GetType().Name,
                 Message: exception.Message,

@@ -58,6 +58,8 @@ internal sealed class MailNotificationFactory(MailNotificationOptions notificati
 
         return template
             .Replace("{RunId}", runContext.RunId, StringComparison.Ordinal)
+            .Replace("{StartedAt}", result.StartedAt.ToString("O"), StringComparison.Ordinal)
+            .Replace("{EndedAt}", result.EndedAt.ToString("O"), StringComparison.Ordinal)
             .Replace("{Status}", status, StringComparison.Ordinal)
             .Replace("{ExitCode}", exitCode.ToString(), StringComparison.Ordinal)
             .Replace("{Total}", processResult.Total.ToString(), StringComparison.Ordinal)
