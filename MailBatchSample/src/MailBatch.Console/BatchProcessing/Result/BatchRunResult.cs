@@ -3,7 +3,11 @@ namespace MailBatch.Console.BatchProcessing.Result;
 /// <summary>
 /// バッチ実行全体の結果を表します。
 /// </summary>
-internal sealed record BatchRunResult(ProcessResult ProcessResult, FatalBatchError? FatalError = null)
+internal sealed record BatchRunResult(
+    ProcessResult ProcessResult,
+    DateTimeOffset StartedAt,
+    DateTimeOffset EndedAt,
+    FatalBatchError? FatalError = null)
 {
     public bool HasFatalError
     {
