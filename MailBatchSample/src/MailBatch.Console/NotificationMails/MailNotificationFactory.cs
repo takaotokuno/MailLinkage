@@ -113,10 +113,7 @@ internal sealed class MailNotificationFactory(MailNotificationOptions notificati
     /// <summary>
     /// 通知に含める本文プレビューを作成します。
     /// </summary>
-    private static string CreatePreview(string value)
-    {
-        return value.Length <= MAX_PREVIEW_LENGTH ? value : $"{value[..MAX_PREVIEW_LENGTH]}...";
-    }
+    private static string CreatePreview(string value) => value.Length <= MAX_PREVIEW_LENGTH ? value : $"{value[..MAX_PREVIEW_LENGTH]}...";
 
     /// <summary>
     /// 終了コードを通知用の実行ステータス文字列へ変換します。

@@ -62,7 +62,13 @@ dotnet run --project MailBatchSample/src/TestMailSender/TestMailSender.csproj --
 メールボックスの一覧は IMAP 経由で確認する。`curl` が IMAP に対応している環境では、次のコマンドで `INBOX` のメッセージ一覧を確認できる。
 
 ```bash
+# メールボックス一覧取得
 curl --url "imap://mailserver:3143/INBOX" --user "test@example.local:password"
+
+# メール一覧を取得
+curl --url "imap://mailserver:3143/INBOX" \
+  --user "test@example.local:password" \
+  --request "FETCH 1:* (UID FLAGS INTERNALDATE BODY.PEEK[HEADER.FIELDS (FROM TO SUBJECT DATE MESSAGE-ID)])"
 ```
 
 特定メールの内容を確認する場合は、一覧で確認したメッセージ番号を指定する。
