@@ -2,8 +2,10 @@ using Microsoft.Extensions.Logging;
 
 namespace MailBatch.Console.NotificationMails;
 
+/// <summary>メトリクスの閾値超過を管理者へ通知します。</summary>
 internal interface IMetricAlertNotifier
 {
+    /// <summary>指定されたタイトルと本文でメトリクスアラートの送信を試みます。</summary>
     Task<bool> TryNotifyAsync(string alertTitle, string alertMessage, CancellationToken cancellationToken = default);
 }
 
@@ -15,6 +17,7 @@ internal sealed class MetricAlertNotifier(
     MailNotificationFactory mailNotificationFactory,
     ILogger<MetricAlertNotifier> logger) : IMetricAlertNotifier
 {
+    /// <inheritdoc />
     public async Task<bool> TryNotifyAsync(
         string alertTitle,
         string alertMessage,

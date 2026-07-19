@@ -2,8 +2,10 @@ using MailBatch.Console.ReceivedMails.State;
 
 namespace MailBatch.Console.NotificationMails;
 
+/// <summary>未解消のメール処理状態に基づくメトリクスを監視します。</summary>
 internal interface IStateMetricAlertMonitor
 {
+    /// <summary>長期間解消されていないメール移動失敗を評価し、通知を試みます。</summary>
     Task<bool> TryCheckMailMoveStagnationAsync(
         IReadOnlyList<MailMoveFailure> failures,
         CancellationToken cancellationToken = default);
@@ -18,6 +20,7 @@ internal sealed class StateMetricAlertMonitor(
 {
     internal const int THRESHOLD_DAYS = 7;
 
+    /// <inheritdoc />
     public async Task<bool> TryCheckMailMoveStagnationAsync(
         IReadOnlyList<MailMoveFailure> failures,
         CancellationToken cancellationToken = default)

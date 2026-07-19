@@ -11,13 +11,21 @@ internal sealed class ImapOptions
     private const int DEFAULT_RETRY_COUNT = 3;
     private const int DEFAULT_RETRY_DELAY_SECONDS = 2;
 
+    /// <summary>IMAPサーバーのホスト名を取得します。</summary>
     public string Host { get; init; } = "";
+    /// <summary>IMAPサーバーのポート番号を取得します。</summary>
     public int Port { get; init; } = DEFAULT_PORT;
+    /// <summary>IMAP接続で使用するSSL/TLS方式を取得します。</summary>
     public SecureSocketOptions SocketOptions { get; init; } = SecureSocketOptions.SslOnConnect;
+    /// <summary>IMAP認証に使用するユーザー名を取得します。</summary>
     public string UserName { get; init; } = "";
+    /// <summary>IMAP認証に使用するパスワードを取得します。</summary>
     public string Password { get; init; } = "";
+    /// <summary>処理対象の受信メールボックス名を取得します。</summary>
     public string Mailbox { get; init; } = "INBOX";
+    /// <summary>IMAP接続に失敗した場合の再試行回数を取得します。</summary>
     public int RetryCount { get; init; } = DEFAULT_RETRY_COUNT;
+    /// <summary>IMAP接続を再試行するまでの基準待機秒数を取得します。</summary>
     public int RetryDelaySeconds { get; init; } = DEFAULT_RETRY_DELAY_SECONDS;
 
     /// <summary>

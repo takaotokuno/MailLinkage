@@ -5,8 +5,10 @@ using Microsoft.Extensions.Logging;
 
 namespace MailBatch.Console.BatchProcessing;
 
+/// <summary>バッチ実行終了後の履歴保存と通知を完了させます。</summary>
 internal interface IBatchRunCompletionService
 {
+    /// <summary>実行結果を保存し、必要なアラートと完了通知を送信します。</summary>
     Task CompleteAsync(BatchRunResult result, int exitCode, CancellationToken cancellationToken = default);
 }
 
@@ -20,6 +22,7 @@ internal sealed class BatchRunCompletionService(
     IRunStatusNotifier runStatusNotifier,
     ILogger<BatchRunCompletionService> logger) : IBatchRunCompletionService
 {
+    /// <inheritdoc />
     public async Task CompleteAsync(BatchRunResult result, int exitCode, CancellationToken cancellationToken = default)
     {
         bool historySaved = false;

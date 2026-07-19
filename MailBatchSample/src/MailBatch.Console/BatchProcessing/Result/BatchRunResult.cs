@@ -9,6 +9,7 @@ internal sealed record BatchRunResult(
     DateTimeOffset EndedAt,
     FatalBatchError? FatalError = null)
 {
+    /// <summary>バッチを継続できない致命的なエラーが発生したかどうかを取得します。</summary>
     public bool HasFatalError
     {
         get

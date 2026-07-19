@@ -257,6 +257,7 @@ internal sealed class MailFetchQueueProducer(
     private class ReceivedMailProcessingException(IReadOnlyCollection<string> errors)
         : Exception(string.Join(Environment.NewLine, errors))
     {
+        /// <summary>メールの読み取りまたは要求生成時に検出されたエラーを取得します。</summary>
         public IReadOnlyList<string> Errors { get; } = errors.ToArray();
     }
 }
