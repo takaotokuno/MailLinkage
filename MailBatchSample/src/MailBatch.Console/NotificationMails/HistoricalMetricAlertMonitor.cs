@@ -1,4 +1,5 @@
 using MailBatch.Console.BatchProcessing.History;
+using MailBatch.Console.BatchProcessing.Result;
 
 namespace MailBatch.Console.NotificationMails;
 
@@ -25,6 +26,30 @@ internal sealed class HistoricalMetricAlertMonitor(
             return true;
         }
 
+        bool failureRateNotificationSucceeded = await TryCheckFailureRateAsync(history, cancellationToken);
+        bool durationNotificationSucceeded = await TryCheckDurationAsync(history, cancellationToken);
+        return failureRateNotificationSucceeded && durationNotificationSucceeded;
+    }
+
+    private async Task<bool> TryCheckFailureRateAsync(
+        IReadOnlyList<BatchRunHistory> history,
+        CancellationToken cancellationToken)
+    {
+        int failedCount = history.Count(run => run.ExitCode != BatchExitCodes.SUCCESS);
+        if (failedCount * 2 <= RUN_COUNT)
+        {
+            return true;
+        }
+
+        string message = $"More than 50% of the last {RUN_COUNT} batch runs failed."
+            + $"{Environment.NewLine}Failed: {failedCount}/{RUN_COUNT}";
+        return await alertNotifier.TryNotifyAsync("Batch failure rate degradation", message, cancellationToken);
+    }
+
+    private async Task<bool> TryCheckDurationAsync(
+        IReadOnlyList<BatchRunHistory> history,
+        CancellationToken cancellationToken)
+    {
         int exceededCount = history.Count(run => run.Duration > DurationThreshold);
         if (exceededCount * 2 <= RUN_COUNT)
         {
