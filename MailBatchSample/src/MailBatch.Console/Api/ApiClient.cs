@@ -19,12 +19,20 @@ internal interface IApiClient
 /// </summary>
 internal sealed class ApiClient(HttpClient httpClient, ApiOptions apiOptions) : IApiClient
 {
+    private const string API_KEY_HEADER_NAME = "X-API-Key";
+
     /// <summary>
     /// 設定されたエンドポイントへ受信メールリクエストをPOSTします。
     /// </summary>
     public async Task<ApiPostResult> PostReceivedMailAsync(ApiRequest request, CancellationToken cancellationToken = default)
     {
-        using HttpResponseMessage response = await httpClient.PostAsJsonAsync(apiOptions.Endpoint, request, cancellationToken);
+        using HttpRequestMessage httpRequest = new(HttpMethod.Post, apiOptions.Endpoint)
+        {
+            Content = JsonContent.Create(request)
+        };
+        httpRequest.Headers.Add(API_KEY_HEADER_NAME, apiOptions.ApiKey);
+
+        using HttpResponseMessage response = await httpClient.SendAsync(httpRequest, cancellationToken);
         string responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
 
         return new ApiPostResult(response.IsSuccessStatusCode, (int)response.StatusCode, responseBody);
