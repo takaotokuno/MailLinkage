@@ -12,6 +12,9 @@ BatchOptions? batchOptions = null;
 string runId = Guid.NewGuid().ToString();
 using CancellationTokenSource cancellationTokenSource = new();
 
+// 設定の読み込みや検証に失敗した場合も、少なくとも標準エラーへ原因を出力する。
+Log.Logger = SerilogLoggerFactory.CreateBootstrap(runId);
+
 // Ctrl + C を入力した場合の挙動を設定する
 // DB接続等、外部接続が開いたままプログラムが終了することを防ぐため
 Console.CancelKeyPress += (_, eventArgs) =>
@@ -26,6 +29,7 @@ try
     AppOptions options = loadedConfiguration.Options;
     batchOptions = options.Batch;
 
+    await Log.CloseAndFlushAsync();
     Log.Logger = SerilogLoggerFactory.Create(loadedConfiguration, runId);
 
     await using ServiceProvider serviceProvider = new ServiceCollection()
