@@ -44,7 +44,7 @@ internal sealed class MailNotificationFactory(MailNotificationOptions notificati
             }));
 
         return new MailNotification(
-            mail.Sender,
+            mail.From,
             ApplyValidationErrorTemplate(template.Subject, mail, validationErrorsText),
             ApplyValidationErrorTemplate(template.Body, mail, validationErrorsText));
     }

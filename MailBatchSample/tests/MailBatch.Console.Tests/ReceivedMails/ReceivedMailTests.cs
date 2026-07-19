@@ -43,7 +43,7 @@ public sealed class ReceivedMailTests
     {
         return new ReceivedMail(
             MailId: new ReceivedMailId(123, 999),
-            Sender: "sender@example.com",
+            From: "sender@example.com",
             Subject: subject,
             Body: body);
     }
