@@ -11,7 +11,7 @@ public sealed class SqliteRetentionCleanerTests : IDisposable
     private readonly string _directory = Path.Combine(Path.GetTempPath(), $"mail-processing-retention-{Guid.NewGuid():N}");
 
     [Fact]
-    public void DeleteExpiredRecords_DeletesOldRecordsExceptMailMoveFailuresAndVacuumsDatabase()
+    public void TryDeleteExpiredRecords_DeletesOldRecordsExceptMailMoveFailuresAndVacuumsDatabase()
     {
         _ = Directory.CreateDirectory(_directory);
         string databasePath = Path.Combine(_directory, "mail-processing.db");
@@ -40,7 +40,7 @@ public sealed class SqliteRetentionCleanerTests : IDisposable
             new BatchOptions { LogDirectory = _directory, LogRetentionDays = 30 },
             new FakeTimeProvider(new DateTimeOffset(2026, 7, 19, 0, 0, 0, TimeSpan.Zero)));
 
-        cleaner.DeleteExpiredRecords();
+        Assert.True(cleaner.TryDeleteExpiredRecords());
 
         using SqliteConnection verificationConnection = new($"Data Source={databasePath}");
         verificationConnection.Open();
@@ -55,12 +55,12 @@ public sealed class SqliteRetentionCleanerTests : IDisposable
     }
 
     [Fact]
-    public void DeleteExpiredRecords_WithMissingDatabase_DoesNotCreateDatabase()
+    public void TryDeleteExpiredRecords_WithMissingDatabase_DoesNotCreateDatabase()
     {
         SqliteRetentionCleaner cleaner = new(
             new BatchOptions { LogDirectory = _directory, LogRetentionDays = 30 });
 
-        cleaner.DeleteExpiredRecords();
+        Assert.True(cleaner.TryDeleteExpiredRecords());
 
         Assert.False(Directory.Exists(_directory));
     }

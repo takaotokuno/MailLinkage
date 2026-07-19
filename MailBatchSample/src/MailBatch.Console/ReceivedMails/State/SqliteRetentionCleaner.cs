@@ -1,6 +1,7 @@
 using System.Globalization;
 using MailBatch.Console.Options;
 using Microsoft.Data.Sqlite;
+using Serilog;
 
 namespace MailBatch.Console.ReceivedMails.State;
 
@@ -16,9 +17,24 @@ internal sealed class SqliteRetentionCleaner(
     private readonly TimeProvider _timeProvider = timeProvider ?? TimeProvider.System;
 
     /// <summary>
-    /// 古いレコードを物理削除し、削除があった場合はVACUUMでファイルを縮小します。
+    /// 古いレコードの物理削除を試み、削除があった場合はVACUUMでファイルを縮小します。
     /// </summary>
-    public void DeleteExpiredRecords()
+    /// <returns>削除処理が正常に完了した場合は <see langword="true"/>、失敗した場合は <see langword="false"/>。</returns>
+    public bool TryDeleteExpiredRecords()
+    {
+        try
+        {
+            DeleteExpiredRecords();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Failed to delete expired mail processing records.");
+            return false;
+        }
+    }
+
+    private void DeleteExpiredRecords()
     {
         string databasePath = Path.Combine(batchOptions.LogDirectory, DATABASE_FILE_NAME);
         if (!File.Exists(databasePath))

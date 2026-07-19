@@ -9,7 +9,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 
 int exitCode = BatchExitCodes.SUCCESS;
-BatchOptions? batchOptions = null;
 string runId = Guid.NewGuid().ToString();
 using CancellationTokenSource cancellationTokenSource = new();
 
@@ -28,7 +27,7 @@ try
 {
     LoadedConfiguration loadedConfiguration = AppConfiguration.Load(args);
     AppOptions options = loadedConfiguration.Options;
-    batchOptions = options.Batch;
+    BatchOptions batchOptions = options.Batch;
 
     await Log.CloseAndFlushAsync();
     Log.Logger = SerilogLoggerFactory.Create(loadedConfiguration, runId);
@@ -39,6 +38,10 @@ try
 
     BatchRunner runner = serviceProvider.GetRequiredService<BatchRunner>();
     exitCode = await runner.RunAsync(cancellationTokenSource.Token);
+
+    // 正常にバッチ処理を完了した場合のみ、保持期間を過ぎたデータを削除する。
+    _ = new LogRetentionCleaner(batchOptions).TryDeleteExpiredLogs();
+    _ = new SqliteRetentionCleaner(batchOptions).TryDeleteExpiredRecords();
 }
 catch (OperationCanceledException) when (cancellationTokenSource.IsCancellationRequested)
 {
@@ -61,13 +64,6 @@ finally
 {
     // メモリ上に残っているログを書き出してロガーを終了する
     await Log.CloseAndFlushAsync();
-
-    // 古いログを削除する
-    if (batchOptions is not null)
-    {
-        new LogRetentionCleaner(batchOptions).DeleteExpiredLogs();
-        new SqliteRetentionCleaner(batchOptions).DeleteExpiredRecords();
-    }
 }
 
 return exitCode;
