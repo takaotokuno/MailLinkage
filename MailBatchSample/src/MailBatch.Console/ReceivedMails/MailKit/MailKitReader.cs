@@ -48,7 +48,7 @@ internal sealed class MailKitReader(IMailFolderProvider mailFolderProvider) : IM
 
         return new ReceivedMail(
             mailId,
-            message.From.ToString(),
+            message.To.ToString(),
             message.Subject ?? "",
             message.TextBody ?? "");
     }

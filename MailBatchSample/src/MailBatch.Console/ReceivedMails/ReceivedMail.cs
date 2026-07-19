@@ -5,7 +5,7 @@ namespace MailBatch.Console.ReceivedMails;
 /// </summary>
 internal sealed record ReceivedMail(
     ReceivedMailId MailId,
-    string From,
+    string To,
     string Subject,
     string Body
 )

@@ -36,7 +36,7 @@ public sealed class MailFetchQueueProducerTests
         ReceivedMailId mailId = new(1, 999);
         FakeReceivedMailSession session = new(id =>
         {
-            return new ReceivedMail(id, "sender@example.com", "subject", "body without key");
+            return new ReceivedMail(id, "recipient@example.com", "subject", "body without key");
         });
         MailFetchQueueProducer producer = CreateProducer(session);
 
@@ -54,7 +54,7 @@ public sealed class MailFetchQueueProducerTests
         {
             return new ReceivedMail(
                             id,
-                            "sender@example.com",
+                            "recipient@example.com",
                             new string('s', ReceivedMail.MAX_SUBJECT_LENGTH + 1),
                             $"Key: ABC123{Environment.NewLine}{new string('b', ReceivedMail.MAX_BODY_LENGTH + 1)}");
         });
@@ -74,7 +74,7 @@ public sealed class MailFetchQueueProducerTests
         MailFetchQueueProducer producer = CreateProducer(
             id =>
             {
-                return new ReceivedMail(id, "sender@example.com", "subject", "Key: ABC123");
+                return new ReceivedMail(id, "recipient@example.com", "subject", "Key: ABC123");
             },
             channel.Writer);
 

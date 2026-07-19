@@ -27,7 +27,7 @@ internal sealed class MailNotificationFactory(MailNotificationOptions notificati
     }
 
     /// <summary>
-    /// バリデーションエラー通知テンプレートからメール送信元宛て通知を作成します。
+    /// バリデーションエラー通知テンプレートから元メールの宛先向け通知を作成します。
     /// </summary>
     public MailNotification CreateValidationErrorNotification(
         ReceivedMail mail,
@@ -44,7 +44,7 @@ internal sealed class MailNotificationFactory(MailNotificationOptions notificati
             }));
 
         return new MailNotification(
-            mail.From,
+            mail.To,
             ApplyValidationErrorTemplate(template.Subject, mail, validationErrorsText),
             ApplyValidationErrorTemplate(template.Body, mail, validationErrorsText));
     }

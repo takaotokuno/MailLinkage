@@ -221,14 +221,14 @@ internal sealed class MailFetchQueueProducer(
     }
 
     /// <summary>
-    /// バリデーションエラーの内容をメール送信元へ通知します。
+    /// バリデーションエラーの内容を元メールの宛先へ通知します。
     /// </summary>
     private async Task NotifyValidationErrorAsync(ReceivedMail mail, IReadOnlyList<string> validationErrors, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(mail.From))
+        if (string.IsNullOrWhiteSpace(mail.To))
         {
             logger.LogWarning(
-                "Cannot send validation error notification because From is empty. MailId={MailId}",
+                "Cannot send validation error notification because To is empty. MailId={MailId}",
                 mail.MailId);
             return;
         }
