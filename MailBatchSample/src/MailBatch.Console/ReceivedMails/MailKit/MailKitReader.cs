@@ -50,6 +50,6 @@ internal sealed class MailKitReader(IMailFolderProvider mailFolderProvider) : IM
             mailId,
             message.Sender?.ToString() ?? "",
             message.Subject ?? "",
-            message.Body?.ToString() ?? "");
+            message.TextBody ?? "");
     }
 }
