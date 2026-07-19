@@ -29,6 +29,7 @@ public sealed class RequestQueueConsumerTests
             apiClient,
             reader,
             moveFailureStore,
+            moveFailureStore,
             new FakeApiExecutionResultStore(),
             NullLogger<MailLinkageRequest>.Instance);
 
@@ -53,6 +54,7 @@ public sealed class RequestQueueConsumerTests
             session,
             apiClient,
             reader,
+            moveFailureStore,
             moveFailureStore,
             new FakeApiExecutionResultStore(),
             NullLogger<MailLinkageRequest>.Instance);
@@ -83,6 +85,7 @@ public sealed class RequestQueueConsumerTests
             apiClient,
             reader,
             moveFailureStore,
+            moveFailureStore,
             new FakeApiExecutionResultStore(),
             NullLogger<MailLinkageRequest>.Instance);
 
@@ -111,6 +114,7 @@ public sealed class RequestQueueConsumerTests
             apiClient,
             reader,
             moveFailureStore,
+            moveFailureStore,
             new FakeApiExecutionResultStore(),
             NullLogger<MailLinkageRequest>.Instance);
 
@@ -137,6 +141,7 @@ public sealed class RequestQueueConsumerTests
             session,
             apiClient,
             reader,
+            moveFailureStore,
             moveFailureStore,
             new FakeApiExecutionResultStore(),
             logger);
@@ -255,9 +260,20 @@ public sealed class RequestQueueConsumerTests
         }
     }
 
-    private sealed class FakeMoveFailureStore : IProcessedMailMoveFailureStore
+    private sealed class FakeMoveFailureStore : IProcessedMailStore, IMailMoveFailureStore
     {
         public List<ReceivedMailId> MailIds { get; } = [];
+
+        public HashSet<ReceivedMailId> ProcessedMailIds { get; } = [];
+
+        Task<bool> IProcessedMailStore.ContainsAsync(ReceivedMailId mailId, CancellationToken cancellationToken) =>
+            Task.FromResult(ProcessedMailIds.Contains(mailId));
+
+        public Task RecordAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
+        {
+            _ = ProcessedMailIds.Add(mailId);
+            return Task.CompletedTask;
+        }
 
         public Task<IReadOnlyList<MailMoveFailure>> GetAllAsync(CancellationToken cancellationToken = default)
         {

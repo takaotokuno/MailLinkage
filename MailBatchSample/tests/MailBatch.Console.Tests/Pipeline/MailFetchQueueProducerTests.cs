@@ -121,20 +121,22 @@ public sealed class MailFetchQueueProducerTests
     private static MailFetchQueueProducer CreateProducer(
         Func<ReceivedMailId, ReceivedMail> mailFactory,
         ChannelWriter<MailLinkageRequest>? writer = null,
-        IProcessedMailMoveFailureStore? moveFailureStore = null) => CreateProducer(new FakeReceivedMailSession(mailFactory), writer, moveFailureStore);
+        FakeMoveFailureStore? stateStore = null) => CreateProducer(new FakeReceivedMailSession(mailFactory), writer, stateStore);
 
     private static MailFetchQueueProducer CreateProducer(
         FakeReceivedMailSession session,
         ChannelWriter<MailLinkageRequest>? writer = null,
-        IProcessedMailMoveFailureStore? moveFailureStore = null)
+        FakeMoveFailureStore? stateStore = null)
     {
         Channel<MailLinkageRequest> channel = Channel.CreateUnbounded<MailLinkageRequest>();
+        stateStore ??= new FakeMoveFailureStore();
         return new MailFetchQueueProducer(
             session,
             writer ?? channel.Writer,
             new FakeMailNotifier(),
             new MailNotificationFactory(CreateNotificationOptions(), new BatchRunContext("test-run")),
-            moveFailureStore ?? new FakeMoveFailureStore(),
+            stateStore,
+            stateStore,
             NullLogger<MailFetchQueueProducer>.Instance);
     }
 
@@ -183,9 +185,20 @@ public sealed class MailFetchQueueProducerTests
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 
-    private sealed class FakeMoveFailureStore(IEnumerable<MailMoveFailure>? failures = null) : IProcessedMailMoveFailureStore
+    private sealed class FakeMoveFailureStore(IEnumerable<MailMoveFailure>? failures = null) : IProcessedMailStore, IMailMoveFailureStore
     {
         public List<MailMoveFailure> Failures { get; } = failures?.ToList() ?? [];
+
+        public HashSet<ReceivedMailId> ProcessedMailIds { get; } = [];
+
+        Task<bool> IProcessedMailStore.ContainsAsync(ReceivedMailId mailId, CancellationToken cancellationToken) =>
+            Task.FromResult(ProcessedMailIds.Contains(mailId));
+
+        public Task RecordAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
+        {
+            _ = ProcessedMailIds.Add(mailId);
+            return Task.CompletedTask;
+        }
 
         public Task<IReadOnlyList<MailMoveFailure>> GetAllAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<MailMoveFailure>>(Failures.ToArray());
         public Task<bool> ContainsAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default) => Task.FromResult(Failures.Any(failure =>

@@ -18,11 +18,11 @@ public sealed class SqliteMailProcessingStoreTests : IDisposable
         ReceivedMailId failedMailId = new(20, 1000);
         SqliteMailProcessingStore firstStore = CreateStore();
 
-        await firstStore.RecordProcessedAsync(processedMailId);
+        await firstStore.RecordAsync(processedMailId);
         await firstStore.AddErrorMoveFailureAsync(failedMailId);
 
         SqliteMailProcessingStore reopenedStore = CreateStore();
-        Assert.True(await reopenedStore.IsProcessedAsync(processedMailId));
+        Assert.True(await ((IProcessedMailStore)reopenedStore).ContainsAsync(processedMailId));
         MailMoveFailure failure = Assert.Single(await reopenedStore.GetAllAsync());
         Assert.Equal(failedMailId, failure.MailId);
         Assert.Equal(MailMoveFailureDestination.Error, failure.Destination);

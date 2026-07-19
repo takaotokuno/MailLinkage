@@ -28,7 +28,8 @@ internal sealed class MailFetchQueueProducer(
     ChannelWriter<MailLinkageRequest> writer,
     IMailNotifier mailNotifier,
     MailNotificationFactory mailNotificationFactory,
-    IProcessedMailMoveFailureStore moveFailureStore,
+    IProcessedMailStore processedMailStore,
+    IMailMoveFailureStore moveFailureStore,
     ILogger<MailFetchQueueProducer> logger) : IMailFetchQueueProducer
 {
     /// <summary>
@@ -87,7 +88,7 @@ internal sealed class MailFetchQueueProducer(
                 return;
             }
 
-            if (await moveFailureStore.IsProcessedAsync(mailId, cancellationToken))
+            if (await processedMailStore.ContainsAsync(mailId, cancellationToken))
             {
                 logger.LogWarning("Skipped message because it already exists in the processed mail ledger. MailId={MailId}", mailId);
                 return;
@@ -143,7 +144,7 @@ internal sealed class MailFetchQueueProducer(
 
         try
         {
-            await moveFailureStore.RecordProcessedAsync(mailId, cancellationToken);
+            await processedMailStore.RecordAsync(mailId, cancellationToken);
             await receivedMailSession.MoveToProcessedMailboxAsync(mailId, cancellationToken);
             await moveFailureStore.RemoveAsync(mailId, cancellationToken);
             logger.LogInformation(

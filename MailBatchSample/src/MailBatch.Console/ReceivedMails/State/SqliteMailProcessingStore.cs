@@ -6,9 +6,19 @@ using Microsoft.Extensions.Logging;
 namespace MailBatch.Console.ReceivedMails.State;
 
 /// <summary>
-/// 処理済みメール台帳とメール移動失敗を永続化します。
+/// API連携済みメールを記録し、再送を防止する処理済み台帳を提供します。
 /// </summary>
-internal interface IProcessedMailMoveFailureStore
+internal interface IProcessedMailStore
+{
+    Task<bool> ContainsAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default);
+
+    Task RecordAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// メールボックス移動失敗の記録と復旧状態を提供します。
+/// </summary>
+internal interface IMailMoveFailureStore
 {
     /// <summary>記録されているすべてのメール移動失敗を取得します。</summary>
     Task<IReadOnlyList<MailMoveFailure>> GetAllAsync(CancellationToken cancellationToken = default);
@@ -30,16 +40,6 @@ internal interface IProcessedMailMoveFailureStore
 
     /// <summary>指定したメールの処理済みフォルダーへの移動失敗記録を削除します。</summary>
     Task RemoveAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// API連携が完了したメールを処理済み台帳へ記録します。
-    /// </summary>
-    Task RecordProcessedAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default) => Task.CompletedTask;
-
-    /// <summary>
-    /// 指定したメールが処理済み台帳に存在するか判定します。
-    /// </summary>
-    Task<bool> IsProcessedAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default) => Task.FromResult(false);
 }
 
 /// <summary>メールボックスへの移動に失敗したメールと失敗日時を表します。</summary>
@@ -69,7 +69,7 @@ internal enum MailMoveFailureDestination
 /// </summary>
 internal sealed class SqliteMailProcessingStore(
     BatchOptions batchOptions,
-    ILogger<SqliteMailProcessingStore> logger) : IProcessedMailMoveFailureStore
+    ILogger<SqliteMailProcessingStore> logger) : IProcessedMailStore, IMailMoveFailureStore
 {
     private const string DATABASE_FILE_NAME = "mail-processing.db";
     private readonly SemaphoreSlim _initializationLock = new(1, 1);
@@ -151,8 +151,7 @@ internal sealed class SqliteMailProcessingStore(
     public Task RemoveAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default) =>
         RemoveAsync(new MailMoveFailure(mailId, MailMoveFailureDestination.Processed, default, default), cancellationToken);
 
-    /// <inheritdoc />
-    public async Task RecordProcessedAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
+    public async Task RecordAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
     {
         await using SqliteConnection connection = await OpenConnectionAsync(cancellationToken);
         await using SqliteCommand command = CreateMailIdCommand(connection, """
@@ -164,8 +163,7 @@ internal sealed class SqliteMailProcessingStore(
         _ = await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
-    /// <inheritdoc />
-    public async Task<bool> IsProcessedAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
+    async Task<bool> IProcessedMailStore.ContainsAsync(ReceivedMailId mailId, CancellationToken cancellationToken)
     {
         await using SqliteConnection connection = await OpenConnectionAsync(cancellationToken);
         await using SqliteCommand command = CreateMailIdCommand(connection,

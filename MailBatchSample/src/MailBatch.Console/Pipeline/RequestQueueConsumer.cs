@@ -29,7 +29,8 @@ internal sealed class RequestQueueConsumer(
     IReceivedMailSession receivedMailSession,
     IApiClient receivedMailApiClient,
     ChannelReader<MailLinkageRequest> reader,
-    IProcessedMailMoveFailureStore moveFailureStore,
+    IProcessedMailStore processedMailStore,
+    IMailMoveFailureStore moveFailureStore,
     IApiExecutionResultStore apiExecutionResultStore,
     ILogger<MailLinkageRequest> logger) : IRequestQueueConsumer
 {
@@ -81,7 +82,7 @@ internal sealed class RequestQueueConsumer(
             return;
         }
 
-        await moveFailureStore.RecordProcessedAsync(mailId, cancellationToken);
+        await processedMailStore.RecordAsync(mailId, cancellationToken);
         if (await TryMoveToProcessedMailboxAsync(mailId, cancellationToken))
         {
             result.IncrementSuccess();
