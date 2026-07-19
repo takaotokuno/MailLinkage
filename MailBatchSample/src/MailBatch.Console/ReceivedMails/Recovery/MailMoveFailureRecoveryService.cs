@@ -50,7 +50,7 @@ internal sealed class MailMoveFailureRecoveryService(
         {
             await MoveRecoveredMailAsync(failure, cancellationToken);
             await moveFailureStore.RemoveAsync(failure, cancellationToken);
-            logger.LogInformation(
+            logger.LogDebug(
                 "Recovered mailbox move failure. MailId={MailId}, Destination={Destination}",
                 failure.MailId,
                 failure.Destination);

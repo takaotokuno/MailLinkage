@@ -103,7 +103,7 @@ internal sealed class MailFetchQueueProducer(
 
             result.IncrementSuccess();
 
-            logger.LogDebug(
+            logger.LogInformation(
                 "Queued API request. MailId={MailId}, QueueCount={QueueCount}, BodyLength={BodyLength}",
                 mail.MailId,
                 result.Succeeded,

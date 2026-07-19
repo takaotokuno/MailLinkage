@@ -143,7 +143,7 @@ internal sealed class SqliteMailProcessingStore(
         _ = command.Parameters.AddWithValue("$destination", failure.Destination.ToString());
         if (await command.ExecuteNonQueryAsync(cancellationToken) > 0)
         {
-            logger.LogInformation("Cleared mailbox move failure record. MailId={MailId}, Destination={Destination}", failure.MailId, failure.Destination);
+            logger.LogDebug("Cleared mailbox move failure record. MailId={MailId}, Destination={Destination}", failure.MailId, failure.Destination);
         }
     }
 
