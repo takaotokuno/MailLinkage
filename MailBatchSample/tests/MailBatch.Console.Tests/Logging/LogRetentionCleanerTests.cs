@@ -9,7 +9,7 @@ public sealed class LogRetentionCleanerTests : IDisposable
     private readonly string _logDirectory = Path.Combine(Path.GetTempPath(), $"MailBatchLogs-{Guid.NewGuid():N}");
 
     [Fact]
-    public void DeleteExpiredLogs_DeletesOnlyLogFilesOlderThanRetentionDays()
+    public void TryDeleteExpiredLogs_DeletesOnlyLogFilesOlderThanRetentionDays()
     {
         _ = Directory.CreateDirectory(_logDirectory);
         DateTimeOffset now = new(2026, 7, 16, 10, 0, 0, TimeSpan.Zero);
@@ -24,7 +24,7 @@ public sealed class LogRetentionCleanerTests : IDisposable
         };
         LogRetentionCleaner cleaner = new(options, timeProvider);
 
-        cleaner.DeleteExpiredLogs();
+        Assert.True(cleaner.TryDeleteExpiredLogs());
 
         Assert.False(File.Exists(expiredLog));
         Assert.True(File.Exists(retainedLog));
@@ -32,7 +32,7 @@ public sealed class LogRetentionCleanerTests : IDisposable
     }
 
     [Fact]
-    public void DeleteExpiredLogs_WithMissingLogDirectory_DoesNotThrow()
+    public void TryDeleteExpiredLogs_WithMissingLogDirectory_ReturnsTrue()
     {
         BatchOptions options = new()
         {
@@ -41,9 +41,7 @@ public sealed class LogRetentionCleanerTests : IDisposable
         };
         LogRetentionCleaner cleaner = new(options, new FakeTimeProvider(DateTimeOffset.UtcNow));
 
-        Exception? exception = Record.Exception(cleaner.DeleteExpiredLogs);
-
-        Assert.Null(exception);
+        Assert.True(cleaner.TryDeleteExpiredLogs());
     }
 
     public void Dispose()
