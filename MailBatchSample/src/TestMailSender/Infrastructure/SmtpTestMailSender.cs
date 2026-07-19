@@ -1,6 +1,6 @@
 using MailKit.Net.Smtp;
+using MailKit.Security;
 using MimeKit;
-using TestMailSender.Mail;
 using TestMailSender.Options;
 using TestMailSender.Services;
 
@@ -23,7 +23,7 @@ internal sealed class SmtpTestMailSender : ITestMailSender
         await smtpClient.ConnectAsync(
             options.Host,
             options.Port,
-            SmtpSecurity.ToSecureSocketOptions(options.UseSsl),
+            SecureSocketOptions.None,
             cancellationToken);
 
         if (!string.IsNullOrWhiteSpace(options.UserName))
@@ -31,7 +31,7 @@ internal sealed class SmtpTestMailSender : ITestMailSender
             await smtpClient.AuthenticateAsync(options.UserName, options.Password!, cancellationToken);
         }
 
-        await smtpClient.SendAsync(message, cancellationToken);
+        _ = await smtpClient.SendAsync(message, cancellationToken);
         await smtpClient.DisconnectAsync(true, cancellationToken);
     }
 }

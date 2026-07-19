@@ -62,7 +62,13 @@ dotnet run --project MailBatchSample/src/TestMailSender/TestMailSender.csproj --
 メールボックスの一覧は IMAP 経由で確認する。`curl` が IMAP に対応している環境では、次のコマンドで `INBOX` のメッセージ一覧を確認できる。
 
 ```bash
+# メールボックス一覧取得
 curl --url "imap://mailserver:3143/INBOX" --user "test@example.local:password"
+
+# メール一覧を取得
+curl --url "imap://mailserver:3143/INBOX" \
+  --user "test@example.local:password" \
+  --request "FETCH 1:* (UID FLAGS INTERNALDATE BODY.PEEK[HEADER.FIELDS (FROM TO SUBJECT DATE MESSAGE-ID)])"
 ```
 
 特定メールの内容を確認する場合は、一覧で確認したメッセージ番号を指定する。
@@ -73,7 +79,7 @@ curl --url "imap://mailserver:3143/INBOX;MAILINDEX=1" --user "test@example.local
 
 ## バッチ起動と結果確認
 
-`MailBatch.Console` は、IMAP で `INBOX` から対象メールを検索し、抽出したメール情報を `MailReceiver.Api` へ POST する。Docker Compose 起動後、リポジトリルートから次のように実行する。
+`MailBatch.Console` は、IMAP で `INBOX` から対象メールを検索し、抽出したメール情報を `MailReceiver.Api` へ POST する。Docker Compose 起動後、リポジトリルートから次のように実行する。コンテナ動作確認では Azure Key Vault は不要で、`MAILBATCH_` プレフィックス付き環境変数（例: `MAILBATCH_Imap__Password`）やコマンドライン引数でシークレットを供給できる。Azure Key Vault を利用する場合だけ `AzureKeyVault:Enabled=true` と `AzureKeyVault:VaultUri` を設定する。
 
 ```bash
 dotnet run --project MailBatchSample/src/MailBatch.Console/MailBatch.Console.csproj
@@ -88,6 +94,8 @@ dotnet run --project MailBatchSample/src/MailBatch.Console/MailBatch.Console.csp
 | 対象件名 | `連携対象` |
 | 対象送信元 | `sender@example.local` |
 | 処理済みメールボックス | `Processed` |
+| API 失敗メールボックス | `Error` |
+| IMAP / API 再試行回数 | 各 3 回（2、4、8 秒待機） |
 | ログ出力先 | `MailBatchSample/logs/` |
 
 バッチ実行後、ログは日次ファイルとして `MailBatchSample/logs/batch-yyyyMMdd.log` に出力される。
@@ -119,13 +127,24 @@ cat MailBatchSample/logs/batch-$(date +%Y%m%d).log
 2. 対象メールを投入する。
 3. `MailBatch.Console` を実行する。
 4. API 連携失敗がログに出力されることを確認する。
-5. 初期スコープでは複雑なリトライは行わず、失敗をログで追跡できることを確認する。
+5. API 呼び出しが 2、4、8 秒の待機後に再試行され、最終失敗時は `Error` へ移動して終了コード `2` となることを確認する。
 
 ### 重複メール
 
 1. 同一 Message-Id のメール、または同一メールの再処理を発生させる。
 2. API が `409 Conflict` を返す、または定義した冪等挙動になることを確認する。
 3. バッチログに重複時の API 結果が残ることを確認する。
+
+## 最低限のメトリクスアラート
+
+運用上の異常を見逃さず、過剰なアラートを避けるため、次の3項目に限定して監視する。
+
+- 直近10回のバッチ実行のうち、終了コードが成功以外の実行が50%を超えた場合
+- 未復旧のメール移動失敗が7日以上継続した場合
+- 直近10回のバッチ実行のうち、処理時間が1時間を超えた実行が50%を超えた場合
+
+3項目目は、成功扱いでも処理遅延やタイムアウト直前の状態が継続する劣化を検知するために追加する。
+履歴が10回に満たない間は、母数が少ないことによる誤検知を避けるため履歴ベースのアラートを送信しない。
 
 ## ログ確認
 
@@ -146,10 +165,29 @@ logs/batch-yyyyMMdd.log
 
 ## DB 確認
 
+MailBatch.Console は処理済みメール台帳とメール移動失敗を `Batch:LogDirectory` 配下の
+`mail-processing.db` に保存する。処理済みメールは `processed_mails`、再移動待ちのメールは
+`mail_move_failures` で確認できる。UID はメールボックスの UIDVALIDITY と組み合わせて識別する。
+移動失敗が滞留し始めた日時は `created_at_utc`、通常処理または復旧処理で最後に移動に失敗した日時は
+`last_failed_at_utc` で確認する。
+
+バッチ終了時にはログと同じ `Batch:LogRetentionDays` を保持期間として、`processed_mails`、
+`batch_runs`、`api_execution_results` の保持期限より古いレコードを `DELETE` する。
+`mail_move_failures` は二重送信防止に使用するため、保持期間による削除対象には含めず、メール移動の
+成功時にのみ削除する。保持期間による削除後は `VACUUM` を実行して未使用領域を回収し、DB ファイルの
+肥大化を防ぐ。
+
+```bash
+sqlite3 MailBatchSample/logs/mail-processing.db \
+  "select uid, uid_validity, processed_at_utc from processed_mails order by processed_at_utc;"
+sqlite3 MailBatchSample/logs/mail-processing.db \
+  "select uid, uid_validity, destination, created_at_utc, last_failed_at_utc from mail_move_failures order by created_at_utc;"
+```
+
 SQLite CLI を利用できる場合は次のように確認する。
 
 ```bash
-sqlite3 data/mailreceiver.db "select id, message_id, sender, subject, received_at, created_at from received_mails order by id;"
+sqlite3 data/mailreceiver.db "select id, key, message, created_at from received_mails order by id;"
 ```
 
 GET API で確認する場合は次のように確認する。
@@ -157,6 +195,124 @@ GET API で確認する場合は次のように確認する。
 ```bash
 curl http://mailreceiver-api:8080/api/received-mails
 ```
+
+## 障害調査用の SQLite データ取り出し
+
+障害調査では稼働中の DB ファイルを直接コピーせず、SQLite の `.backup` コマンドで整合性のある
+スナップショットを作成してから参照する。調査コマンドはリポジトリルートで実行する。
+既定構成で対象となる DB は次の 2 つである。
+
+| DB | ホスト上のパス | 主な内容 |
+| --- | --- | --- |
+| API DB | `MailBatchSample/data/mailreceiver.db` | API が受信したメール (`received_mails`) |
+| バッチ DB | `MailBatchSample/logs/mail-processing.db` | 実行履歴、API 実行結果、処理済みメール、メール移動失敗 |
+
+設定を上書きしている場合、API DB は `ConnectionStrings__MailReceiver`、バッチ DB は
+`Batch:LogDirectory`（環境変数では `MAILBATCH_Batch__LogDirectory`）から実際の保存先を確認する。
+Docker Compose の既定構成では API コンテナの `/app/data` がホストの `MailBatchSample/data` に
+バインドマウントされるため、ホスト側のパスから取り出せる。
+
+### 1. 調査用スナップショットを作成する
+
+`sqlite3` が利用できる端末で、調査 ID やチケット番号を `INCIDENT_ID` に設定して実行する。
+`.backup` は SQLite のオンラインバックアップ機能を使うため、API やバッチを停止せずに
+コミット済みデータの整合性を保ったコピーを作成できる。
+
+```bash
+INCIDENT_ID=INC-YYYYMMDD-001
+EVIDENCE_DIR="incident-evidence/${INCIDENT_ID}"
+mkdir -p "${EVIDENCE_DIR}"
+
+sqlite3 MailBatchSample/data/mailreceiver.db \
+  ".backup '${EVIDENCE_DIR}/mailreceiver.db'"
+sqlite3 MailBatchSample/logs/mail-processing.db \
+  ".backup '${EVIDENCE_DIR}/mail-processing.db'"
+
+sha256sum "${EVIDENCE_DIR}/mailreceiver.db" \
+  "${EVIDENCE_DIR}/mail-processing.db" > "${EVIDENCE_DIR}/SHA256SUMS"
+printf 'collected_at_utc=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  > "${EVIDENCE_DIR}/collection-info.txt"
+```
+
+DB が存在しない場合は `sqlite3` が空の DB を新規作成してしまうため、先に
+`test -f <DB のパス>` で対象ファイルの存在を確認する。書き込み元を安全に停止できる場合は、
+停止後に DB 本体と同じディレクトリにある `-wal`、`-shm` ファイルを含めてコピーしてもよいが、
+通常は `.backup` を優先する。作成した `incident-evidence/` は調査用成果物であり、Git へ
+コミットしない。
+
+### 2. スナップショットの整合性と構造を確認する
+
+```bash
+sha256sum -c "${EVIDENCE_DIR}/SHA256SUMS"
+sqlite3 "${EVIDENCE_DIR}/mailreceiver.db" "PRAGMA integrity_check;"
+sqlite3 "${EVIDENCE_DIR}/mail-processing.db" "PRAGMA integrity_check;"
+sqlite3 "${EVIDENCE_DIR}/mailreceiver.db" ".tables"
+sqlite3 "${EVIDENCE_DIR}/mail-processing.db" ".tables"
+```
+
+`PRAGMA integrity_check;` の結果が `ok` であることを確認する。`ok` 以外の場合は元 DB を
+更新・修復せず、スナップショットと SQLite のエラー出力をそのまま保全する。
+
+### 3. 調査対象を検索する
+
+まず `batch_runs` で発生時間帯と実行 ID (`run_id`) を絞り、同じ `run_id` で
+`api_execution_results` を検索する。時刻は UTC の ISO 8601 形式で保存されている。
+次の例の日時と実行 ID は実際の障害に合わせて置き換える。
+
+```bash
+sqlite3 -header -column "${EVIDENCE_DIR}/mail-processing.db" \
+  "SELECT * FROM batch_runs
+   WHERE started_at_utc >= '2026-07-19T00:00:00Z'
+     AND started_at_utc <  '2026-07-20T00:00:00Z'
+   ORDER BY started_at_utc;"
+
+sqlite3 -header -column "${EVIDENCE_DIR}/mail-processing.db" \
+  "SELECT execution_id, run_id, uid, uid_validity, outcome, status_code,
+          saved_id, response_summary, error_type, started_at_utc,
+          completed_at_utc, duration_ms
+   FROM api_execution_results
+   WHERE run_id = '<調査対象の run_id>'
+   ORDER BY started_at_utc;"
+
+sqlite3 -header -column "${EVIDENCE_DIR}/mail-processing.db" \
+  "SELECT uid, uid_validity, processed_at_utc
+   FROM processed_mails ORDER BY processed_at_utc;"
+sqlite3 -header -column "${EVIDENCE_DIR}/mail-processing.db" \
+  "SELECT uid, uid_validity, destination, created_at_utc, last_failed_at_utc
+   FROM mail_move_failures ORDER BY last_failed_at_utc;"
+
+sqlite3 -header -column "${EVIDENCE_DIR}/mailreceiver.db" \
+  "SELECT id, key, message, created_at
+   FROM received_mails
+   WHERE created_at >= '2026-07-19T00:00:00Z'
+     AND created_at <  '2026-07-20T00:00:00Z'
+   ORDER BY created_at;"
+```
+
+`api_execution_results.saved_id` と `received_mails.id`、またはメールの Message-Id とログを
+突き合わせると、バッチ実行から API 保存までを追跡できる。メール本文が必要な場合だけ、対象 ID を
+限定して `SELECT id, message FROM received_mails WHERE id = <ID>;` を実行する。
+
+### 4. 共有用 CSV を出力する
+
+調査結果だけを共有する場合は、スナップショットから必要な列と期間に限定して CSV を作成する。
+
+```bash
+sqlite3 -header -csv "${EVIDENCE_DIR}/mail-processing.db" \
+  "SELECT * FROM batch_runs ORDER BY started_at_utc;" \
+  > "${EVIDENCE_DIR}/batch-runs.csv"
+sqlite3 -header -csv "${EVIDENCE_DIR}/mail-processing.db" \
+  "SELECT * FROM api_execution_results ORDER BY started_at_utc;" \
+  > "${EVIDENCE_DIR}/api-execution-results.csv"
+sqlite3 -header -csv "${EVIDENCE_DIR}/mailreceiver.db" \
+  "SELECT id, key, message, created_at
+   FROM received_mails ORDER BY created_at;" \
+  > "${EVIDENCE_DIR}/received-mails.csv"
+```
+
+`received_mails.message` および `api_execution_results.response_summary` には
+個人情報・機微情報が含まれる可能性がある。共有先の権限と保存期限を確認し、不要な列や行を除外、
+またはマスキングしてから受け渡す。DB スナップショット自体も同じ機密区分で取り扱う。
 
 ## 実装時の注意点
 

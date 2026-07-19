@@ -6,9 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
-const int MessageIdMaxLength = 255;
-const int SenderMaxLength = 320;
-const int SubjectMaxLength = 500;
+const int SQLITE_CONSTRAINT_ERROR_CODE = 19;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -28,8 +26,8 @@ app.Run();
 /// </summary>
 static void ConfigureLogging(ILoggingBuilder logging)
 {
-    logging.ClearProviders();
-    logging.AddJsonConsole();
+    _ = logging.ClearProviders();
+    _ = logging.AddJsonConsole();
 }
 
 /// <summary>
@@ -37,8 +35,11 @@ static void ConfigureLogging(ILoggingBuilder logging)
 /// </summary>
 static void ConfigureServices(IServiceCollection services, IConfiguration configuration)
 {
-    services.AddProblemDetails();
-    services.AddDbContext<MailReceiverDbContext>(options => ConfigureSqlite(options, configuration));
+    _ = services.AddProblemDetails();
+    _ = services.AddDbContext<MailReceiverDbContext>(options =>
+    {
+        ConfigureSqlite(options, configuration);
+    });
 }
 
 /// <summary>
@@ -49,7 +50,7 @@ static void ConfigureSqlite(DbContextOptionsBuilder options, IConfiguration conf
     string connectionString = configuration.GetConnectionString("MailReceiver")
         ?? throw new InvalidOperationException("ConnectionStrings:MailReceiver is not configured.");
 
-    options.UseSqlite(connectionString);
+    _ = options.UseSqlite(connectionString);
 }
 
 /// <summary>
@@ -57,7 +58,7 @@ static void ConfigureSqlite(DbContextOptionsBuilder options, IConfiguration conf
 /// </summary>
 static void ConfigureMiddleware(WebApplication app)
 {
-    app.UseExceptionHandler();
+    _ = app.UseExceptionHandler();
 }
 
 /// <summary>
@@ -74,7 +75,7 @@ static void MapEndpoints(WebApplication app)
 /// </summary>
 static void MapHealthCheckEndpoint(WebApplication app)
 {
-    app.MapGet("/health", () => Results.Ok(new { status = "Healthy" }))
+    _ = app.MapGet("/health", () => Results.Ok(new { status = "Healthy" }))
         .WithName("HealthCheck");
 }
 
@@ -96,7 +97,7 @@ static void MapReceivedMailEndpoints(WebApplication app)
 /// </summary>
 static void MapCreateReceivedMailEndpoint(RouteGroupBuilder receivedMails)
 {
-    receivedMails.MapPost(string.Empty, CreateReceivedMailAsync)
+    _ = receivedMails.MapPost(string.Empty, CreateReceivedMailAsync)
         .WithName("CreateReceivedMail")
         .Produces<ReceivedMailResponse>(StatusCodes.Status201Created)
         .ProducesValidationProblem()
@@ -108,7 +109,7 @@ static void MapCreateReceivedMailEndpoint(RouteGroupBuilder receivedMails)
 /// </summary>
 static void MapListReceivedMailsEndpoint(RouteGroupBuilder receivedMails)
 {
-    receivedMails.MapGet(string.Empty, ListReceivedMailsAsync)
+    _ = receivedMails.MapGet(string.Empty, ListReceivedMailsAsync)
         .WithName("ListReceivedMails")
         .Produces<IReadOnlyList<ReceivedMailResponse>>();
 }
@@ -118,7 +119,7 @@ static void MapListReceivedMailsEndpoint(RouteGroupBuilder receivedMails)
 /// </summary>
 static void MapGetReceivedMailByIdEndpoint(RouteGroupBuilder receivedMails)
 {
-    receivedMails.MapGet("/{id:long}", GetReceivedMailByIdAsync)
+    _ = receivedMails.MapGet("/{id:long}", GetReceivedMailByIdAsync)
         .WithName("GetReceivedMailById")
         .Produces<ReceivedMailResponse>()
         .ProducesProblem(StatusCodes.Status404NotFound);
@@ -155,17 +156,14 @@ static async Task<Results<Ok<ReceivedMailResponse>, NotFound<ProblemDetails>>> G
         .AsNoTracking()
         .FirstOrDefaultAsync(candidate => candidate.Id == id, cancellationToken);
 
-    if (mail is null)
-    {
-        return TypedResults.NotFound(new ProblemDetails
+    return mail is null
+        ? (Results<Ok<ReceivedMailResponse>, NotFound<ProblemDetails>>)TypedResults.NotFound(new ProblemDetails
         {
             Title = "Received mail was not found.",
             Detail = $"Received mail id '{id}' does not exist.",
             Status = StatusCodes.Status404NotFound
-        });
-    }
-
-    return TypedResults.Ok(ToResponse(mail));
+        })
+        : TypedResults.Ok(ToResponse(mail));
 }
 
 /// <summary>
@@ -178,54 +176,52 @@ static async Task<Results<CreatedAtRoute<ReceivedMailResponse>, ValidationProble
     CancellationToken cancellationToken)
 {
     ILogger logger = loggerFactory.CreateLogger("ReceivedMails");
-    Dictionary<string, string[]> validationErrors = Validate(request, out NormalizedCreateReceivedMailRequest? normalizedRequest, out DateTimeOffset receivedAt);
+    Dictionary<string, string[]> validationErrors = Validate(request, out NormalizedCreateReceivedMailRequest normalizedRequest);
     if (validationErrors.Count > 0)
     {
-        logger.LogWarning("Received mail request validation failed. MessageId: {MessageId}, ErrorFields: {ErrorFields}",
-            request.MessageId,
+        logger.LogWarning("Received mail request validation failed. Key: {Key}, ErrorFields: {ErrorFields}",
+            request.Key,
             validationErrors.Keys);
         return TypedResults.ValidationProblem(validationErrors);
     }
 
-    if (await dbContext.ReceivedMails.AnyAsync(mail => mail.MessageId == normalizedRequest.MessageId, cancellationToken))
+    if (await dbContext.ReceivedMails.AnyAsync(mail => mail.Key == normalizedRequest.Key, cancellationToken))
     {
-        logger.LogInformation("Duplicate received mail was rejected. MessageId: {MessageId}", normalizedRequest.MessageId);
-        return TypedResults.Conflict(CreateDuplicateProblemDetails(normalizedRequest.MessageId));
+        logger.LogInformation("Duplicate received mail was rejected. Key: {Key}", normalizedRequest.Key);
+        return TypedResults.Conflict(CreateDuplicateProblemDetails(normalizedRequest.Key));
     }
 
     ReceivedMail receivedMail = new()
     {
-        MessageId = normalizedRequest.MessageId,
-        Sender = normalizedRequest.Sender,
-        Subject = normalizedRequest.Subject,
-        Body = normalizedRequest.Body,
-        ReceivedAt = receivedAt,
+        Key = normalizedRequest.Key,
+        Message = normalizedRequest.Message,
         CreatedAt = DateTimeOffset.UtcNow
     };
 
-    dbContext.ReceivedMails.Add(receivedMail);
+    _ = dbContext.ReceivedMails.Add(receivedMail);
 
     try
     {
-        await dbContext.SaveChangesAsync(cancellationToken);
+        _ = await dbContext.SaveChangesAsync(cancellationToken);
     }
     catch (DbUpdateException exception) when (IsUniqueConstraintViolation(exception))
     {
-        logger.LogInformation(exception, "Duplicate received mail was rejected by unique constraint. MessageId: {MessageId}", normalizedRequest.MessageId);
-        return TypedResults.Conflict(CreateDuplicateProblemDetails(normalizedRequest.MessageId));
+        logger.LogInformation(exception, "Duplicate received mail was rejected by unique constraint. Key: {Key}", normalizedRequest.Key);
+        return TypedResults.Conflict(CreateDuplicateProblemDetails(normalizedRequest.Key));
     }
 
     logger.LogInformation(
-        "Received mail was saved. Id: {ReceivedMailId}, MessageId: {MessageId}, Sender: {Sender}, ReceivedAt: {ReceivedAt}",
+        "Received mail was saved. Id: {ReceivedMailId}, Key: {Key}",
         receivedMail.Id,
-        receivedMail.MessageId,
-        receivedMail.Sender,
-        receivedMail.ReceivedAt);
+        receivedMail.Key);
 
     return TypedResults.CreatedAtRoute(
         ToResponse(receivedMail),
         "GetReceivedMailById",
-        new { id = receivedMail.Id });
+        new
+        {
+            id = receivedMail.Id
+        });
 }
 
 /// <summary>
@@ -233,39 +229,16 @@ static async Task<Results<CreatedAtRoute<ReceivedMailResponse>, ValidationProble
 /// </summary>
 static Dictionary<string, string[]> Validate(
     CreateReceivedMailRequest request,
-    out NormalizedCreateReceivedMailRequest normalizedRequest,
-    out DateTimeOffset receivedAt)
+    out NormalizedCreateReceivedMailRequest normalizedRequest)
 {
     Dictionary<string, string[]> errors = new(StringComparer.OrdinalIgnoreCase);
-    string messageId = request.MessageId?.Trim() ?? string.Empty;
-    string sender = request.Sender?.Trim() ?? string.Empty;
-    string subject = request.Subject?.Trim() ?? string.Empty;
-    string receivedAtText = request.ReceivedAt?.Trim() ?? string.Empty;
+    string key = request.Key?.Trim() ?? string.Empty;
+    string message = request.Message?.Trim() ?? string.Empty;
 
-    AddRequiredAndLengthErrors(errors, nameof(request.MessageId), messageId, MessageIdMaxLength);
-    AddRequiredAndLengthErrors(errors, nameof(request.Sender), sender, SenderMaxLength);
-    AddRequiredAndLengthErrors(errors, nameof(request.Subject), subject, SubjectMaxLength);
+    AddRequiredAndLengthErrors(errors, nameof(request.Key), key, ReceivedMail.KEY_MAX_LENGTH);
+    AddRequiredAndLengthErrors(errors, nameof(request.Message), message, ReceivedMail.MESSAGE_MAX_LENGTH);
 
-    if (!errors.ContainsKey(nameof(request.Sender)) && !IsPlausibleEmailAddress(sender))
-    {
-        errors[nameof(request.Sender)] = ["The sender field must be an email-like address."];
-    }
-
-    if (string.IsNullOrWhiteSpace(receivedAtText))
-    {
-        errors[nameof(request.ReceivedAt)] = ["The receivedAt field is required."];
-        receivedAt = default;
-    }
-    else if (!DateTimeOffset.TryParse(receivedAtText, out receivedAt))
-    {
-        errors[nameof(request.ReceivedAt)] = ["The receivedAt field must be a valid date and time."];
-    }
-
-    normalizedRequest = new NormalizedCreateReceivedMailRequest(
-        messageId,
-        sender,
-        subject,
-        string.IsNullOrEmpty(request.Body) ? null : request.Body);
+    normalizedRequest = new NormalizedCreateReceivedMailRequest(key, message);
 
     return errors;
 }
@@ -292,41 +265,37 @@ static void AddRequiredAndLengthErrors(
 }
 
 /// <summary>
-/// 指定された文字列がメールアドレスらしい形式かどうかを判定します。
+/// データベース更新例外がSQLiteの一意制約違反かどうかを判定します。
 /// </summary>
-static bool IsPlausibleEmailAddress(string value)
+static bool IsUniqueConstraintViolation(DbUpdateException exception)
 {
-    int atSignIndex = value.IndexOf('@');
-    return atSignIndex > 0 && atSignIndex < value.Length - 1;
+    return exception.InnerException is SqliteException { SqliteErrorCode: SQLITE_CONSTRAINT_ERROR_CODE };
 }
 
 /// <summary>
-/// データベース更新例外がSQLiteの一意制約違反かどうかを判定します。
+/// Key重複時に返すProblemDetailsを作成します。
 /// </summary>
-static bool IsUniqueConstraintViolation(DbUpdateException exception) =>
-    exception.InnerException is SqliteException { SqliteErrorCode: 19 };
-
-/// <summary>
-/// messageId重複時に返すProblemDetailsを作成します。
-/// </summary>
-static ProblemDetails CreateDuplicateProblemDetails(string messageId) => new()
+static ProblemDetails CreateDuplicateProblemDetails(string key)
 {
-    Title = "Received mail already exists.",
-    Detail = $"A received mail with messageId '{messageId}' already exists.",
-    Status = StatusCodes.Status409Conflict
-};
+    return new()
+    {
+        Title = "Received mail already exists.",
+        Detail = $"A received mail with key '{key}' already exists.",
+        Status = StatusCodes.Status409Conflict
+    };
+}
 
 /// <summary>
 /// 受信メールエンティティをAPIレスポンスに変換します。
 /// </summary>
-static ReceivedMailResponse ToResponse(ReceivedMail mail) => new(
-    mail.Id,
-    mail.MessageId,
-    mail.Sender,
-    mail.Subject,
-    mail.Body,
-    mail.ReceivedAt,
-    mail.CreatedAt);
+static ReceivedMailResponse ToResponse(ReceivedMail mail)
+{
+    return new(
+        mail.Id,
+        mail.Key,
+        mail.Message,
+        mail.CreatedAt);
+}
 
 /// <summary>
 /// アプリケーション起動時にMailReceiverデータベースを初期化します。
@@ -342,7 +311,7 @@ static async Task InitializeDatabaseAsync(WebApplication app)
     EnsureSqliteDirectoryExists(connectionString, logger);
 
     MailReceiverDbContext dbContext = scope.ServiceProvider.GetRequiredService<MailReceiverDbContext>();
-    await dbContext.Database.EnsureCreatedAsync();
+    _ = await dbContext.Database.EnsureCreatedAsync();
     logger.LogInformation("MailReceiver database was initialized.");
 }
 
@@ -363,6 +332,6 @@ static void EnsureSqliteDirectoryExists(string connectionString, ILogger logger)
         return;
     }
 
-    Directory.CreateDirectory(directory);
+    _ = Directory.CreateDirectory(directory);
     logger.LogInformation("SQLite database directory was created. Directory: {Directory}", directory);
 }

@@ -3,7 +3,10 @@ using TestMailSender.Infrastructure;
 using TestMailSender.Mail;
 using TestMailSender.Services;
 
-int exitCode = 0;
+const int SUCCESS_EXIT_CODE = 0;
+const int FATAL_ERROR_EXIT_CODE = 1;
+
+int exitCode = SUCCESS_EXIT_CODE;
 
 try
 {
@@ -23,7 +26,7 @@ try
 }
 catch (Exception ex)
 {
-    exitCode = 1;
+    exitCode = FATAL_ERROR_EXIT_CODE;
     Console.Error.WriteLine($"Test mail send failed: {ex.Message}");
 }
 

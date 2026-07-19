@@ -2,17 +2,26 @@ namespace MailReceiver.Api.Models;
 
 public sealed class ReceivedMail
 {
-    public long Id { get; set; }
+    public const int KEY_MAX_LENGTH = 255;
+    public const int MESSAGE_MAX_LENGTH = 500;
 
-    public required string MessageId { get; set; }
+    public long Id
+    {
+        get; set;
+    }
 
-    public required string Sender { get; set; }
+    public required string Key
+    {
+        get; set;
+    }
 
-    public required string Subject { get; set; }
+    public required string Message
+    {
+        get; set;
+    }
 
-    public string? Body { get; set; }
-
-    public DateTimeOffset ReceivedAt { get; set; }
-
-    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset CreatedAt
+    {
+        get; set;
+    }
 }

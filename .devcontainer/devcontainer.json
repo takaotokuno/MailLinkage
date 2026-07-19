@@ -1,6 +1,9 @@
 {
   "name": "MailLinkage (.NET 8)",
   "workspaceFolder": "/workspaces/MailLinkage",
+  "containerEnv": {
+    "DOTNET_ENVIRONMENT": "Development"
+  },
   "features": {
     "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
   },

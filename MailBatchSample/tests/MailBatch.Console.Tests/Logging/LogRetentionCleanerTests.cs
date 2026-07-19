@@ -1,0 +1,75 @@
+using MailBatch.Console.Logging;
+using MailBatch.Console.Options;
+using Xunit;
+
+namespace MailBatch.Console.Tests.Logging;
+
+public sealed class LogRetentionCleanerTests : IDisposable
+{
+    private readonly string _logDirectory = Path.Combine(Path.GetTempPath(), $"MailBatchLogs-{Guid.NewGuid():N}");
+
+    [Fact]
+    public void TryDeleteExpiredLogs_DeletesOnlyLogFilesOlderThanRetentionDays()
+    {
+        _ = Directory.CreateDirectory(_logDirectory);
+        DateTimeOffset now = new(2026, 7, 16, 10, 0, 0, TimeSpan.Zero);
+        FakeTimeProvider timeProvider = new(now);
+        string expiredLog = CreateFile("expired.log", now.AddDays(-31));
+        string retainedLog = CreateFile("retained.log", now.AddDays(-30));
+        string expiredText = CreateFile("expired.txt", now.AddDays(-31));
+        BatchOptions options = new()
+        {
+            LogDirectory = _logDirectory,
+            LogRetentionDays = 30
+        };
+        LogRetentionCleaner cleaner = new(options, timeProvider);
+
+        Assert.True(cleaner.TryDeleteExpiredLogs());
+
+        Assert.False(File.Exists(expiredLog));
+        Assert.True(File.Exists(retainedLog));
+        Assert.True(File.Exists(expiredText));
+    }
+
+    [Fact]
+    public void TryDeleteExpiredLogs_WithMissingLogDirectory_ReturnsTrue()
+    {
+        BatchOptions options = new()
+        {
+            LogDirectory = _logDirectory,
+            LogRetentionDays = 30
+        };
+        LogRetentionCleaner cleaner = new(options, new FakeTimeProvider(DateTimeOffset.UtcNow));
+
+        Assert.True(cleaner.TryDeleteExpiredLogs());
+    }
+
+    public void Dispose()
+    {
+        if (Directory.Exists(_logDirectory))
+        {
+            Directory.Delete(_logDirectory, recursive: true);
+        }
+    }
+
+    private string CreateFile(string fileName, DateTimeOffset lastWriteTime)
+    {
+        string path = Path.Combine(_logDirectory, fileName);
+        File.WriteAllText(path, fileName);
+        File.SetLastWriteTimeUtc(path, lastWriteTime.UtcDateTime);
+        return path;
+    }
+
+    private sealed class FakeTimeProvider(DateTimeOffset now) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => now.ToUniversalTime();
+
+        public override TimeZoneInfo LocalTimeZone
+        {
+            get
+            {
+                return TimeZoneInfo.Utc;
+            }
+        }
+    }
+}

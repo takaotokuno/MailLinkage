@@ -1,0 +1,124 @@
+using System.Globalization;
+using MailBatch.Console.Options;
+using Microsoft.Data.Sqlite;
+using Serilog;
+
+namespace MailBatch.Console.ReceivedMails.State;
+
+/// <summary>
+/// 保持期間を過ぎたメール処理レコードを削除し、データベースの空き領域を回収します。
+/// 再送防止に使用するメール移動失敗レコードは削除対象に含めません。
+/// </summary>
+internal sealed class SqliteRetentionCleaner(
+    BatchOptions batchOptions,
+    TimeProvider? timeProvider = null)
+{
+    private const string DATABASE_FILE_NAME = "mail-processing.db";
+    private readonly TimeProvider _timeProvider = timeProvider ?? TimeProvider.System;
+
+    /// <summary>
+    /// 古いレコードの物理削除を試み、削除があった場合はVACUUMでファイルを縮小します。
+    /// </summary>
+    /// <returns>削除処理が正常に完了した場合は <see langword="true"/>、失敗した場合は <see langword="false"/>。</returns>
+    public bool TryDeleteExpiredRecords()
+    {
+        try
+        {
+            DeleteExpiredRecords();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Failed to delete expired mail processing records.");
+            return false;
+        }
+    }
+
+    private void DeleteExpiredRecords()
+    {
+        string databasePath = Path.Combine(batchOptions.LogDirectory, DATABASE_FILE_NAME);
+        if (!File.Exists(databasePath))
+        {
+            return;
+        }
+
+        string expirationThreshold = _timeProvider.GetUtcNow()
+            .AddDays(-batchOptions.LogRetentionDays)
+            .ToString("O", CultureInfo.InvariantCulture);
+
+        using SqliteConnection connection = new($"Data Source={databasePath}");
+        connection.Open();
+
+        int deletedRecordCount = 0;
+        using (SqliteTransaction transaction = connection.BeginTransaction())
+        {
+            deletedRecordCount += DeleteExpiredRecordsFromExistingTable(
+                connection,
+                transaction,
+                "processed_mails",
+                "processed_at_utc",
+                expirationThreshold);
+            deletedRecordCount += DeleteExpiredRecordsFromExistingTable(
+                connection,
+                transaction,
+                "batch_runs",
+                "ended_at_utc",
+                expirationThreshold);
+            deletedRecordCount += DeleteExpiredRecordsFromExistingTable(
+                connection,
+                transaction,
+                "api_execution_results",
+                "completed_at_utc",
+                expirationThreshold);
+            transaction.Commit();
+        }
+
+        if (deletedRecordCount > 0)
+        {
+            using SqliteCommand vacuumCommand = connection.CreateCommand();
+            vacuumCommand.CommandText = "VACUUM;";
+            _ = vacuumCommand.ExecuteNonQuery();
+        }
+    }
+
+    private static int DeleteExpiredRecordsFromExistingTable(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        string tableName,
+        string timestampColumnName,
+        string expirationThreshold)
+    {
+        using SqliteCommand tableExistsCommand = connection.CreateCommand();
+        tableExistsCommand.Transaction = transaction;
+        tableExistsCommand.CommandText = "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = $tableName);";
+        _ = tableExistsCommand.Parameters.AddWithValue("$tableName", tableName);
+        if (Convert.ToInt64(tableExistsCommand.ExecuteScalar(), CultureInfo.InvariantCulture) != 1)
+        {
+            return 0;
+        }
+
+        if (!ColumnExists(connection, transaction, tableName, timestampColumnName))
+        {
+            return 0;
+        }
+
+        using SqliteCommand deleteCommand = connection.CreateCommand();
+        deleteCommand.Transaction = transaction;
+        deleteCommand.CommandText = $"DELETE FROM {tableName} WHERE {timestampColumnName} < $expirationThreshold;";
+        _ = deleteCommand.Parameters.AddWithValue("$expirationThreshold", expirationThreshold);
+        return deleteCommand.ExecuteNonQuery();
+    }
+
+    private static bool ColumnExists(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        string tableName,
+        string columnName)
+    {
+        using SqliteCommand command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = $"SELECT EXISTS(SELECT 1 FROM pragma_table_info('{tableName}') WHERE name = $columnName);";
+        _ = command.Parameters.AddWithValue("$columnName", columnName);
+        return Convert.ToInt64(command.ExecuteScalar(), CultureInfo.InvariantCulture) == 1;
+    }
+}

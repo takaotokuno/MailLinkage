@@ -1,68 +1,51 @@
 using MailBatch.Console.BatchProcessing;
+using MailBatch.Console.BatchProcessing.Result;
 using MailBatch.Console.Configuration;
-using MailBatch.Console.Infrastructure;
-using MailBatch.Console.NotificationMails;
+using MailBatch.Console.DependencyInjection;
+using MailBatch.Console.Logging;
 using MailBatch.Console.Options;
-using MailBatch.Console.Models;
-using Polly;
-using Polly.Extensions.Http;
+using MailBatch.Console.ReceivedMails.State;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Serilog;
 
-int exitCode = 0;
+int exitCode = BatchExitCodes.SUCCESS;
 string runId = Guid.NewGuid().ToString();
 using CancellationTokenSource cancellationTokenSource = new();
 
+// 設定の読み込みや検証に失敗した場合も、少なくとも標準エラーへ原因を出力する。
+Log.Logger = SerilogLoggerFactory.CreateBootstrap(runId);
+
+// Ctrl + C を入力した場合の挙動を設定する
+// DB接続等、外部接続が開いたままプログラムが終了することを防ぐため
 Console.CancelKeyPress += (_, eventArgs) =>
 {
-    eventArgs.Cancel = true;
-    cancellationTokenSource.Cancel();
+    eventArgs.Cancel = true; // デフォルトの処理（プログラムを即終了）をキャンセル
+    cancellationTokenSource.Cancel(); // キャンセル要求を発行
 };
 
 try
 {
-    AppConfiguration.LoadedConfiguration loadedConfiguration = AppConfiguration.Load(args);
+    LoadedConfiguration loadedConfiguration = AppConfiguration.Load(args);
     AppOptions options = loadedConfiguration.Options;
+    BatchOptions batchOptions = options.Batch;
 
-    Log.Logger = new LoggerConfiguration()
-        .ReadFrom.Configuration(loadedConfiguration.Configuration)
-        .Enrich.WithProperty("RunId", runId)
-        .CreateLogger();
+    await Log.CloseAndFlushAsync();
+    Log.Logger = SerilogLoggerFactory.Create(loadedConfiguration, runId);
 
     await using ServiceProvider serviceProvider = new ServiceCollection()
-        .AddSingleton(options)
-        .AddSingleton(new BatchRunContext(runId))
-        .AddLogging(builder =>
-        {
-            builder.ClearProviders();
-            builder.AddSerilog(Log.Logger, dispose: false);
-        })
-        .AddTransient<IMailNotifier, SmtpMailNotifier>()
-        .AddTransient<MailNotificationFactory>()
-        .AddScoped<IReceivedMailFolderService, ReceivedMailFolderService>()
-        .AddTransient<IMailSearchService, MailSearchService>()
-        .AddTransient<IReceivedMailQueueFactory, ReceivedMailQueueFactory>()
-        .AddTransient<IReceivedMailPipelineComponentFactory, ReceivedMailPipelineComponentFactory>()
-        .AddTransient<IReceivedMailPipeline, ReceivedMailPipeline>()
-        .AddTransient<IExitCodePolicy, ExitCodePolicy>()
-        .AddTransient<IRunStatusNotifier, RunStatusNotifier>()
-        .AddHttpClient<IApiClient, ReceivedMailApiClient>(client =>
-        {
-            client.BaseAddress = options.Api.BaseUrl;
-            client.Timeout = TimeSpan.FromSeconds(options.Api.TimeoutSeconds);
-        })
-        .AddPolicyHandler(CreateApiRetryPolicy(options.Api))
-        .Services
-        .AddTransient<BatchRunner>()
+        .AddBatchApplication(options, runId, Log.Logger)
         .BuildServiceProvider();
 
     BatchRunner runner = serviceProvider.GetRequiredService<BatchRunner>();
     exitCode = await runner.RunAsync(cancellationTokenSource.Token);
+
+    // 正常にバッチ処理を完了した場合のみ、保持期間を過ぎたデータを削除する。
+    _ = new LogRetentionCleaner(batchOptions).TryDeleteExpiredLogs();
+    _ = new SqliteRetentionCleaner(batchOptions).TryDeleteExpiredRecords();
 }
 catch (OperationCanceledException) when (cancellationTokenSource.IsCancellationRequested)
 {
-    exitCode = 130;
+    exitCode = BatchExitCodes.CANCELED;
 
     Log.Warning(
         "Mail batch canceled. RunId={RunId}",
@@ -70,7 +53,7 @@ catch (OperationCanceledException) when (cancellationTokenSource.IsCancellationR
 }
 catch (Exception ex)
 {
-    exitCode = 1;
+    exitCode = BatchExitCodes.FATAL_ERROR;
 
     Log.Fatal(
         ex,
@@ -79,17 +62,8 @@ catch (Exception ex)
 }
 finally
 {
+    // メモリ上に残っているログを書き出してロガーを終了する
     await Log.CloseAndFlushAsync();
 }
 
 return exitCode;
-
-
-static IAsyncPolicy<HttpResponseMessage> CreateApiRetryPolicy(ApiOptions apiOptions)
-{
-    return HttpPolicyExtensions
-        .HandleTransientHttpError()
-        .WaitAndRetryAsync(
-            apiOptions.RetryCount,
-            retryAttempt => TimeSpan.FromSeconds(apiOptions.RetryDelaySeconds * Math.Pow(2, retryAttempt - 1)));
-}

@@ -1,72 +1,124 @@
-using MailBatch.Console.ReceivedMails;
+using MailBatch.Console.BatchProcessing;
+using MailBatch.Console.BatchProcessing.Result;
 using MailBatch.Console.Options;
-using MailBatch.Console.Models;
+using MailBatch.Console.ReceivedMails;
 
 namespace MailBatch.Console.NotificationMails;
 
-internal sealed class MailNotificationFactory(AppOptions options, BatchRunContext runContext)
+/// <summary>
+/// 通知メールの件名・本文をテンプレートから組み立てます。
+/// </summary>
+internal sealed class MailNotificationFactory(MailNotificationOptions notificationOptions, BatchRunContext runContext)
 {
+    private const int MAX_PREVIEW_LENGTH = 200;
+
     /// <summary>
     /// バッチ実行結果の通知テンプレートから管理者宛て通知を作成します。
     /// </summary>
-    public MailNotification CreateRunStatusNotification(ProcessResult result, int exitCode)
+    public MailNotification CreateRunStatusNotification(BatchRunResult result, int exitCode)
     {
-        MailNotificationTemplateOptions template = options.Notification.GetTemplate(MailNotificationOptions.RunStatusTemplateName);
+        MailNotificationTemplateOptions template
+            = notificationOptions.GetTemplate(MailNotificationOptions.RUN_STATUS_TEMPLATE_NAME);
 
         return new MailNotification(
-            options.Notification.AdminAddress,
+            notificationOptions.AdminAddress,
             ApplyRunStatusTemplate(template.Subject, result, exitCode),
             ApplyRunStatusTemplate(template.Body, result, exitCode));
     }
 
     /// <summary>
-    /// バリデーションエラー通知テンプレートからメール送信元宛て通知を作成します。
+    /// バリデーションエラー通知テンプレートから元メールの宛先向け通知を作成します。
     /// </summary>
     public MailNotification CreateValidationErrorNotification(
-        ReceivedMailRequest request,
+        ReceivedMail mail,
         IReadOnlyList<string> validationErrors)
     {
-        MailNotificationTemplateOptions template = options.Notification.GetTemplate(MailNotificationOptions.ValidationErrorTemplateName);
-        string validationErrorsText = string.Join(Environment.NewLine, validationErrors.Select(error => $"- {error}"));
+        MailNotificationTemplateOptions template
+            = notificationOptions.GetTemplate(MailNotificationOptions.VALIDATION_ERROR_TEMPLATE_NAME);
+
+        string validationErrorsText = string.Join(
+            Environment.NewLine,
+            validationErrors.Select(error =>
+            {
+                return $"- {error}";
+            }));
 
         return new MailNotification(
-            request.Sender,
-            ApplyValidationErrorTemplate(template.Subject, request, validationErrorsText),
-            ApplyValidationErrorTemplate(template.Body, request, validationErrorsText));
+            mail.To,
+            ApplyValidationErrorTemplate(template.Subject, mail, validationErrorsText),
+            ApplyValidationErrorTemplate(template.Body, mail, validationErrorsText));
     }
 
-    private string ApplyRunStatusTemplate(string template, ProcessResult result, int exitCode)
+    /// <summary>
+    /// メトリクスチェックで検知した管理者向けアラートを作成します。
+    /// </summary>
+    public MailNotification CreateMetricAlert(string alertTitle, string alertMessage)
+    {
+        MailNotificationTemplateOptions template = notificationOptions.GetTemplate(
+            MailNotificationOptions.METRIC_ALERT_TEMPLATE_NAME);
+
+        return new MailNotification(
+            notificationOptions.AdminAddress,
+            ApplyMetricAlertTemplate(template.Subject, alertTitle, alertMessage),
+            ApplyMetricAlertTemplate(template.Body, alertTitle, alertMessage));
+    }
+
+    /// <summary>
+    /// 実行結果通知テンプレートへバッチ結果を差し込みます。
+    /// </summary>
+    private string ApplyRunStatusTemplate(string template, BatchRunResult result, int exitCode)
     {
         string status = ToRunStatus(exitCode);
+        ProcessResult processResult = result.ProcessResult;
+        FatalBatchError? fatalError = result.FatalError;
 
         return template
             .Replace("{RunId}", runContext.RunId, StringComparison.Ordinal)
+            .Replace("{StartedAt}", result.StartedAt.ToString("O"), StringComparison.Ordinal)
+            .Replace("{EndedAt}", result.EndedAt.ToString("O"), StringComparison.Ordinal)
             .Replace("{Status}", status, StringComparison.Ordinal)
             .Replace("{ExitCode}", exitCode.ToString(), StringComparison.Ordinal)
-            .Replace("{Total}", result.Total.ToString(), StringComparison.Ordinal)
-            .Replace("{Succeeded}", result.Succeeded.ToString(), StringComparison.Ordinal)
-            .Replace("{Failed}", result.Failed.ToString(), StringComparison.Ordinal);
+            .Replace("{Total}", processResult.Total.ToString(), StringComparison.Ordinal)
+            .Replace("{Succeeded}", processResult.Succeeded.ToString(), StringComparison.Ordinal)
+            .Replace("{Failed}", processResult.Failed.ToString(), StringComparison.Ordinal)
+            .Replace("{InvalidFormat}", processResult.InvalidFormat.ToString(), StringComparison.Ordinal)
+            .Replace("{ApiFailed}", processResult.ApiFailed.ToString(), StringComparison.Ordinal)
+            .Replace("{FatalErrorCode}", fatalError?.Code ?? string.Empty, StringComparison.Ordinal)
+            .Replace("{FatalErrorMessage}", fatalError?.Message ?? string.Empty, StringComparison.Ordinal)
+            .Replace("{FatalErrorStage}", fatalError?.Stage ?? string.Empty, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// 入力エラー通知テンプレートへ検証結果を差し込みます。
+    /// </summary>
     private static string ApplyValidationErrorTemplate(
         string template,
-        ReceivedMailRequest request,
+        ReceivedMail mail,
         string validationErrors)
     {
         return template
-            .Replace("{MessageId}", request.MessageId, StringComparison.Ordinal)
-            .Replace("{Subject}", CreatePreview(request.Subject), StringComparison.Ordinal)
+            .Replace("{MailId}", mail.MailId.ToString(), StringComparison.Ordinal)
+            .Replace("{Subject}", CreatePreview(mail.Subject), StringComparison.Ordinal)
             .Replace("{ValidationErrors}", validationErrors, StringComparison.Ordinal);
     }
 
-    private static string CreatePreview(string value)
+    private static string ApplyMetricAlertTemplate(
+        string template,
+        string alertTitle,
+        string alertMessage)
     {
-        const int maxPreviewLength = 200;
-        return value.Length <= maxPreviewLength ? value : $"{value[..maxPreviewLength]}...";
+        return template
+            .Replace("{AlertTitle}", alertTitle, StringComparison.Ordinal)
+            .Replace("{AlertMessage}", alertMessage, StringComparison.Ordinal);
     }
 
-    private static string ToRunStatus(int exitCode)
-    {
-        return exitCode == 0 ? "succeeded" : "failed";
-    }
+    /// <summary>
+    /// 通知に含める本文プレビューを作成します。
+    /// </summary>
+    private static string CreatePreview(string value) => value.Length <= MAX_PREVIEW_LENGTH ? value : $"{value[..MAX_PREVIEW_LENGTH]}...";
+
+    /// <summary>
+    /// 終了コードを通知用の実行ステータス文字列へ変換します。
+    /// </summary>
+    private static string ToRunStatus(int exitCode) => exitCode == BatchExitCodes.SUCCESS ? "succeeded" : "failed";
 }

@@ -1,0 +1,72 @@
+using MailBatch.Console.BatchProcessing.History;
+using MailBatch.Console.BatchProcessing.Result;
+
+namespace MailBatch.Console.NotificationMails;
+
+/// <summary>蓄積したバッチ実行履歴に基づくメトリクスを監視します。</summary>
+internal interface IHistoricalMetricAlertMonitor
+{
+    /// <summary>直近の実行履歴を評価し、閾値超過時に通知を試みます。</summary>
+    Task<bool> TryCheckAsync(CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// 蓄積したバッチ実行履歴を対象にアラートを評価します。
+/// </summary>
+internal sealed class HistoricalMetricAlertMonitor(
+    IBatchRunHistoryStore historyStore,
+    IMetricAlertNotifier alertNotifier) : IHistoricalMetricAlertMonitor
+{
+    internal const int RUN_COUNT = 10;
+    internal static readonly TimeSpan DurationThreshold = TimeSpan.FromHours(1);
+
+    /// <inheritdoc />
+    public async Task<bool> TryCheckAsync(CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<BatchRunHistory> history = await historyStore.GetRecentAsync(RUN_COUNT, cancellationToken);
+        if (history.Count < RUN_COUNT)
+        {
+            return true;
+        }
+
+        bool failureRateNotificationSucceeded = await TryCheckFailureRateAsync(history, cancellationToken);
+        bool durationNotificationSucceeded = await TryCheckDurationAsync(history, cancellationToken);
+        return failureRateNotificationSucceeded && durationNotificationSucceeded;
+    }
+
+    private async Task<bool> TryCheckFailureRateAsync(
+        IReadOnlyList<BatchRunHistory> history,
+        CancellationToken cancellationToken)
+    {
+        int failedCount = history.Count(run =>
+        {
+            return run.ExitCode != BatchExitCodes.SUCCESS;
+        });
+        if (failedCount * 2 <= RUN_COUNT)
+        {
+            return true;
+        }
+
+        string message = $"More than 50% of the last {RUN_COUNT} batch runs failed."
+            + $"{Environment.NewLine}Failed: {failedCount}/{RUN_COUNT}";
+        return await alertNotifier.TryNotifyAsync("Batch failure rate degradation", message, cancellationToken);
+    }
+
+    private async Task<bool> TryCheckDurationAsync(
+        IReadOnlyList<BatchRunHistory> history,
+        CancellationToken cancellationToken)
+    {
+        int exceededCount = history.Count(run =>
+        {
+            return run.Duration > DurationThreshold;
+        });
+        if (exceededCount * 2 <= RUN_COUNT)
+        {
+            return true;
+        }
+
+        string message = $"More than 50% of the last {RUN_COUNT} batch runs took longer than one hour."
+            + $"{Environment.NewLine}Exceeded: {exceededCount}/{RUN_COUNT}";
+        return await alertNotifier.TryNotifyAsync("Batch processing duration degradation", message, cancellationToken);
+    }
+}
