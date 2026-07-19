@@ -16,15 +16,27 @@ public sealed class ReceivedMailsApiTests : IAsyncLifetime
     public Task InitializeAsync()
     {
         _factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
-            builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(
-                new Dictionary<string, string?> { ["ConnectionStrings:MailReceiver"] = $"Data Source={_databasePath}" })));
+        {
+            builder.ConfigureAppConfiguration((_, configuration) =>
+            {
+                configuration.AddInMemoryCollection(
+                                new Dictionary<string, string?> { ["ConnectionStrings:MailReceiver"] = $"Data Source={_databasePath}" });
+            });
+        });
         return Task.CompletedTask;
     }
 
     public async Task DisposeAsync()
     {
-        if (_factory is not null) await _factory.DisposeAsync();
-        if (File.Exists(_databasePath)) File.Delete(_databasePath);
+        if (_factory is not null)
+        {
+            await _factory.DisposeAsync();
+        }
+
+        if (File.Exists(_databasePath))
+        {
+            File.Delete(_databasePath);
+        }
     }
 
     [Fact]
