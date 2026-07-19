@@ -181,6 +181,124 @@ GET API で確認する場合は次のように確認する。
 curl http://mailreceiver-api:8080/api/received-mails
 ```
 
+## 障害調査用の SQLite データ取り出し
+
+障害調査では稼働中の DB ファイルを直接コピーせず、SQLite の `.backup` コマンドで整合性のある
+スナップショットを作成してから参照する。調査コマンドはリポジトリルートで実行する。
+既定構成で対象となる DB は次の 2 つである。
+
+| DB | ホスト上のパス | 主な内容 |
+| --- | --- | --- |
+| API DB | `MailBatchSample/data/mailreceiver.db` | API が受信したメール (`received_mails`) |
+| バッチ DB | `MailBatchSample/logs/mail-processing.db` | 実行履歴、API 実行結果、処理済みメール、メール移動失敗 |
+
+設定を上書きしている場合、API DB は `ConnectionStrings__MailReceiver`、バッチ DB は
+`Batch:LogDirectory`（環境変数では `MAILBATCH_Batch__LogDirectory`）から実際の保存先を確認する。
+Docker Compose の既定構成では API コンテナの `/app/data` がホストの `MailBatchSample/data` に
+バインドマウントされるため、ホスト側のパスから取り出せる。
+
+### 1. 調査用スナップショットを作成する
+
+`sqlite3` が利用できる端末で、調査 ID やチケット番号を `INCIDENT_ID` に設定して実行する。
+`.backup` は SQLite のオンラインバックアップ機能を使うため、API やバッチを停止せずに
+コミット済みデータの整合性を保ったコピーを作成できる。
+
+```bash
+INCIDENT_ID=INC-YYYYMMDD-001
+EVIDENCE_DIR="incident-evidence/${INCIDENT_ID}"
+mkdir -p "${EVIDENCE_DIR}"
+
+sqlite3 MailBatchSample/data/mailreceiver.db \
+  ".backup '${EVIDENCE_DIR}/mailreceiver.db'"
+sqlite3 MailBatchSample/logs/mail-processing.db \
+  ".backup '${EVIDENCE_DIR}/mail-processing.db'"
+
+sha256sum "${EVIDENCE_DIR}/mailreceiver.db" \
+  "${EVIDENCE_DIR}/mail-processing.db" > "${EVIDENCE_DIR}/SHA256SUMS"
+printf 'collected_at_utc=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  > "${EVIDENCE_DIR}/collection-info.txt"
+```
+
+DB が存在しない場合は `sqlite3` が空の DB を新規作成してしまうため、先に
+`test -f <DB のパス>` で対象ファイルの存在を確認する。書き込み元を安全に停止できる場合は、
+停止後に DB 本体と同じディレクトリにある `-wal`、`-shm` ファイルを含めてコピーしてもよいが、
+通常は `.backup` を優先する。作成した `incident-evidence/` は調査用成果物であり、Git へ
+コミットしない。
+
+### 2. スナップショットの整合性と構造を確認する
+
+```bash
+sha256sum -c "${EVIDENCE_DIR}/SHA256SUMS"
+sqlite3 "${EVIDENCE_DIR}/mailreceiver.db" "PRAGMA integrity_check;"
+sqlite3 "${EVIDENCE_DIR}/mail-processing.db" "PRAGMA integrity_check;"
+sqlite3 "${EVIDENCE_DIR}/mailreceiver.db" ".tables"
+sqlite3 "${EVIDENCE_DIR}/mail-processing.db" ".tables"
+```
+
+`PRAGMA integrity_check;` の結果が `ok` であることを確認する。`ok` 以外の場合は元 DB を
+更新・修復せず、スナップショットと SQLite のエラー出力をそのまま保全する。
+
+### 3. 調査対象を検索する
+
+まず `batch_runs` で発生時間帯と実行 ID (`run_id`) を絞り、同じ `run_id` で
+`api_execution_results` を検索する。時刻は UTC の ISO 8601 形式で保存されている。
+次の例の日時と実行 ID は実際の障害に合わせて置き換える。
+
+```bash
+sqlite3 -header -column "${EVIDENCE_DIR}/mail-processing.db" \
+  "SELECT * FROM batch_runs
+   WHERE started_at_utc >= '2026-07-19T00:00:00Z'
+     AND started_at_utc <  '2026-07-20T00:00:00Z'
+   ORDER BY started_at_utc;"
+
+sqlite3 -header -column "${EVIDENCE_DIR}/mail-processing.db" \
+  "SELECT execution_id, run_id, uid, uid_validity, outcome, status_code,
+          saved_id, response_summary, error_type, started_at_utc,
+          completed_at_utc, duration_ms
+   FROM api_execution_results
+   WHERE run_id = '<調査対象の run_id>'
+   ORDER BY started_at_utc;"
+
+sqlite3 -header -column "${EVIDENCE_DIR}/mail-processing.db" \
+  "SELECT uid, uid_validity, processed_at_utc
+   FROM processed_mails ORDER BY processed_at_utc;"
+sqlite3 -header -column "${EVIDENCE_DIR}/mail-processing.db" \
+  "SELECT uid, uid_validity, destination, created_at_utc, last_failed_at_utc
+   FROM mail_move_failures ORDER BY last_failed_at_utc;"
+
+sqlite3 -header -column "${EVIDENCE_DIR}/mailreceiver.db" \
+  "SELECT id, message_id, sender, subject, received_at, created_at
+   FROM received_mails
+   WHERE created_at >= '2026-07-19T00:00:00Z'
+     AND created_at <  '2026-07-20T00:00:00Z'
+   ORDER BY created_at;"
+```
+
+`api_execution_results.saved_id` と `received_mails.id`、またはメールの Message-Id とログを
+突き合わせると、バッチ実行から API 保存までを追跡できる。メール本文が必要な場合だけ、対象 ID を
+限定して `SELECT id, body FROM received_mails WHERE id = <ID>;` を実行する。
+
+### 4. 共有用 CSV を出力する
+
+調査結果だけを共有する場合は、スナップショットから必要な列と期間に限定して CSV を作成する。
+
+```bash
+sqlite3 -header -csv "${EVIDENCE_DIR}/mail-processing.db" \
+  "SELECT * FROM batch_runs ORDER BY started_at_utc;" \
+  > "${EVIDENCE_DIR}/batch-runs.csv"
+sqlite3 -header -csv "${EVIDENCE_DIR}/mail-processing.db" \
+  "SELECT * FROM api_execution_results ORDER BY started_at_utc;" \
+  > "${EVIDENCE_DIR}/api-execution-results.csv"
+sqlite3 -header -csv "${EVIDENCE_DIR}/mailreceiver.db" \
+  "SELECT id, message_id, sender, subject, received_at, created_at
+   FROM received_mails ORDER BY created_at;" \
+  > "${EVIDENCE_DIR}/received-mails.csv"
+```
+
+`received_mails.body`、`sender`、`subject` および `api_execution_results.response_summary` には
+個人情報・機微情報が含まれる可能性がある。共有先の権限と保存期限を確認し、不要な列や行を除外、
+またはマスキングしてから受け渡す。DB スナップショット自体も同じ機密区分で取り扱う。
+
 ## 実装時の注意点
 
 - パスワード、接続文字列に含まれる秘匿値はログ出力しない。
