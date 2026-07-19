@@ -152,6 +152,10 @@ MailBatch.Console は処理済みメール台帳とメール移動失敗を `Bat
 移動失敗が滞留し始めた日時は `created_at_utc`、通常処理または復旧処理で最後に移動に失敗した日時は
 `last_failed_at_utc` で確認する。
 
+バッチ終了時にはログと同じ `Batch:LogRetentionDays` を保持期間として、`processed_mails` は
+`processed_at_utc`、`mail_move_failures` は `last_failed_at_utc` が保持期限より古いレコードを
+`DELETE` する。削除後は `VACUUM` を実行して未使用領域を回収し、DB ファイルの肥大化を防ぐ。
+
 ```bash
 sqlite3 MailBatchSample/logs/mail-processing.db \
   "select uid, uid_validity, processed_at_utc from processed_mails order by processed_at_utc;"
