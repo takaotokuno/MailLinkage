@@ -159,6 +159,17 @@ public sealed class RequestQueueConsumerTests
         {
             return entry.Contains($"MessageLength={SENSITIVE_MESSAGE.Length}", StringComparison.Ordinal);
         });
+        Assert.Contains(logger.EntriesWithLevels, entry =>
+        {
+            return entry.Level == LogLevel.Information
+                && entry.Message.Contains("API post succeeded", StringComparison.Ordinal);
+        });
+        Assert.DoesNotContain(logger.EntriesWithLevels, entry =>
+        {
+            return entry.Level == LogLevel.Information
+                && (entry.Message.Contains("Posting queued API request", StringComparison.Ordinal)
+                    || entry.Message.Contains("API execution result recorded", StringComparison.Ordinal));
+        });
     }
 
     private static ChannelReader<MailLinkageRequest> CreateCompletedReader(MailLinkageRequest request)
@@ -218,6 +229,8 @@ public sealed class RequestQueueConsumerTests
     {
         public List<string> Entries { get; } = [];
 
+        public List<(LogLevel Level, string Message)> EntriesWithLevels { get; } = [];
+
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
 
         public bool IsEnabled(LogLevel logLevel) => true;
@@ -227,7 +240,12 @@ public sealed class RequestQueueConsumerTests
             EventId eventId,
             TState state,
             Exception? exception,
-            Func<TState, Exception?, string> formatter) => Entries.Add(formatter(state, exception));
+            Func<TState, Exception?, string> formatter)
+        {
+            string message = formatter(state, exception);
+            Entries.Add(message);
+            EntriesWithLevels.Add((logLevel, message));
+        }
 
         private sealed class NullScope : IDisposable
         {

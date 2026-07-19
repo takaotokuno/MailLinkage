@@ -159,7 +159,7 @@ internal sealed class RequestQueueConsumer(
             startedAtUtc,
             resultCompletedAtUtc,
             stopwatch.ElapsedMilliseconds), cancellationToken);
-        logger.LogInformation(
+        logger.LogDebug(
             "API execution result recorded. ExecutionId={ExecutionId}, Outcome={Outcome}, DurationMs={DurationMs}",
             executionId,
             result.IsSuccess ? "Succeeded" : "Failed",
@@ -172,7 +172,7 @@ internal sealed class RequestQueueConsumer(
     /// </summary>
     private async Task<ApiPostResult> PostMessageAsync(ApiRequest request, string executionId, CancellationToken cancellationToken)
     {
-        logger.LogInformation(
+        logger.LogDebug(
             "Posting queued API request. ExecutionId={ExecutionId}, Endpoint={Endpoint}, MessageLength={MessageLength}",
             executionId,
             apiOptions.Endpoint,
