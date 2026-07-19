@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using MailReceiver.Api.Contracts;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Configuration;
 using Xunit;
 
@@ -107,6 +108,44 @@ public sealed class ReceivedMailsApiTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Contains(nameof(CreateReceivedMailRequest.Key), problem?.Errors.Keys ?? []);
         Assert.Contains(nameof(CreateReceivedMailRequest.Message), problem?.Errors.Keys ?? []);
+    }
+
+    [Fact]
+    public async Task Startup_DeletesExistingDatabaseAndCreatesCurrentSchema()
+    {
+        await CreateLegacyDatabaseAsync();
+
+        using HttpClient client = CreateClient();
+        List<ReceivedMailResponse>? mails = await client.GetFromJsonAsync<List<ReceivedMailResponse>>("/api/received-mails");
+        using HttpResponseMessage createdResponse = await client.PostAsJsonAsync(
+            "/api/received-mails",
+            new CreateReceivedMailRequest("new-key", "new-message"));
+
+        Assert.Empty(mails ?? []);
+        Assert.Equal(HttpStatusCode.Created, createdResponse.StatusCode);
+    }
+
+    private async Task CreateLegacyDatabaseAsync()
+    {
+        await using SqliteConnection connection = new($"Data Source={_databasePath}");
+        await connection.OpenAsync();
+        await using SqliteCommand command = connection.CreateCommand();
+        command.CommandText = """
+            CREATE TABLE received_mails (
+                id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                message_id TEXT NOT NULL,
+                sender TEXT NOT NULL,
+                subject TEXT NOT NULL,
+                body TEXT NULL,
+                received_at TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            );
+            CREATE UNIQUE INDEX ux_received_mails_message_id ON received_mails (message_id);
+            INSERT INTO received_mails (message_id, sender, subject, body, received_at, created_at)
+            VALUES ('legacy-message-id', 'sender@example.local', 'Legacy subject', 'Legacy body',
+                    '2026-07-19T00:00:00+00:00', '2026-07-19T00:00:00+00:00');
+            """;
+        _ = await command.ExecuteNonQueryAsync();
     }
 
     private HttpClient CreateClient() => (_factory ?? throw new InvalidOperationException("Test factory was not initialized.")).CreateClient();

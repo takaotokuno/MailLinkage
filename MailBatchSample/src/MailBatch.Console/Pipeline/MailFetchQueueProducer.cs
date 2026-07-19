@@ -103,7 +103,7 @@ internal sealed class MailFetchQueueProducer(
 
             result.IncrementSuccess();
 
-            logger.LogInformation(
+            logger.LogDebug(
                 "Queued API request. MailId={MailId}, QueueCount={QueueCount}, BodyLength={BodyLength}",
                 mail.MailId,
                 result.Succeeded,
@@ -148,7 +148,7 @@ internal sealed class MailFetchQueueProducer(
             await processedMailStore.RecordAsync(mailId, cancellationToken);
             await receivedMailMover.MoveToProcessedMailboxAsync(mailId, cancellationToken);
             await moveFailureStore.RemoveAsync(mailId, cancellationToken);
-            logger.LogInformation(
+            logger.LogDebug(
                 "Moved invalid format message to processed mailbox. MailId={MailId}",
                 mailId);
         }

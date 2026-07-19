@@ -60,7 +60,7 @@ internal sealed class MailKitMailMover(
         IMailFolder folder = mailFolderProvider.GetOpenedReceiveFolder();
         UniqueId? destinationUid = await folder.MoveToAsync(sourceUid, destinationFolder, cancellationToken);
 
-        logger.LogInformation(
+        logger.LogDebug(
             "Moved message. SourceMailbox={SourceMailbox}, DestinationMailbox={DestinationMailbox}, SourceMailId={SourceMailId}, SourceUidValidity={SourceUidValidity}, DestinationMailId={DestinationMailId}",
             folder.FullName,
             destinationMailbox,

@@ -23,7 +23,7 @@
 
 ## DB 初期化
 
-`MailReceiver.Api` は起動時に `ConnectionStrings:MailReceiver` の SQLite 接続文字列を読み込み、DB ファイルの親ディレクトリを作成したうえで Entity Framework Core の `EnsureCreated` により `received_mails` テーブルと `key` のユニークインデックスを作成する。
+`MailReceiver.Api` は起動時に `ConnectionStrings:MailReceiver` の SQLite 接続文字列を読み込み、DB ファイルの親ディレクトリを作成する。その後、既存の SQLite DB を `EnsureDeleted` で削除し、`EnsureCreated` により `received_mails` テーブルと `key` のユニークインデックスを新規作成する。この検証用 API では、API コンテナを起動するたびに以前の保存データが消去される。
 
 ローカル開発の既定値は `src/MailReceiver.Api/appsettings.json` の `Data Source=../../data/mailreceiver.db` である。Docker など実行ディレクトリが異なる環境では、環境変数 `ConnectionStrings__MailReceiver` で保存先を上書きする。
 
