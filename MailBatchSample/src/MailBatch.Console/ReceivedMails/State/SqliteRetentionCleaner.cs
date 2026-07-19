@@ -6,6 +6,7 @@ namespace MailBatch.Console.ReceivedMails.State;
 
 /// <summary>
 /// 保持期間を過ぎたメール処理レコードを削除し、データベースの空き領域を回収します。
+/// 再送防止に使用するメール移動失敗レコードは削除対象に含めません。
 /// </summary>
 internal sealed class SqliteRetentionCleaner(
     BatchOptions batchOptions,
@@ -40,12 +41,6 @@ internal sealed class SqliteRetentionCleaner(
                 transaction,
                 "processed_mails",
                 "processed_at_utc",
-                expirationThreshold);
-            deletedRecordCount += DeleteExpiredRecordsFromExistingTable(
-                connection,
-                transaction,
-                "mail_move_failures",
-                "last_failed_at_utc",
                 expirationThreshold);
             deletedRecordCount += DeleteExpiredRecordsFromExistingTable(
                 connection,
@@ -86,17 +81,9 @@ internal sealed class SqliteRetentionCleaner(
             return 0;
         }
 
-        // タイムスタンプ列追加前のDBでも、従来列を使って安全にクリーンアップする。
         if (!ColumnExists(connection, transaction, tableName, timestampColumnName))
         {
-            const string LEGACY_FAILURE_TIMESTAMP_COLUMN_NAME = "failed_at_utc";
-            if (tableName != "mail_move_failures"
-                || !ColumnExists(connection, transaction, tableName, LEGACY_FAILURE_TIMESTAMP_COLUMN_NAME))
-            {
-                return 0;
-            }
-
-            timestampColumnName = LEGACY_FAILURE_TIMESTAMP_COLUMN_NAME;
+            return 0;
         }
 
         using SqliteCommand deleteCommand = connection.CreateCommand();
