@@ -5,7 +5,6 @@ using MailBatch.Console.Options;
 using MailBatch.Console.Pipeline;
 using MailBatch.Console.ReceivedMails;
 using MailBatch.Console.ReceivedMails.Processing;
-using MailBatch.Console.ReceivedMails.Searching;
 using MailBatch.Console.ReceivedMails.State;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -20,7 +19,7 @@ public sealed class RequestQueueConsumerTests
     {
         MailLinkageRequest request = new(new ReceivedMailId(1, 999), "key", "message");
         ChannelReader<MailLinkageRequest> reader = CreateCompletedReader(request);
-        FakeReceivedMailSession session = new();
+        FakeReceivedMailMover session = new();
         FakeApiClient apiClient = new(new ApiPostResult(false, 500, "server error"));
         FakeMoveFailureStore moveFailureStore = new();
         RequestQueueConsumer consumer = new(
@@ -46,7 +45,7 @@ public sealed class RequestQueueConsumerTests
     {
         MailLinkageRequest request = new(new ReceivedMailId(2, 999), "key", "message");
         ChannelReader<MailLinkageRequest> reader = CreateCompletedReader(request);
-        FakeReceivedMailSession session = new();
+        FakeReceivedMailMover session = new();
         FakeApiClient apiClient = new(new ApiPostResult(true, 201, /*lang=json,strict*/ "{\"id\":1}"));
         FakeMoveFailureStore moveFailureStore = new();
         RequestQueueConsumer consumer = new(
@@ -73,7 +72,7 @@ public sealed class RequestQueueConsumerTests
     {
         MailLinkageRequest request = new(new ReceivedMailId(3, 999), "key", "message");
         ChannelReader<MailLinkageRequest> reader = CreateCompletedReader(request);
-        FakeReceivedMailSession session = new()
+        FakeReceivedMailMover session = new()
         {
             ThrowOnMoveToProcessed = true
         };
@@ -102,7 +101,7 @@ public sealed class RequestQueueConsumerTests
     {
         MailLinkageRequest request = new(new ReceivedMailId(5, 999), "key", "message");
         ChannelReader<MailLinkageRequest> reader = CreateCompletedReader(request);
-        FakeReceivedMailSession session = new()
+        FakeReceivedMailMover session = new()
         {
             ThrowOnMoveToError = true
         };
@@ -132,7 +131,7 @@ public sealed class RequestQueueConsumerTests
         const string SENSITIVE_MESSAGE = "Key: ABC123\nName: Taro Yamada\nPhone: 090-0000-0000";
         MailLinkageRequest request = new(new ReceivedMailId(4, 999), "key", SENSITIVE_MESSAGE);
         ChannelReader<MailLinkageRequest> reader = CreateCompletedReader(request);
-        FakeReceivedMailSession session = new();
+        FakeReceivedMailMover session = new();
         FakeApiClient apiClient = new(new ApiPostResult(true, 201, /*lang=json,strict*/ "{\"id\":1}"));
         FakeMoveFailureStore moveFailureStore = new();
         FakeLogger<MailLinkageRequest> logger = new();
@@ -175,7 +174,7 @@ public sealed class RequestQueueConsumerTests
         public Task<ApiPostResult> PostReceivedMailAsync(ApiRequest request, CancellationToken cancellationToken = default) => Task.FromResult(result);
     }
 
-    private sealed class FakeReceivedMailSession : IReceivedMailSession
+    private sealed class FakeReceivedMailMover : IReceivedMailMover
     {
         public List<ReceivedMailId> ProcessedMailIds { get; } = [];
 
@@ -191,13 +190,6 @@ public sealed class RequestQueueConsumerTests
             get; init;
         }
 
-        public Task ConnectAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
-
-        public Task DisconnectAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
-
-        public Task<IReadOnlyList<ReceivedMailId>> SearchTargetMessagesAsync(MailSearchCondition condition, int maxMessages, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<ReceivedMailId>>([]);
-
-        public Task<ReceivedMail> CreateRequestAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
         public Task MoveToProcessedMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
         {
@@ -220,8 +212,6 @@ public sealed class RequestQueueConsumerTests
             ErrorMailIds.Add(mailId);
             return Task.CompletedTask;
         }
-
-        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 
     private sealed class FakeLogger<T> : ILogger<T>

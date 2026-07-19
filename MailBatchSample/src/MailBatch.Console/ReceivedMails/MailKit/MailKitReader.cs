@@ -1,14 +1,13 @@
 using MailBatch.Console.ReceivedMails.Folders;
-using MailBatch.Console.ReceivedMails.MailKit;
 using MailKit;
 using MimeKit;
 
-namespace MailBatch.Console.ReceivedMails.Fetching;
+namespace MailBatch.Console.ReceivedMails.MailKit;
 
 /// <summary>
 /// IMAPフォルダーからメール本文を読み取り、業務連携用の受信メールモデルへ変換します。
 /// </summary>
-internal interface IReceivedMailReader
+internal interface IMailKitReader
 {
     /// <summary>
     /// 指定された受信メールIDのメール内容を読み取ります。
@@ -19,7 +18,7 @@ internal interface IReceivedMailReader
 /// <summary>
 /// 指定されたIMAPメールを読み取り、形式不正を業務エラーへ変換します。
 /// </summary>
-internal sealed class ReceivedMailReader(IMailFolderProvider mailFolderProvider) : IReceivedMailReader
+internal sealed class MailKitReader(IMailFolderProvider mailFolderProvider) : IMailKitReader
 {
     /// <summary>
     /// 指定された受信メールIDのメール内容を読み取ります。

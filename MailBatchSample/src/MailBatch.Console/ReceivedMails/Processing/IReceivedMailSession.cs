@@ -1,9 +1,7 @@
-using MailBatch.Console.ReceivedMails.Searching;
-
 namespace MailBatch.Console.ReceivedMails.Processing;
 
 /// <summary>
-/// 受信メールフォルダに対する操作を提供します。
+/// 受信メールセッションのライフサイクルとメール取得を提供します。
 /// </summary>
 internal interface IReceivedMailSession : IAsyncDisposable
 {
@@ -18,22 +16,7 @@ internal interface IReceivedMailSession : IAsyncDisposable
     Task DisconnectAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 検索条件に一致する処理対象メールの受信メールID一覧を取得します。
-    /// </summary>
-    Task<IReadOnlyList<ReceivedMailId>> SearchTargetMessagesAsync(MailSearchCondition condition, int maxMessages, CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// 指定された受信メールIDのメール本文と内部受信日時を取得し、受信メールリクエストを作成します。
     /// </summary>
     Task<ReceivedMail> CreateRequestAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 処理済みメールを設定されたメールボックスへ移動します。
-    /// </summary>
-    Task MoveToProcessedMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// API連携に失敗したメールを設定されたエラーメールボックスへ移動します。
-    /// </summary>
-    Task MoveToErrorMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default);
 }

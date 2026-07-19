@@ -1,5 +1,4 @@
 using MailBatch.Console.Options;
-using MailBatch.Console.ReceivedMails.Fetching;
 using MailBatch.Console.ReceivedMails.Folders;
 using MailBatch.Console.ReceivedMails.Imap;
 using MailBatch.Console.ReceivedMails.MailKit;
@@ -17,11 +16,12 @@ internal sealed class ReceivedMailSession(
     IImapConnection imapConnection,
     IMailFolderProvider mailFolderProvider,
     IMailKitSearcher mailKitSearcher,
-    IReceivedMailReader receivedMailReader,
-    IProcessedMailMover processedMailMover,
-    ILogger<ReceivedMailSession> logger) : IReceivedMailSession
+    IMailKitReader mailKitReader,
+    IMailKitMailMover mailKitMailMover,
+    ILogger<ReceivedMailSession> logger) : IReceivedMailSession, IReceivedMailSearcher, IReceivedMailMover
 {
     private readonly SemaphoreSlim _imapLock = new(1, 1);
+    private int _disposed;
 
     /// <summary>
     /// IMAPサーバーへ接続し、受信メールフォルダと処理済みフォルダを利用可能な状態にします。
@@ -94,7 +94,7 @@ internal sealed class ReceivedMailSession(
         await _imapLock.WaitAsync(cancellationToken);
         try
         {
-            return await receivedMailReader.ReadAsync(mailId, cancellationToken);
+            return await mailKitReader.ReadAsync(mailId, cancellationToken);
         }
         finally
         {
@@ -110,7 +110,7 @@ internal sealed class ReceivedMailSession(
         await _imapLock.WaitAsync(cancellationToken);
         try
         {
-            await processedMailMover.MoveToProcessedMailboxAsync(mailId, cancellationToken);
+            await mailKitMailMover.MoveToProcessedMailboxAsync(mailId, cancellationToken);
         }
         finally
         {
@@ -126,7 +126,7 @@ internal sealed class ReceivedMailSession(
         await _imapLock.WaitAsync(cancellationToken);
         try
         {
-            await processedMailMover.MoveToErrorMailboxAsync(mailId, cancellationToken);
+            await mailKitMailMover.MoveToErrorMailboxAsync(mailId, cancellationToken);
         }
         finally
         {
@@ -139,6 +139,11 @@ internal sealed class ReceivedMailSession(
     /// </summary>
     public async ValueTask DisposeAsync()
     {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
+        {
+            return;
+        }
+
         await DisconnectAsync();
         _imapLock.Dispose();
     }

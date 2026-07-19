@@ -5,7 +5,6 @@ using MailBatch.Console.BatchProcessing.Locking;
 using MailBatch.Console.NotificationMails;
 using MailBatch.Console.Options;
 using MailBatch.Console.Pipeline;
-using MailBatch.Console.ReceivedMails.Fetching;
 using MailBatch.Console.ReceivedMails.Folders;
 using MailBatch.Console.ReceivedMails.Imap;
 using MailBatch.Console.ReceivedMails.MailKit;
@@ -88,9 +87,12 @@ internal static class BatchServiceCollectionExtensions
             .AddScoped<IImapConnection, ImapConnection>()
             .AddScoped<IMailFolderProvider, MailFolderProvider>()
             .AddScoped<IMailKitSearcher, MailKitSearcher>()
-            .AddScoped<IReceivedMailReader, ReceivedMailReader>()
-            .AddScoped<IProcessedMailMover, ProcessedMailMover>()
-            .AddScoped<IReceivedMailSession, ReceivedMailSession>()
+            .AddScoped<IMailKitReader, MailKitReader>()
+            .AddScoped<IMailKitMailMover, MailKitMailMover>()
+            .AddScoped<ReceivedMailSession>()
+            .AddScoped<IReceivedMailSession>(provider => provider.GetRequiredService<ReceivedMailSession>())
+            .AddScoped<IReceivedMailSearcher>(provider => provider.GetRequiredService<ReceivedMailSession>())
+            .AddScoped<IReceivedMailMover>(provider => provider.GetRequiredService<ReceivedMailSession>())
             .AddScoped<IMailMoveFailureRecoveryService, MailMoveFailureRecoveryService>();
     }
 
