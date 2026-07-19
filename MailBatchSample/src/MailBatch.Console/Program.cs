@@ -4,6 +4,7 @@ using MailBatch.Console.Configuration;
 using MailBatch.Console.DependencyInjection;
 using MailBatch.Console.Logging;
 using MailBatch.Console.Options;
+using MailBatch.Console.ReceivedMails.State;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 
@@ -65,6 +66,7 @@ finally
     if (batchOptions is not null)
     {
         new LogRetentionCleaner(batchOptions).DeleteExpiredLogs();
+        new SqliteRetentionCleaner(batchOptions).DeleteExpiredRecords();
     }
 }
 
