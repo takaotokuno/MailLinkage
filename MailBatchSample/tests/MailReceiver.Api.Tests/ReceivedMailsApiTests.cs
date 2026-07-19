@@ -17,10 +17,13 @@ public sealed class ReceivedMailsApiTests : IAsyncLifetime
     {
         _factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
-            builder.ConfigureAppConfiguration((_, configuration) =>
+            _ = builder.ConfigureAppConfiguration((context, configuration) =>
             {
-                configuration.AddInMemoryCollection(
-                                new Dictionary<string, string?> { ["ConnectionStrings:MailReceiver"] = $"Data Source={_databasePath}" });
+                _ = configuration.AddInMemoryCollection(
+                    new Dictionary<string, string?>
+                    {
+                        ["ConnectionStrings:MailReceiver"] = $"Data Source={_databasePath}"
+                    });
             });
         });
         return Task.CompletedTask;
