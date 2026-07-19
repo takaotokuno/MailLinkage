@@ -57,7 +57,7 @@ public sealed class RunStatusNotifierTests
             [
                 new MailNotificationTemplateOptions
                 {
-                    Name = MailNotificationOptions.RunStatusTemplateName,
+                    Name = MailNotificationOptions.RUN_STATUS_TEMPLATE_NAME,
                     Subject = "Run {RunId} {Status}",
                     Body = "Exit={ExitCode}"
                 }

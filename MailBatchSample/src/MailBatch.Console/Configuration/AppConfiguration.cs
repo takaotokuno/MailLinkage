@@ -9,9 +9,9 @@ namespace MailBatch.Console.Configuration;
 /// </summary>
 internal static class AppConfiguration
 {
-    private const string EnvironmentVariablePrefix = "MAILBATCH_";
-    private const string AzureKeyVaultEnabledKey = "AzureKeyVault:Enabled";
-    private const string AzureKeyVaultUriKey = "AzureKeyVault:VaultUri";
+    private const string ENVIRONMENT_VARIABLE_PREFIX = "MAILBATCH_";
+    private const string AZURE_KEY_VAULT_ENABLED_KEY = "AzureKeyVault:Enabled";
+    private const string AZURE_KEY_VAULT_URI_KEY = "AzureKeyVault:VaultUri";
 
     /// <summary>
     /// コマンドライン引数、環境変数、設定ファイル、任意のAzure Key Vaultからアプリケーション設定を読み込み、検証します。
@@ -23,15 +23,15 @@ internal static class AppConfiguration
 
         if (IsAzureKeyVaultEnabled(bootstrapConfiguration))
         {
-            string? vaultUri = bootstrapConfiguration[AzureKeyVaultUriKey];
+            string? vaultUri = bootstrapConfiguration[AZURE_KEY_VAULT_URI_KEY];
             if (string.IsNullOrWhiteSpace(vaultUri))
             {
                 throw new InvalidOperationException(
-                    $"{AzureKeyVaultUriKey} is required when {AzureKeyVaultEnabledKey} is true.");
+                    $"{AZURE_KEY_VAULT_URI_KEY} is required when {AZURE_KEY_VAULT_ENABLED_KEY} is true.");
             }
 
             _ = builder.AddAzureKeyVault(new Uri(vaultUri), new DefaultAzureCredential())
-                .AddEnvironmentVariables(prefix: EnvironmentVariablePrefix)
+                .AddEnvironmentVariables(prefix: ENVIRONMENT_VARIABLE_PREFIX)
                 .AddCommandLine(args);
         }
 
@@ -52,14 +52,14 @@ internal static class AppConfiguration
             .SetBasePath(AppContext.BaseDirectory)
             .AddJsonFile("appsettings.json", optional: false, reloadOnChange: false)
             .AddJsonFile($"appsettings.{environmentName}.json", optional: true, reloadOnChange: false)
-            .AddEnvironmentVariables(prefix: EnvironmentVariablePrefix)
+            .AddEnvironmentVariables(prefix: ENVIRONMENT_VARIABLE_PREFIX)
             .AddCommandLine(args);
     }
 
     /// <summary>
     /// Azure Key Vault連携が有効かどうかを判定します。
     /// </summary>
-    private static bool IsAzureKeyVaultEnabled(IConfiguration configuration) => configuration.GetValue<bool>(AzureKeyVaultEnabledKey);
+    private static bool IsAzureKeyVaultEnabled(IConfiguration configuration) => configuration.GetValue<bool>(AZURE_KEY_VAULT_ENABLED_KEY);
 
     /// <summary>
     /// 実行環境名を取得します。

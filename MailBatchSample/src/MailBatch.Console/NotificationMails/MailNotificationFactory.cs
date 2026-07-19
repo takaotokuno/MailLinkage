@@ -10,13 +10,15 @@ namespace MailBatch.Console.NotificationMails;
 /// </summary>
 internal sealed class MailNotificationFactory(MailNotificationOptions notificationOptions, BatchRunContext runContext)
 {
+    private const int MAX_PREVIEW_LENGTH = 200;
+
     /// <summary>
     /// バッチ実行結果の通知テンプレートから管理者宛て通知を作成します。
     /// </summary>
     public MailNotification CreateRunStatusNotification(BatchRunResult result, int exitCode)
     {
         MailNotificationTemplateOptions template
-            = notificationOptions.GetTemplate(MailNotificationOptions.RunStatusTemplateName);
+            = notificationOptions.GetTemplate(MailNotificationOptions.RUN_STATUS_TEMPLATE_NAME);
 
         return new MailNotification(
             notificationOptions.AdminAddress,
@@ -32,7 +34,7 @@ internal sealed class MailNotificationFactory(MailNotificationOptions notificati
         IReadOnlyList<string> validationErrors)
     {
         MailNotificationTemplateOptions template
-            = notificationOptions.GetTemplate(MailNotificationOptions.ValidationErrorTemplateName);
+            = notificationOptions.GetTemplate(MailNotificationOptions.VALIDATION_ERROR_TEMPLATE_NAME);
 
         string validationErrorsText = string.Join(Environment.NewLine, validationErrors.Select(error =>
         {
@@ -87,12 +89,11 @@ internal sealed class MailNotificationFactory(MailNotificationOptions notificati
     /// </summary>
     private static string CreatePreview(string value)
     {
-        const int MAX_PREVIEW_LENGTH = 200;
         return value.Length <= MAX_PREVIEW_LENGTH ? value : $"{value[..MAX_PREVIEW_LENGTH]}...";
     }
 
     /// <summary>
     /// 終了コードを通知用の実行ステータス文字列へ変換します。
     /// </summary>
-    private static string ToRunStatus(int exitCode) => exitCode == 0 ? "succeeded" : "failed";
+    private static string ToRunStatus(int exitCode) => exitCode == BatchExitCodes.SUCCESS ? "succeeded" : "failed";
 }

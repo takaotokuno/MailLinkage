@@ -9,6 +9,9 @@ namespace MailBatch.Console.Api;
 /// </summary>
 internal static class ApiRetryPolicyFactory
 {
+    private const int EXPONENTIAL_BACKOFF_BASE = 2;
+    private const int RETRY_ATTEMPT_OFFSET = 1;
+
     /// <summary>
     /// インスタンスまたは処理に必要な値を作成します。
     /// </summary>
@@ -22,7 +25,7 @@ internal static class ApiRetryPolicyFactory
                 apiOptions.RetryCount,
                 retryAttempt =>
                 {
-                    return TimeSpan.FromSeconds(apiOptions.RetryDelaySeconds * Math.Pow(2, retryAttempt - 1));
+                    return TimeSpan.FromSeconds(apiOptions.RetryDelaySeconds * Math.Pow(EXPONENTIAL_BACKOFF_BASE, retryAttempt - RETRY_ATTEMPT_OFFSET));
                 });
     }
 }

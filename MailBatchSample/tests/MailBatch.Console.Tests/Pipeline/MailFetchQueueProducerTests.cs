@@ -56,8 +56,8 @@ public sealed class MailFetchQueueProducerTests
             return new ReceivedMail(
                             id,
                             "sender@example.com",
-                            new string('s', ReceivedMail.MaxSubjectLength + 1),
-                            $"Key: ABC123{Environment.NewLine}{new string('b', ReceivedMail.MaxBodyLength + 1)}");
+                            new string('s', ReceivedMail.MAX_SUBJECT_LENGTH + 1),
+                            $"Key: ABC123{Environment.NewLine}{new string('b', ReceivedMail.MAX_BODY_LENGTH + 1)}");
         });
         MailFetchQueueProducer producer = CreateProducer(session);
 
@@ -147,13 +147,13 @@ public sealed class MailFetchQueueProducerTests
             [
                 new MailNotificationTemplateOptions
                 {
-                    Name = MailNotificationOptions.RunStatusTemplateName,
+                    Name = MailNotificationOptions.RUN_STATUS_TEMPLATE_NAME,
                     Subject = "Run {RunId} {Status}",
                     Body = "Exit={ExitCode} Total={Total} Succeeded={Succeeded} InvalidFormat={InvalidFormat} ApiFailed={ApiFailed} Fatal={FatalErrorCode} {FatalErrorMessage} {FatalErrorStage}"
                 },
                 new MailNotificationTemplateOptions
                 {
-                    Name = MailNotificationOptions.ValidationErrorTemplateName,
+                    Name = MailNotificationOptions.VALIDATION_ERROR_TEMPLATE_NAME,
                     Subject = "Validation {MailId} {Subject}",
                     Body = "Errors:\n{ValidationErrors}"
                 }
