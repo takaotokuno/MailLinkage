@@ -187,7 +187,7 @@ static async Task<Results<CreatedAtRoute<ReceivedMailResponse>, ValidationProble
 
     if (await dbContext.ReceivedMails.AnyAsync(mail => mail.Key == normalizedRequest.Key, cancellationToken))
     {
-        logger.LogInformation("Duplicate received mail was rejected. Key: {Key}", normalizedRequest.Key);
+        logger.LogDebug("Duplicate received mail was rejected. Key: {Key}", normalizedRequest.Key);
         return TypedResults.Conflict(CreateDuplicateProblemDetails(normalizedRequest.Key));
     }
 
@@ -206,11 +206,11 @@ static async Task<Results<CreatedAtRoute<ReceivedMailResponse>, ValidationProble
     }
     catch (DbUpdateException exception) when (IsUniqueConstraintViolation(exception))
     {
-        logger.LogInformation(exception, "Duplicate received mail was rejected by unique constraint. Key: {Key}", normalizedRequest.Key);
+        logger.LogDebug(exception, "Duplicate received mail was rejected by unique constraint. Key: {Key}", normalizedRequest.Key);
         return TypedResults.Conflict(CreateDuplicateProblemDetails(normalizedRequest.Key));
     }
 
-    logger.LogInformation(
+    logger.LogDebug(
         "Received mail was saved. Id: {ReceivedMailId}, Key: {Key}",
         receivedMail.Id,
         receivedMail.Key);
