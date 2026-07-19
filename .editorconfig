@@ -216,7 +216,7 @@ dotnet_style_prefer_simplified_boolean_expressions = true:warning
 
 dotnet_style_object_initializer = true:warning
 dotnet_style_collection_initializer = true:warning
-dotnet_style_prefer_collection_expression = true:warning
+dotnet_style_prefer_collection_expression = false:none
 
 # Prefer index and range operators
 csharp_style_prefer_index_operator = true:warning

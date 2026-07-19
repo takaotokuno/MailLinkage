@@ -8,18 +8,18 @@ namespace MailBatch.Console.Tests.NotificationMails;
 
 public sealed class MetricAlertMonitorTests
 {
-    private static readonly DateTimeOffset Now = new(2026, 7, 19, 0, 0, 0, TimeSpan.Zero);
+    private static readonly DateTimeOffset s_now = new(2026, 7, 19, 0, 0, 0, TimeSpan.Zero);
 
     [Fact]
     public async Task StateMonitor_WhenUnrecoveredForSevenDays_SendsAlert()
     {
         FakeMetricAlertNotifier notifier = new();
-        StateMetricAlertMonitor monitor = new(notifier, new FixedTimeProvider(Now));
+        StateMetricAlertMonitor monitor = new(notifier, new FixedTimeProvider(s_now));
         MailMoveFailure failure = new(
             new ReceivedMailId(123, 999),
             MailMoveFailureDestination.Processed,
-            Now.AddDays(-7),
-            Now);
+            s_now.AddDays(-7),
+            s_now);
 
         bool notified = await monitor.TryCheckMailMoveStagnationAsync([failure]);
 
@@ -33,12 +33,12 @@ public sealed class MetricAlertMonitorTests
     public async Task StateMonitor_WhenFailureIsNewerThanSevenDays_DoesNotSendAlert()
     {
         FakeMetricAlertNotifier notifier = new();
-        StateMetricAlertMonitor monitor = new(notifier, new FixedTimeProvider(Now));
+        StateMetricAlertMonitor monitor = new(notifier, new FixedTimeProvider(s_now));
         MailMoveFailure failure = new(
             new ReceivedMailId(123, 999),
             MailMoveFailureDestination.Processed,
-            Now.AddDays(-7).AddTicks(1),
-            Now);
+            s_now.AddDays(-7).AddTicks(1),
+            s_now);
 
         bool notified = await monitor.TryCheckMailMoveStagnationAsync([failure]);
 
@@ -128,7 +128,7 @@ public sealed class MetricAlertMonitorTests
         {
             TimeSpan duration = index < longRunCount ? TimeSpan.FromHours(1).Add(TimeSpan.FromTicks(1)) : TimeSpan.FromHours(1);
             int exitCode = index < failedRunCount ? 1 : 0;
-            return new BatchRunHistory($"run-{index}", Now - duration, Now, exitCode, 0, 0, 0, 0, null, null);
+            return new BatchRunHistory($"run-{index}", s_now - duration, s_now, exitCode, 0, 0, 0, 0, null, null);
         })
         .ToArray();
 

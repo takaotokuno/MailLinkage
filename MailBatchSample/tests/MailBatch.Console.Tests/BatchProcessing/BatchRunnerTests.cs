@@ -268,22 +268,6 @@ public sealed class BatchRunnerTests
 
         public Task<ReceivedMail> CreateRequestAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
-        public List<ReceivedMailId> ProcessedMailIds { get; } = [];
-
-        public List<ReceivedMailId> ErrorMailIds { get; } = [];
-
-        public Task MoveToProcessedMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
-        {
-            ProcessedMailIds.Add(mailId);
-            return Task.CompletedTask;
-        }
-
-        public Task MoveToErrorMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
-        {
-            ErrorMailIds.Add(mailId);
-            return Task.CompletedTask;
-        }
-
         public void MarkRecoveryCompleted() => _recoveryCompleted = true;
 
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
@@ -303,6 +287,4 @@ public sealed class BatchRunnerTests
             return Task.CompletedTask;
         }
     }
-
-
 }

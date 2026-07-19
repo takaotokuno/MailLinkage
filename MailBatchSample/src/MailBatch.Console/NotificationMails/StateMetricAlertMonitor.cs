@@ -32,6 +32,7 @@ internal sealed class StateMetricAlertMonitor(
                 return failure.CreatedAtUtc <= threshold;
             })
             .ToArray();
+
         if (stalledFailures.Length == 0)
         {
             return true;
