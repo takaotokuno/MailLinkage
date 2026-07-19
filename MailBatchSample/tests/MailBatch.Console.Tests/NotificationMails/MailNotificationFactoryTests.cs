@@ -67,7 +67,7 @@ public sealed class MailNotificationFactoryTests
         MailNotificationFactory factory = new(CreateOptions(), new BatchRunContext("run-001"));
         ReceivedMail mail = new(
             MailId: new ReceivedMailId(123, 999),
-            From: "sender@example.com",
+            To: "recipient@example.com",
             Subject: new string('s', 201),
             Body: "body");
 
@@ -75,7 +75,7 @@ public sealed class MailNotificationFactoryTests
             mail,
             ["first error", "second error"]);
 
-        Assert.Equal("sender@example.com", notification.To);
+        Assert.Equal("recipient@example.com", notification.To);
         Assert.Equal($"Validation 999:123 {new string('s', 200)}...", notification.Subject);
         Assert.Equal($"Errors:{Environment.NewLine}- first error{Environment.NewLine}- second error", notification.Body);
     }
