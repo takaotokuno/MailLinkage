@@ -62,6 +62,38 @@ public sealed class MetricAlertMonitorTests
         Assert.Contains("6/10", message);
     }
 
+    [Fact]
+    public async Task HistoricalMonitor_WhenSixOfLastTenRunsFail_SendsAlert()
+    {
+        FakeMetricAlertNotifier notifier = new();
+        HistoricalMetricAlertMonitor monitor = new(
+            new FakeBatchRunHistoryStore(CreateHistory(longRunCount: 0, failedRunCount: 6)),
+            notifier);
+
+        bool notified = await monitor.TryCheckAsync();
+
+        Assert.True(notified);
+        (string title, string message) = Assert.Single(notifier.Alerts);
+        Assert.Equal("Batch failure rate degradation", title);
+        Assert.Contains("6/10", message);
+    }
+
+    [Theory]
+    [InlineData(5)]
+    [InlineData(0)]
+    public async Task HistoricalMonitor_WhenAtMostHalfOfLastTenRunsFail_DoesNotSendFailureRateAlert(int failedRunCount)
+    {
+        FakeMetricAlertNotifier notifier = new();
+        HistoricalMetricAlertMonitor monitor = new(
+            new FakeBatchRunHistoryStore(CreateHistory(longRunCount: 0, failedRunCount)),
+            notifier);
+
+        bool notified = await monitor.TryCheckAsync();
+
+        Assert.True(notified);
+        Assert.Empty(notifier.Alerts);
+    }
+
     [Theory]
     [InlineData(5)]
     [InlineData(0)]
@@ -91,11 +123,12 @@ public sealed class MetricAlertMonitorTests
         Assert.Empty(notifier.Alerts);
     }
 
-    private static IReadOnlyList<BatchRunHistory> CreateHistory(int longRunCount) => Enumerable.Range(0, 10)
+    private static IReadOnlyList<BatchRunHistory> CreateHistory(int longRunCount, int failedRunCount = 0) => Enumerable.Range(0, 10)
         .Select(index =>
         {
             TimeSpan duration = index < longRunCount ? TimeSpan.FromHours(1).Add(TimeSpan.FromTicks(1)) : TimeSpan.FromHours(1);
-            return new BatchRunHistory($"run-{index}", Now - duration, Now, 0, 0, 0, 0, 0, null, null);
+            int exitCode = index < failedRunCount ? 1 : 0;
+            return new BatchRunHistory($"run-{index}", Now - duration, Now, exitCode, 0, 0, 0, 0, null, null);
         })
         .ToArray();
 
