@@ -48,6 +48,20 @@ internal sealed class MailNotificationFactory(MailNotificationOptions notificati
     }
 
     /// <summary>
+    /// メトリクスチェックで検知した管理者向けアラートを作成します。
+    /// </summary>
+    public MailNotification CreateMetricAlert(string alertTitle, string alertMessage)
+    {
+        MailNotificationTemplateOptions template = notificationOptions.GetTemplate(
+            MailNotificationOptions.METRIC_ALERT_TEMPLATE_NAME);
+
+        return new MailNotification(
+            notificationOptions.AdminAddress,
+            ApplyMetricAlertTemplate(template.Subject, alertTitle, alertMessage),
+            ApplyMetricAlertTemplate(template.Body, alertTitle, alertMessage));
+    }
+
+    /// <summary>
     /// 実行結果通知テンプレートへバッチ結果を差し込みます。
     /// </summary>
     private string ApplyRunStatusTemplate(string template, BatchRunResult result, int exitCode)
@@ -84,6 +98,16 @@ internal sealed class MailNotificationFactory(MailNotificationOptions notificati
             .Replace("{MailId}", mail.MailId.ToString(), StringComparison.Ordinal)
             .Replace("{Subject}", CreatePreview(mail.Subject), StringComparison.Ordinal)
             .Replace("{ValidationErrors}", validationErrors, StringComparison.Ordinal);
+    }
+
+    private static string ApplyMetricAlertTemplate(
+        string template,
+        string alertTitle,
+        string alertMessage)
+    {
+        return template
+            .Replace("{AlertTitle}", alertTitle, StringComparison.Ordinal)
+            .Replace("{AlertMessage}", alertMessage, StringComparison.Ordinal);
     }
 
     /// <summary>

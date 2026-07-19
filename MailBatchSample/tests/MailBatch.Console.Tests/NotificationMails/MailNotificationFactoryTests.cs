@@ -80,6 +80,20 @@ public sealed class MailNotificationFactoryTests
         Assert.Equal($"Errors:{Environment.NewLine}- first error{Environment.NewLine}- second error", notification.Body);
     }
 
+    [Fact]
+    public void CreateMetricAlert_AppliesAlertTemplate()
+    {
+        MailNotificationFactory factory = new(CreateOptions(), new BatchRunContext("run-001"));
+
+        MailNotification notification = factory.CreateMetricAlert(
+            "Stalled mail moves",
+            "One or more mail moves require attention.");
+
+        Assert.Equal("admin@example.com", notification.To);
+        Assert.Equal("Alert: Stalled mail moves", notification.Subject);
+        Assert.Equal("One or more mail moves require attention.", notification.Body);
+    }
+
     private static MailNotificationOptions CreateOptions()
     {
         return new MailNotificationOptions
@@ -98,6 +112,12 @@ public sealed class MailNotificationFactoryTests
                     Name = MailNotificationOptions.VALIDATION_ERROR_TEMPLATE_NAME,
                     Subject = "Validation {MailId} {Subject}",
                     Body = "Errors:\n{ValidationErrors}"
+                },
+                new MailNotificationTemplateOptions
+                {
+                    Name = MailNotificationOptions.METRIC_ALERT_TEMPLATE_NAME,
+                    Subject = "Alert: {AlertTitle}",
+                    Body = "{AlertMessage}"
                 }
             ]
         };

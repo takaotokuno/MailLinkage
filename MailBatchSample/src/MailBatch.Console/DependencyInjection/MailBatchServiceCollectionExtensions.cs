@@ -71,7 +71,9 @@ internal static class BatchServiceCollectionExtensions
     {
         return services
             .AddTransient<IMailNotifier, SmtpMailNotifier>()
-            .AddTransient<MailNotificationFactory>();
+            .AddTransient<MailNotificationFactory>()
+            .AddTransient<IMetricAlertMonitor, MetricAlertMonitor>()
+            .AddSingleton(TimeProvider.System);
     }
 
     /// <summary>

@@ -88,6 +88,12 @@ public sealed class MailNotificationOptionsTests
                 Name = MailNotificationOptions.VALIDATION_ERROR_TEMPLATE_NAME,
                 Subject = "Received mail validation failed: MailId={MailId}",
                 Body = "Validation errors:\n{ValidationErrors}"
+            },
+            new MailNotificationTemplateOptions
+            {
+                Name = MailNotificationOptions.METRIC_ALERT_TEMPLATE_NAME,
+                Subject = "Alert: {AlertTitle}",
+                Body = "{AlertMessage}"
             }
         ];
 

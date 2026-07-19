@@ -156,6 +156,12 @@ public sealed class MailFetchQueueProducerTests
                     Name = MailNotificationOptions.VALIDATION_ERROR_TEMPLATE_NAME,
                     Subject = "Validation {MailId} {Subject}",
                     Body = "Errors:\n{ValidationErrors}"
+                },
+                new MailNotificationTemplateOptions
+                {
+                    Name = MailNotificationOptions.METRIC_ALERT_TEMPLATE_NAME,
+                    Subject = "Alert: {AlertTitle}",
+                    Body = "{AlertMessage}"
                 }
             ]
         };
