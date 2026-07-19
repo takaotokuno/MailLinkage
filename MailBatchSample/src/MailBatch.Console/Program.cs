@@ -1,4 +1,5 @@
 using MailBatch.Console.BatchProcessing;
+using MailBatch.Console.BatchProcessing.Result;
 using MailBatch.Console.Configuration;
 using MailBatch.Console.DependencyInjection;
 using MailBatch.Console.Logging;
@@ -6,7 +7,7 @@ using MailBatch.Console.Options;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 
-int exitCode = 0;
+int exitCode = BatchExitCodes.SUCCESS;
 BatchOptions? batchOptions = null;
 string runId = Guid.NewGuid().ToString();
 using CancellationTokenSource cancellationTokenSource = new();
@@ -36,7 +37,7 @@ try
 }
 catch (OperationCanceledException) when (cancellationTokenSource.IsCancellationRequested)
 {
-    exitCode = 130;
+    exitCode = BatchExitCodes.CANCELED;
 
     Log.Warning(
         "Mail batch canceled. RunId={RunId}",
@@ -44,7 +45,7 @@ catch (OperationCanceledException) when (cancellationTokenSource.IsCancellationR
 }
 catch (Exception ex)
 {
-    exitCode = 1;
+    exitCode = BatchExitCodes.FATAL_ERROR;
 
     Log.Fatal(
         ex,

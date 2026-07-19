@@ -5,8 +5,8 @@ namespace MailBatch.Console.Options;
 /// </summary>
 internal sealed class MailNotificationOptions
 {
-    public const string RunStatusTemplateName = "RunStatus";
-    public const string ValidationErrorTemplateName = "ValidationError";
+    public const string RUN_STATUS_TEMPLATE_NAME = "RunStatus";
+    public const string VALIDATION_ERROR_TEMPLATE_NAME = "ValidationError";
 
     public string SmtpHost { get; init; } = string.Empty;
     public int SmtpPort { get; init; } = 25;
@@ -40,8 +40,8 @@ internal sealed class MailNotificationOptions
             template.Validate(path);
         }
 
-        RequireTemplate(RunStatusTemplateName);
-        RequireTemplate(ValidationErrorTemplateName);
+        RequireTemplate(RUN_STATUS_TEMPLATE_NAME);
+        RequireTemplate(VALIDATION_ERROR_TEMPLATE_NAME);
     }
 
     /// <summary>

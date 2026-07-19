@@ -16,7 +16,7 @@ internal sealed record ProcessResult(int Total, int Succeeded = 0, int InvalidFo
     /// <summary>
     /// 処理結果をプロセス終了コードへ変換します。
     /// </summary>
-    public int ConvertToExitCode() => Failed > 0 ? 2 : 0;
+    public int ConvertToExitCode() => Failed > 0 ? BatchExitCodes.PROCESSING_FAILURE : BatchExitCodes.SUCCESS;
 }
 
 /// <summary>

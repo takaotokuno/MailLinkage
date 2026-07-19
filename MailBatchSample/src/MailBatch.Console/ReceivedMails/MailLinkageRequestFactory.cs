@@ -5,6 +5,8 @@ namespace MailBatch.Console.ReceivedMails;
 /// </summary>
 internal static class MailLinkageRequestFactory
 {
+    private const int MAX_MESSAGE_LENGTH = 500;
+
     /// <summary>
     /// インスタンスまたは処理に必要な値を作成します。
     /// </summary>
@@ -21,9 +23,8 @@ internal static class MailLinkageRequestFactory
     /// </summary>
     private static string CreateMessage(string subject, string body)
     {
-        int MAX_LENGTH = 500;
         string fullText = subject.Trim() + Environment.NewLine + Environment.NewLine + body.Trim();
-        string summary = fullText[..Math.Min(MAX_LENGTH, fullText.Length)];
+        string summary = fullText[..Math.Min(MAX_MESSAGE_LENGTH, fullText.Length)];
 
         return summary;
     }

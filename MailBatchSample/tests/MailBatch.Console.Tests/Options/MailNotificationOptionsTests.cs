@@ -44,7 +44,7 @@ public sealed class MailNotificationOptionsTests
         [
             new MailNotificationTemplateOptions
             {
-                Name = MailNotificationOptions.RunStatusTemplateName,
+                Name = MailNotificationOptions.RUN_STATUS_TEMPLATE_NAME,
                 Subject = "Mail batch {Status}: RunId={RunId}",
                 Body = "RunId: {RunId}"
             }
@@ -63,13 +63,13 @@ public sealed class MailNotificationOptionsTests
         [
             new MailNotificationTemplateOptions
             {
-                Name = MailNotificationOptions.RunStatusTemplateName,
+                Name = MailNotificationOptions.RUN_STATUS_TEMPLATE_NAME,
                 Subject = "Mail batch {Status}: RunId={RunId}",
                 Body = "RunId: {RunId}"
             },
             new MailNotificationTemplateOptions
             {
-                Name = MailNotificationOptions.ValidationErrorTemplateName,
+                Name = MailNotificationOptions.VALIDATION_ERROR_TEMPLATE_NAME,
                 Subject = "Received mail validation failed: MailId={MailId}",
                 Body = "Validation errors:\n{ValidationErrors}"
             }

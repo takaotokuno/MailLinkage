@@ -10,8 +10,8 @@ internal sealed record ReceivedMail(
     string Body
 )
 {
-    public const int MaxSubjectLength = 8_192;
-    public const int MaxBodyLength = 10_000_000;
+    public const int MAX_SUBJECT_LENGTH = 8_192;
+    public const int MAX_BODY_LENGTH = 10_000_000;
 
     /// <summary>
     /// 受信メール本文と件名が処理可能な制約を満たすか検証します。
@@ -20,14 +20,14 @@ internal sealed record ReceivedMail(
     {
         List<string> errors = [];
 
-        if (Subject.Length > MaxSubjectLength)
+        if (Subject.Length > MAX_SUBJECT_LENGTH)
         {
-            errors.Add($"Subject length must be less than or equal to {MaxSubjectLength} characters. Actual={Subject.Length}.");
+            errors.Add($"Subject length must be less than or equal to {MAX_SUBJECT_LENGTH} characters. Actual={Subject.Length}.");
         }
 
-        if (Body?.Length > MaxBodyLength)
+        if (Body?.Length > MAX_BODY_LENGTH)
         {
-            errors.Add($"Body length must be less than or equal to {MaxBodyLength} characters. Actual={Body.Length}.");
+            errors.Add($"Body length must be less than or equal to {MAX_BODY_LENGTH} characters. Actual={Body.Length}.");
         }
 
         if (errors.Count > 0)

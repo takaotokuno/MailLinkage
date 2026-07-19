@@ -13,8 +13,8 @@ public sealed class ReceivedMailTests
     public void Validate_DoesNotThrowWhenSubjectAndBodyAreWithinLimits()
     {
         ReceivedMail mail = CreateMail(
-            subject: new string('s', ReceivedMail.MaxSubjectLength),
-            body: new string('b', ReceivedMail.MaxBodyLength));
+            subject: new string('s', ReceivedMail.MAX_SUBJECT_LENGTH),
+            body: new string('b', ReceivedMail.MAX_BODY_LENGTH));
 
         Exception? exception = Record.Exception(mail.Validate);
 
@@ -29,8 +29,8 @@ public sealed class ReceivedMailTests
     public void Validate_ThrowsErrorMessagesWhenSubjectAndBodyExceedLimits()
     {
         ReceivedMail mail = CreateMail(
-            subject: new string('s', ReceivedMail.MaxSubjectLength + 1),
-            body: new string('b', ReceivedMail.MaxBodyLength + 1));
+            subject: new string('s', ReceivedMail.MAX_SUBJECT_LENGTH + 1),
+            body: new string('b', ReceivedMail.MAX_BODY_LENGTH + 1));
 
         ReceivedMailContentValidationException exception = Assert.Throws<ReceivedMailContentValidationException>(mail.Validate);
 
