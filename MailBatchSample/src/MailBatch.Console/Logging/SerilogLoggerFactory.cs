@@ -12,6 +12,23 @@ namespace MailBatch.Console.Logging;
 /// </remarks>
 internal static class SerilogLoggerFactory
 {
+    private const string OutputTemplate =
+        "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] ({RunId}) {Message:lj}{NewLine}{Exception}";
+
+    /// <summary>
+    /// アプリケーション設定を読み込む前のエラーを標準エラーへ出力するロガーを作成します。
+    /// </summary>
+    public static Serilog.Core.Logger CreateBootstrap(string runId)
+    {
+        return new LoggerConfiguration()
+            .MinimumLevel.Information()
+            .Enrich.WithProperty("RunId", runId)
+            .WriteTo.Console(
+                standardErrorFromLevel: Serilog.Events.LogEventLevel.Error,
+                outputTemplate: OutputTemplate)
+            .CreateLogger();
+    }
+
     /// <summary>
     /// 読み込み済み設定と実行IDからSerilogロガーを作成します。
     /// </summary>
