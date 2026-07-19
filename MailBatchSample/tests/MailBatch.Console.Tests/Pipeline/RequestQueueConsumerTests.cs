@@ -48,6 +48,7 @@ public sealed class RequestQueueConsumerTests
         FakeReceivedMailMover session = new();
         FakeApiClient apiClient = new(new ApiPostResult(true, 201, /*lang=json,strict*/ "{\"id\":1}"));
         FakeMoveFailureStore moveFailureStore = new();
+        FakeApiExecutionResultStore executionResultStore = new();
         RequestQueueConsumer consumer = new(
             new ApiOptions { Endpoint = "/api/received-mails" },
             session,
@@ -55,7 +56,7 @@ public sealed class RequestQueueConsumerTests
             reader,
             moveFailureStore,
             moveFailureStore,
-            new FakeApiExecutionResultStore(),
+            executionResultStore,
             NullLogger<MailLinkageRequest>.Instance);
 
         ProcessResult result = await consumer.ConsumeAsync();
@@ -64,6 +65,7 @@ public sealed class RequestQueueConsumerTests
         Assert.Equal(1, result.Succeeded);
         Assert.Equal(request.MailId, session.ProcessedMailIds.Single());
         Assert.Empty(session.ErrorMailIds);
+        Assert.Equal(new ReceivedMailId(1002, 200), Assert.Single(executionResultStore.MovedMailIds).MailId);
     }
 
 
@@ -202,7 +204,7 @@ public sealed class RequestQueueConsumerTests
         }
 
 
-        public Task MoveToProcessedMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
+        public Task<ReceivedMailId?> MoveToProcessedMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
         {
             if (ThrowOnMoveToProcessed)
             {
@@ -210,10 +212,10 @@ public sealed class RequestQueueConsumerTests
             }
 
             ProcessedMailIds.Add(mailId);
-            return Task.CompletedTask;
+            return Task.FromResult<ReceivedMailId?>(new ReceivedMailId(mailId.Uid + 1000, 200));
         }
 
-        public Task MoveToErrorMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
+        public Task<ReceivedMailId?> MoveToErrorMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
         {
             if (ThrowOnMoveToError)
             {
@@ -221,7 +223,7 @@ public sealed class RequestQueueConsumerTests
             }
 
             ErrorMailIds.Add(mailId);
-            return Task.CompletedTask;
+            return Task.FromResult<ReceivedMailId?>(new ReceivedMailId(mailId.Uid + 2000, 300));
         }
     }
 
@@ -264,6 +266,14 @@ public sealed class RequestQueueConsumerTests
         public Task RecordAsync(ApiExecutionResult result, CancellationToken cancellationToken = default)
         {
             Results.Add(result);
+            return Task.CompletedTask;
+        }
+
+        public List<(string ExecutionId, ReceivedMailId MailId)> MovedMailIds { get; } = [];
+
+        public Task RecordMovedMailIdAsync(string executionId, ReceivedMailId movedMailId, CancellationToken cancellationToken = default)
+        {
+            MovedMailIds.Add((executionId, movedMailId));
             return Task.CompletedTask;
         }
     }

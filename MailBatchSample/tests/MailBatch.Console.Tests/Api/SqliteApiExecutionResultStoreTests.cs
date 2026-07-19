@@ -31,11 +31,12 @@ public sealed class SqliteApiExecutionResultStoreTests : IDisposable
             1000);
 
         await store.RecordAsync(result);
+        await store.RecordMovedMailIdAsync("execution-123", new ReceivedMailId(142, 199));
 
         await using SqliteConnection connection = new($"Data Source={Path.Combine(_directory, "mail-processing.db")}");
         await connection.OpenAsync();
         await using SqliteCommand command = connection.CreateCommand();
-        command.CommandText = "SELECT run_id, uid, uid_validity, outcome, status_code, saved_id, duration_ms FROM api_execution_results WHERE execution_id = 'execution-123';";
+        command.CommandText = "SELECT run_id, uid, uid_validity, outcome, status_code, saved_id, duration_ms, moved_uid, moved_uid_validity FROM api_execution_results WHERE execution_id = 'execution-123';";
         await using SqliteDataReader reader = await command.ExecuteReaderAsync();
         Assert.True(await reader.ReadAsync());
         Assert.Equal("run-123", reader.GetString(0));
@@ -45,6 +46,8 @@ public sealed class SqliteApiExecutionResultStoreTests : IDisposable
         Assert.Equal(201, reader.GetInt32(4));
         Assert.Equal("1001", reader.GetString(5));
         Assert.Equal(1000, reader.GetInt64(6));
+        Assert.Equal(142, reader.GetInt64(7));
+        Assert.Equal(199, reader.GetInt64(8));
     }
 
     public void Dispose()

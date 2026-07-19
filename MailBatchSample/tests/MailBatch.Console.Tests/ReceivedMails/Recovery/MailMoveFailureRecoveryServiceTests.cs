@@ -72,7 +72,7 @@ public sealed class MailMoveFailureRecoveryServiceTests
         public List<ReceivedMailId> ErrorMailIds { get; } = [];
 
 
-        public Task MoveToProcessedMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
+        public Task<ReceivedMailId?> MoveToProcessedMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
         {
             if (FailProcessedMove)
             {
@@ -80,13 +80,13 @@ public sealed class MailMoveFailureRecoveryServiceTests
             }
 
             ProcessedMailIds.Add(mailId);
-            return Task.CompletedTask;
+            return Task.FromResult<ReceivedMailId?>(mailId);
         }
 
-        public Task MoveToErrorMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
+        public Task<ReceivedMailId?> MoveToErrorMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
         {
             ErrorMailIds.Add(mailId);
-            return Task.CompletedTask;
+            return Task.FromResult<ReceivedMailId?>(mailId);
         }
     }
 

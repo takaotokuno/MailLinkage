@@ -13,6 +13,9 @@ internal interface IApiExecutionResultStore
 {
     /// <summary>確定したAPI実行結果を永続化します。</summary>
     Task RecordAsync(ApiExecutionResult result, CancellationToken cancellationToken = default);
+
+    /// <summary>メール移動後に割り当てられたUIDを実行結果へ記録します。</summary>
+    Task RecordMovedMailIdAsync(string executionId, ReceivedMailId movedMailId, CancellationToken cancellationToken = default);
 }
 
 /// <summary>一回のAPI要求について保存する実行結果を表します。</summary>
@@ -78,6 +81,22 @@ internal sealed class SqliteApiExecutionResultStore(
         _ = await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
+    /// <inheritdoc />
+    public async Task RecordMovedMailIdAsync(string executionId, ReceivedMailId movedMailId, CancellationToken cancellationToken = default)
+    {
+        await using SqliteConnection connection = await OpenConnectionAsync(cancellationToken);
+        await using SqliteCommand command = connection.CreateCommand();
+        command.CommandText = """
+            UPDATE api_execution_results
+            SET moved_uid = $movedUid, moved_uid_validity = $movedUidValidity
+            WHERE execution_id = $executionId;
+            """;
+        _ = command.Parameters.AddWithValue("$executionId", executionId);
+        _ = command.Parameters.AddWithValue("$movedUid", (long)movedMailId.Uid);
+        _ = command.Parameters.AddWithValue("$movedUidValidity", (long)movedMailId.UidValidity);
+        _ = await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
     private async Task<SqliteConnection> OpenConnectionAsync(CancellationToken cancellationToken)
     {
         await EnsureInitializedAsync(cancellationToken);
@@ -119,7 +138,9 @@ internal sealed class SqliteApiExecutionResultStore(
                     error_type TEXT,
                     started_at_utc TEXT NOT NULL,
                     completed_at_utc TEXT NOT NULL,
-                    duration_ms INTEGER NOT NULL
+                    duration_ms INTEGER NOT NULL,
+                    moved_uid INTEGER,
+                    moved_uid_validity INTEGER
                 );
                 CREATE INDEX IF NOT EXISTS ix_api_execution_results_mail
                     ON api_execution_results (uid_validity, uid, completed_at_utc DESC);
