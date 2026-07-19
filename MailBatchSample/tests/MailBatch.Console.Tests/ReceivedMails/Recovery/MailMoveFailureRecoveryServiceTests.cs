@@ -23,7 +23,7 @@ public sealed class MailMoveFailureRecoveryServiceTests
         MailMoveFailureRecoveryService service = new(
             session,
             moveFailureStore,
-            new FakeMetricAlertMonitor(),
+            new FakeStateMetricAlertMonitor(),
             NullLogger<MailMoveFailureRecoveryService>.Instance);
 
         await service.RecoverAsync(CancellationToken.None);
@@ -41,7 +41,7 @@ public sealed class MailMoveFailureRecoveryServiceTests
         FakeMoveFailureStore moveFailureStore = new();
         MailMoveFailure failure = CreateFailure(mailId, MailMoveFailureDestination.Processed);
         moveFailureStore.Failures.Add(failure);
-        FakeMetricAlertMonitor notifier = new();
+        FakeStateMetricAlertMonitor notifier = new();
         MailMoveFailureRecoveryService service = new(
             session,
             moveFailureStore,
@@ -123,7 +123,7 @@ public sealed class MailMoveFailureRecoveryServiceTests
         public Task RemoveAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
 
-    private sealed class FakeMetricAlertMonitor : IMetricAlertMonitor
+    private sealed class FakeStateMetricAlertMonitor : IStateMetricAlertMonitor
     {
         public List<MailMoveFailure> Failures { get; } = [];
 

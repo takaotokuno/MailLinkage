@@ -23,7 +23,7 @@ public sealed class BatchRunnerTests
     public async Task RunAsync_WhenExecutionLockIsAlreadyHeld_SendsFatalErrorNotificationAndReturnsExitCode1()
     {
         DateTimeOffset beforeRun = DateTimeOffset.UtcNow;
-        FakeRunStatusNotifier notifier = new();
+        FakeBatchRunCompletionService notifier = new();
         FakeReceivedMailSession session = new();
         FakeReceivedMailPipeline pipeline = new();
         BatchRunner runner = new(
@@ -59,13 +59,13 @@ public sealed class BatchRunnerTests
     }
 
     /// <summary>
-    /// 状態: 実行ロックを取得できず、多重起動通知の送信に失敗する。
-    /// 振る舞い: 通知失敗を終了コードへ反映せず、多重起動の終了コード1を返す。
+    /// 状態: 実行ロックを取得できず、多重起動が検知される。
+    /// 振る舞い: 完了処理を実行し、多重起動の終了コード1を返す。
     /// </summary>
     [Fact]
-    public async Task RunAsync_WhenDuplicateRunNotificationFails_ReturnsOriginalExitCode()
+    public async Task RunAsync_WhenDuplicateRunIsDetected_ReturnsOriginalExitCode()
     {
-        FakeRunStatusNotifier notifier = new(notifyResult: false);
+        FakeBatchRunCompletionService notifier = new();
         BatchRunner runner = new(
             new ImapOptions(),
             new ApiOptions(),
@@ -93,7 +93,7 @@ public sealed class BatchRunnerTests
     public async Task RunAsync_WhenConnectThrows_SendsFatalErrorNotificationAndRethrows()
     {
         InvalidOperationException exception = new("Authentication failed.");
-        FakeRunStatusNotifier notifier = new();
+        FakeBatchRunCompletionService notifier = new();
         FakeReceivedMailSession session = new(connectException: exception);
         BatchRunner runner = new(
             new ImapOptions(),
@@ -130,7 +130,7 @@ public sealed class BatchRunnerTests
     public async Task RunAsync_WhenUseCaseThrows_SendsFatalErrorNotificationAndRethrows()
     {
         ApplicationException exception = new("Producer stopped unexpectedly.");
-        FakeRunStatusNotifier notifier = new();
+        FakeBatchRunCompletionService notifier = new();
         FakeReceivedMailPipeline pipeline = new(processException: exception);
         BatchRunner runner = new(
             new ImapOptions(),
@@ -166,7 +166,7 @@ public sealed class BatchRunnerTests
     {
         ReceivedMailId processedMailId = new(10, 999);
         ReceivedMailId errorMailId = new(11, 999);
-        FakeRunStatusNotifier notifier = new();
+        FakeBatchRunCompletionService notifier = new();
         FakeReceivedMailSession session = new(mailIds: [processedMailId, errorMailId]);
         FakeMailMoveFailureRecoveryService recoveryService = new(session.MarkRecoveryCompleted);
         BatchRunner runner = new(
@@ -203,14 +203,14 @@ public sealed class BatchRunnerTests
         public JobExecutionLockHandle? TryAcquire() => handle;
     }
 
-    private sealed class FakeRunStatusNotifier(bool notifyResult = true) : IRunStatusNotifier
+    private sealed class FakeBatchRunCompletionService : IBatchRunCompletionService
     {
         public List<(BatchRunResult Result, int ExitCode)> Notifications { get; } = [];
 
-        public Task<bool> TryNotifyAsync(BatchRunResult result, int exitCode, CancellationToken cancellationToken = default)
+        public Task CompleteAsync(BatchRunResult result, int exitCode, CancellationToken cancellationToken = default)
         {
             Notifications.Add((result, exitCode));
-            return Task.FromResult(notifyResult);
+            return Task.CompletedTask;
         }
     }
 

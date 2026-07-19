@@ -1,6 +1,7 @@
 using MailBatch.Console.Api;
 using MailBatch.Console.BatchProcessing;
 using MailBatch.Console.BatchProcessing.Locking;
+using MailBatch.Console.BatchProcessing.History;
 using MailBatch.Console.NotificationMails;
 using MailBatch.Console.Options;
 using MailBatch.Console.Pipeline;
@@ -72,7 +73,9 @@ internal static class BatchServiceCollectionExtensions
         return services
             .AddTransient<IMailNotifier, SmtpMailNotifier>()
             .AddTransient<MailNotificationFactory>()
-            .AddTransient<IMetricAlertMonitor, MetricAlertMonitor>()
+            .AddTransient<IMetricAlertNotifier, MetricAlertNotifier>()
+            .AddTransient<IStateMetricAlertMonitor, StateMetricAlertMonitor>()
+            .AddTransient<IHistoricalMetricAlertMonitor, HistoricalMetricAlertMonitor>()
             .AddSingleton(TimeProvider.System);
     }
 
@@ -98,6 +101,7 @@ internal static class BatchServiceCollectionExtensions
     {
         return services
             .AddSingleton<IProcessedMailMoveFailureStore, SqliteMailProcessingStore>()
+            .AddSingleton<IBatchRunHistoryStore, SqliteBatchRunHistoryStore>()
             .AddTransient<IReceivedMailQueueFactory, ReceivedMailQueueFactory>()
             .AddTransient<IReceivedMailPipelineComponentFactory, ReceivedMailPipelineComponentFactory>()
             .AddTransient<IReceivedMailPipeline, ReceivedMailPipeline>();
@@ -106,7 +110,9 @@ internal static class BatchServiceCollectionExtensions
     /// <summary>
     /// 実行結果通知サービスをDIコンテナへ登録します。
     /// </summary>
-    private static IServiceCollection AddRunStatusServices(this IServiceCollection services) => services.AddTransient<IRunStatusNotifier, RunStatusNotifier>();
+    private static IServiceCollection AddRunStatusServices(this IServiceCollection services) => services
+        .AddTransient<IRunStatusNotifier, RunStatusNotifier>()
+        .AddTransient<IBatchRunCompletionService, BatchRunCompletionService>();
 
     /// <summary>
     /// APIクライアントとリトライポリシーをDIコンテナへ登録します。

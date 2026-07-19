@@ -22,10 +22,13 @@ public sealed class SqliteRetentionCleanerTests : IDisposable
             command.CommandText = """
                 CREATE TABLE processed_mails (uid INTEGER, processed_at_utc TEXT NOT NULL);
                 CREATE TABLE mail_move_failures (uid INTEGER, last_failed_at_utc TEXT NOT NULL);
+                CREATE TABLE batch_runs (run_id TEXT, ended_at_utc TEXT NOT NULL);
                 INSERT INTO processed_mails VALUES (1, '2026-06-18T00:00:00.0000000+00:00');
                 INSERT INTO processed_mails VALUES (2, '2026-06-19T00:00:00.0000000+00:00');
                 INSERT INTO mail_move_failures VALUES (3, '2026-06-01T00:00:00.0000000+00:00');
                 INSERT INTO mail_move_failures VALUES (4, '2026-07-18T00:00:00.0000000+00:00');
+                INSERT INTO batch_runs VALUES ('old', '2026-06-01T00:00:00.0000000+00:00');
+                INSERT INTO batch_runs VALUES ('new', '2026-07-18T00:00:00.0000000+00:00');
                 """;
             _ = command.ExecuteNonQuery();
         }
@@ -40,6 +43,7 @@ public sealed class SqliteRetentionCleanerTests : IDisposable
         verificationConnection.Open();
         Assert.Equal(2L, ExecuteScalar(verificationConnection, "SELECT uid FROM processed_mails;"));
         Assert.Equal(4L, ExecuteScalar(verificationConnection, "SELECT uid FROM mail_move_failures;"));
+        Assert.Equal("new", ExecuteStringScalar(verificationConnection, "SELECT run_id FROM batch_runs;"));
         Assert.Equal(0L, ExecuteScalar(verificationConnection, "PRAGMA freelist_count;"));
     }
 
@@ -60,6 +64,13 @@ public sealed class SqliteRetentionCleanerTests : IDisposable
         {
             Directory.Delete(_directory, recursive: true);
         }
+    }
+
+    private static string ExecuteStringScalar(SqliteConnection connection, string commandText)
+    {
+        using SqliteCommand command = connection.CreateCommand();
+        command.CommandText = commandText;
+        return Convert.ToString(command.ExecuteScalar())!;
     }
 
     private static long ExecuteScalar(SqliteConnection connection, string commandText)

@@ -47,6 +47,12 @@ internal sealed class SqliteRetentionCleaner(
                 "mail_move_failures",
                 "last_failed_at_utc",
                 expirationThreshold);
+            deletedRecordCount += DeleteExpiredRecordsFromExistingTable(
+                connection,
+                transaction,
+                "batch_runs",
+                "ended_at_utc",
+                expirationThreshold);
             transaction.Commit();
         }
 
