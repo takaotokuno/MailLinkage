@@ -25,7 +25,11 @@ public sealed class ApiClientTests
         {
             BaseAddress = new Uri("https://api.example.local")
         };
-        ApiClient client = new(httpClient, new ApiOptions { Endpoint = "/received-mails" });
+        ApiClient client = new(httpClient, new ApiOptions
+        {
+            ApiKey = "test-api-key",
+            Endpoint = "/received-mails"
+        });
 
         ApiPostResult result = await client.PostReceivedMailAsync(new ApiRequest("linked message"));
 
@@ -34,6 +38,7 @@ public sealed class ApiClientTests
         Assert.Equal("created", result.ResponseBody);
         Assert.Equal(HttpMethod.Post, handler.Request?.Method);
         Assert.Equal(new Uri("https://api.example.local/received-mails"), handler.Request?.RequestUri);
+        Assert.Equal("test-api-key", handler.ApiKey);
         Assert.Equal(/*lang=json,strict*/ "{\"message\":\"linked message\"}", handler.RequestBody);
     }
 
@@ -55,7 +60,11 @@ public sealed class ApiClientTests
         {
             BaseAddress = new Uri("https://api.example.local")
         };
-        ApiClient client = new(httpClient, new ApiOptions { Endpoint = "/received-mails" });
+        ApiClient client = new(httpClient, new ApiOptions
+        {
+            ApiKey = "test-api-key",
+            Endpoint = "/received-mails"
+        });
 
         ApiPostResult result = await client.PostReceivedMailAsync(new ApiRequest("linked message"));
 
@@ -74,10 +83,15 @@ public sealed class ApiClientTests
         {
             get; private set;
         }
+        public string? ApiKey
+        {
+            get; private set;
+        }
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             Request = request;
+            ApiKey = request.Headers.GetValues("X-API-Key").SingleOrDefault();
             if (request.Content is not null)
             {
                 RequestBody = await request.Content.ReadAsStringAsync(cancellationToken);

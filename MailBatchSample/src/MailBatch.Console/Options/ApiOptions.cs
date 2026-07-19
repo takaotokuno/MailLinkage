@@ -14,6 +14,8 @@ internal sealed class ApiOptions
     {
         get; init;
     }
+    /// <summary>API認証に使用するAPIキーを取得します。</summary>
+    public string ApiKey { get; init; } = string.Empty;
     /// <summary>受信メールを送信するAPIエンドポイントの相対パスを取得します。</summary>
     public string Endpoint { get; init; } = "/api/received-mails";
     /// <summary>API要求のタイムアウト秒数を取得します。</summary>
@@ -28,6 +30,7 @@ internal sealed class ApiOptions
     /// </summary>
     public void Validate()
     {
+        OptionValidation.Require(ApiKey, "Api:ApiKey");
         OptionValidation.Require(Endpoint, "Api:Endpoint");
         OptionValidation.RequirePositive(TimeoutSeconds, "Api:TimeoutSeconds");
         OptionValidation.RequireNonNegative(RetryCount, "Api:RetryCount");

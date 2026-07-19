@@ -7,6 +7,25 @@ namespace MailBatch.Console.Tests.Options;
 public sealed class OptionsValidationTests
 {
     /// <summary>
+    /// 状態: APIキーが空白で設定されている。
+    /// 振る舞い: 必須項目が未設定のため、Api:ApiKeyの検証エラーを送出する。
+    /// </summary>
+    [Fact]
+    public void ApiOptionsValidate_WithBlankApiKey_ThrowsInvalidOperationException()
+    {
+        ApiOptions options = new()
+        {
+            BaseUrl = new Uri("https://api.example.local"),
+            ApiKey = " ",
+            Endpoint = "/received-mails"
+        };
+
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(options.Validate);
+
+        Assert.Equal("Api:ApiKey is required.", exception.Message);
+    }
+
+    /// <summary>
     /// 状態: APIのBaseUrlに相対URIが設定されている。
     /// 振る舞い: 絶対URIではないため、Api:BaseUrlの検証エラーを送出する。
     /// </summary>
@@ -16,6 +35,7 @@ public sealed class OptionsValidationTests
         ApiOptions options = new()
         {
             BaseUrl = new Uri("/api", UriKind.Relative),
+            ApiKey = "test-api-key",
             Endpoint = "/received-mails"
         };
 
