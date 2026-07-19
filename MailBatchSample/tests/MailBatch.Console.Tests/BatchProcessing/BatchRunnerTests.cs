@@ -223,7 +223,7 @@ public sealed class BatchRunnerTests
 
     private sealed class FakeReceivedMailSession(Exception? connectException = null, IReadOnlyList<ReceivedMailId>? mailIds = null) : IReceivedMailSession
     {
-        private bool recoveryCompleted;
+        private bool _recoveryCompleted;
 
         public bool Connected
         {
@@ -243,11 +243,14 @@ public sealed class BatchRunnerTests
 
         public Task DisconnectAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
-        public bool SearchedAfterRecovery { get; private set; }
+        public bool SearchedAfterRecovery
+        {
+            get; private set;
+        }
 
         public Task<IReadOnlyList<ReceivedMailId>> SearchTargetMessagesAsync(MailSearchCondition condition, int maxMessages, CancellationToken cancellationToken = default)
         {
-            SearchedAfterRecovery = recoveryCompleted;
+            SearchedAfterRecovery = _recoveryCompleted;
             return Task.FromResult(mailIds ?? []);
         }
 
@@ -269,14 +272,17 @@ public sealed class BatchRunnerTests
             return Task.CompletedTask;
         }
 
-        public void MarkRecoveryCompleted() => recoveryCompleted = true;
+        public void MarkRecoveryCompleted() => _recoveryCompleted = true;
 
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 
     private sealed class FakeMailMoveFailureRecoveryService(Action? onRecover = null) : IMailMoveFailureRecoveryService
     {
-        public bool Recovered { get; private set; }
+        public bool Recovered
+        {
+            get; private set;
+        }
 
         public Task RecoverAsync(CancellationToken cancellationToken)
         {

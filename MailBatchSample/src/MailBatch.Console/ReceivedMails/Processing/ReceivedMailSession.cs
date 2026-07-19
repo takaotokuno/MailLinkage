@@ -21,14 +21,14 @@ internal sealed class ReceivedMailSession(
     IProcessedMailMover processedMailMover,
     ILogger<ReceivedMailSession> logger) : IReceivedMailSession
 {
-    private readonly SemaphoreSlim imapLock = new(1, 1);
+    private readonly SemaphoreSlim _imapLock = new(1, 1);
 
     /// <summary>
     /// IMAPサーバーへ接続し、受信メールフォルダと処理済みフォルダを利用可能な状態にします。
     /// </summary>
     public async Task ConnectAsync(CancellationToken cancellationToken = default)
     {
-        await imapLock.WaitAsync(cancellationToken);
+        await _imapLock.WaitAsync(cancellationToken);
         try
         {
             if (imapConnection.IsConnected && mailFolderProvider.ReceiveFolder?.IsOpen == true)
@@ -49,7 +49,7 @@ internal sealed class ReceivedMailSession(
         }
         finally
         {
-            _ = imapLock.Release();
+            _ = _imapLock.Release();
         }
     }
 
@@ -58,7 +58,7 @@ internal sealed class ReceivedMailSession(
     /// </summary>
     public async Task DisconnectAsync(CancellationToken cancellationToken = default)
     {
-        await imapLock.WaitAsync(cancellationToken);
+        await _imapLock.WaitAsync(cancellationToken);
         try
         {
             mailFolderProvider.Clear();
@@ -66,7 +66,7 @@ internal sealed class ReceivedMailSession(
         }
         finally
         {
-            _ = imapLock.Release();
+            _ = _imapLock.Release();
         }
     }
 
@@ -75,14 +75,14 @@ internal sealed class ReceivedMailSession(
     /// </summary>
     public async Task<IReadOnlyList<ReceivedMailId>> SearchTargetMessagesAsync(MailSearchCondition condition, int maxMessages, CancellationToken cancellationToken = default)
     {
-        await imapLock.WaitAsync(cancellationToken);
+        await _imapLock.WaitAsync(cancellationToken);
         try
         {
             return await mailKitSearcher.SearchTargetMessagesAsync(condition, maxMessages, cancellationToken);
         }
         finally
         {
-            _ = imapLock.Release();
+            _ = _imapLock.Release();
         }
     }
 
@@ -91,14 +91,14 @@ internal sealed class ReceivedMailSession(
     /// </summary>
     public async Task<ReceivedMail> CreateRequestAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
     {
-        await imapLock.WaitAsync(cancellationToken);
+        await _imapLock.WaitAsync(cancellationToken);
         try
         {
             return await receivedMailReader.ReadAsync(mailId, cancellationToken);
         }
         finally
         {
-            _ = imapLock.Release();
+            _ = _imapLock.Release();
         }
     }
 
@@ -107,14 +107,14 @@ internal sealed class ReceivedMailSession(
     /// </summary>
     public async Task MoveToProcessedMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
     {
-        await imapLock.WaitAsync(cancellationToken);
+        await _imapLock.WaitAsync(cancellationToken);
         try
         {
             await processedMailMover.MoveToProcessedMailboxAsync(mailId, cancellationToken);
         }
         finally
         {
-            _ = imapLock.Release();
+            _ = _imapLock.Release();
         }
     }
 
@@ -123,14 +123,14 @@ internal sealed class ReceivedMailSession(
     /// </summary>
     public async Task MoveToErrorMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
     {
-        await imapLock.WaitAsync(cancellationToken);
+        await _imapLock.WaitAsync(cancellationToken);
         try
         {
             await processedMailMover.MoveToErrorMailboxAsync(mailId, cancellationToken);
         }
         finally
         {
-            _ = imapLock.Release();
+            _ = _imapLock.Release();
         }
     }
 
@@ -140,6 +140,6 @@ internal sealed class ReceivedMailSession(
     public async ValueTask DisposeAsync()
     {
         await DisconnectAsync();
-        imapLock.Dispose();
+        _imapLock.Dispose();
     }
 }

@@ -190,7 +190,7 @@ internal sealed class MailFolderProvider(
             isMessageFolder: true,
             cancellationToken);
 
-        // MailKitの契約上、作成失敗時は自動でエラーをスローする。
+        // MailKitの契約上、作成失敗時は自動で例外がスローされます。
         return createdFolder!;
     }
 }

@@ -11,13 +11,13 @@ internal sealed class ImapConnection(
     ImapOptions imapOptions,
     ILogger<ImapConnection> logger) : IImapConnection
 {
-    private ImapClient? imapClient;
+    private ImapClient? _imapClient;
 
     public ImapClient Client
     {
         get
         {
-            return imapClient
+            return _imapClient
         ?? throw new InvalidOperationException("IMAP client is not connected. Call ConnectAsync before using the client.");
         }
     }
@@ -26,7 +26,7 @@ internal sealed class ImapConnection(
     {
         get
         {
-            return imapClient?.IsConnected == true;
+            return _imapClient?.IsConnected == true;
         }
     }
 
@@ -40,8 +40,8 @@ internal sealed class ImapConnection(
             return;
         }
 
-        imapClient?.Dispose();
-        imapClient = new ImapClient();
+        _imapClient?.Dispose();
+        _imapClient = new ImapClient();
 
         logger.LogInformation(
             "Connecting to IMAP server. Host={Host}, Port={Port}, SecureSocketOption={SecureSocketOption}",
@@ -49,13 +49,13 @@ internal sealed class ImapConnection(
             imapOptions.Port,
             imapOptions.SecureSocketOption);
 
-        await imapClient.ConnectAsync(
+        await _imapClient.ConnectAsync(
             imapOptions.Host,
             imapOptions.Port,
             imapOptions.GetSecureSocketOptions(),
             cancellationToken);
 
-        await imapClient.AuthenticateAsync(imapOptions.UserName, imapOptions.Password, cancellationToken);
+        await _imapClient.AuthenticateAsync(imapOptions.UserName, imapOptions.Password, cancellationToken);
     }
 
     /// <summary>
@@ -63,14 +63,14 @@ internal sealed class ImapConnection(
     /// </summary>
     public async Task DisconnectAsync(CancellationToken cancellationToken = default)
     {
-        if (imapClient?.IsConnected == true)
+        if (_imapClient?.IsConnected == true)
         {
-            await imapClient.DisconnectAsync(true, cancellationToken);
+            await _imapClient.DisconnectAsync(true, cancellationToken);
             logger.LogInformation("Disconnected from IMAP server.");
         }
 
-        imapClient?.Dispose();
-        imapClient = null;
+        _imapClient?.Dispose();
+        _imapClient = null;
     }
 
     /// <summary>

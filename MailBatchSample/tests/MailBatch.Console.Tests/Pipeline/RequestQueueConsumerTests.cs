@@ -121,8 +121,8 @@ public sealed class RequestQueueConsumerTests
     [Fact]
     public async Task ConsumeAsync_DoesNotWriteRequestMessageBodyToApiSendLog()
     {
-        const string sensitiveMessage = "Key: ABC123\nName: Taro Yamada\nPhone: 090-0000-0000";
-        MailLinkageRequest request = new(new ReceivedMailId(4, 999), "key", sensitiveMessage);
+        const string SENSITIVE_MESSAGE = "Key: ABC123\nName: Taro Yamada\nPhone: 090-0000-0000";
+        MailLinkageRequest request = new(new ReceivedMailId(4, 999), "key", SENSITIVE_MESSAGE);
         ChannelReader<MailLinkageRequest> reader = CreateCompletedReader(request);
         FakeReceivedMailSession session = new();
         FakeApiClient apiClient = new(new ApiPostResult(true, 201, /*lang=json,strict*/ "{\"id\":1}"));
@@ -140,7 +140,7 @@ public sealed class RequestQueueConsumerTests
 
         Assert.DoesNotContain(logger.Entries, entry =>
         {
-            return entry.Contains(sensitiveMessage, StringComparison.Ordinal);
+            return entry.Contains(SENSITIVE_MESSAGE, StringComparison.Ordinal);
         });
         Assert.DoesNotContain(logger.Entries, entry =>
         {
@@ -148,7 +148,7 @@ public sealed class RequestQueueConsumerTests
         });
         Assert.Contains(logger.Entries, entry =>
         {
-            return entry.Contains($"MessageLength={sensitiveMessage.Length}", StringComparison.Ordinal);
+            return entry.Contains($"MessageLength={SENSITIVE_MESSAGE.Length}", StringComparison.Ordinal);
         });
     }
 

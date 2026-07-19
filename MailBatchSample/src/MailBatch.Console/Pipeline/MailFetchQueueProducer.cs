@@ -34,7 +34,9 @@ internal sealed class MailFetchQueueProducer(
     /// <summary>
     /// メールを取得し、API送信用データへ加工したうえで内部キューへ追加します。
     /// </summary>
-    public async Task<ProcessResult> ProduceAsync(IReadOnlyList<ReceivedMailId> targetMailIds, CancellationToken cancellationToken = default)
+    public async Task<ProcessResult> ProduceAsync(
+        IReadOnlyList<ReceivedMailId> targetMailIds,
+        CancellationToken cancellationToken = default)
     {
         ProcessResultAccumulator result = new(targetMailIds.Count);
         Exception? fatalException = null;
@@ -70,7 +72,10 @@ internal sealed class MailFetchQueueProducer(
     /// <summary>
     /// 指定された受信メールIDのメールを1件処理し、処理結果を集計します。
     /// </summary>
-    private async Task ProduceSingleAsync(ReceivedMailId mailId, ProcessResultAccumulator result, CancellationToken cancellationToken)
+    private async Task ProduceSingleAsync(
+        ReceivedMailId mailId,
+        ProcessResultAccumulator result,
+        CancellationToken cancellationToken)
     {
         try
         {
@@ -120,7 +125,7 @@ internal sealed class MailFetchQueueProducer(
 
 
     /// <summary>
-    /// メールそのものが壊れている、キー情報が不足している、またはデータサイズ上限を超過している場合のみ入力メール形式不正として集計します。
+    /// メールそのものが壊れている、キー情報が不足している、またはデータサイズ上限を超過している場合、入力メール形式不正として集計します。
     /// </summary>
     private async Task RecordInvalidFormatAsync(ReceivedMailId mailId, ProcessResultAccumulator result, Exception exception, CancellationToken cancellationToken)
     {

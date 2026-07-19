@@ -6,6 +6,10 @@ namespace MailBatch.Console.Logging;
 /// <summary>
 /// バッチ実行単位の識別子を付与したSerilogロガーを生成します。
 /// </summary>
+/// <remarks>
+/// log4netではなくSerilogを採用する理由
+/// Serilogはjson形式等、構造化されたログを前提としており、障害調査時の検索性がより高いため
+/// </remarks>
 internal static class SerilogLoggerFactory
 {
     /// <summary>
