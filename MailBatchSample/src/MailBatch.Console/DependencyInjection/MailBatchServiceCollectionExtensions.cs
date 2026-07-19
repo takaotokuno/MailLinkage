@@ -100,7 +100,9 @@ internal static class BatchServiceCollectionExtensions
     private static IServiceCollection AddPipelineServices(this IServiceCollection services)
     {
         return services
-            .AddSingleton<IProcessedMailMoveFailureStore, SqliteMailProcessingStore>()
+            .AddSingleton<SqliteMailProcessingStore>()
+            .AddSingleton<IProcessedMailStore>(provider => provider.GetRequiredService<SqliteMailProcessingStore>())
+            .AddSingleton<IMailMoveFailureStore>(provider => provider.GetRequiredService<SqliteMailProcessingStore>())
             .AddSingleton<IBatchRunHistoryStore, SqliteBatchRunHistoryStore>()
             .AddSingleton<IApiExecutionResultStore, SqliteApiExecutionResultStore>()
             .AddTransient<IReceivedMailQueueFactory, ReceivedMailQueueFactory>()

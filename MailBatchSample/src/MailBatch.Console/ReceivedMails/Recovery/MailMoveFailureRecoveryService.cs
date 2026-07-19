@@ -21,7 +21,7 @@ internal interface IMailMoveFailureRecoveryService
 /// </summary>
 internal sealed class MailMoveFailureRecoveryService(
     IReceivedMailSession receivedMailSession,
-    IProcessedMailMoveFailureStore moveFailureStore,
+    IMailMoveFailureStore moveFailureStore,
     IStateMetricAlertMonitor metricAlertMonitor,
     ILogger<MailMoveFailureRecoveryService> logger) : IMailMoveFailureRecoveryService
 {

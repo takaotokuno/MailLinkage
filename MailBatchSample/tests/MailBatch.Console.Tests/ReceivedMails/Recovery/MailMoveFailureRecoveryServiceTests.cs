@@ -100,7 +100,7 @@ public sealed class MailMoveFailureRecoveryServiceTests
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 
-    private sealed class FakeMoveFailureStore : IProcessedMailMoveFailureStore
+    private sealed class FakeMoveFailureStore : IMailMoveFailureStore
     {
         public List<MailMoveFailure> Failures { get; } = [];
 
