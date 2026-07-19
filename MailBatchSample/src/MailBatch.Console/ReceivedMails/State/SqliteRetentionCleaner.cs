@@ -11,7 +11,7 @@ internal sealed class SqliteRetentionCleaner(
     BatchOptions batchOptions,
     TimeProvider? timeProvider = null)
 {
-    private const string DatabaseFileName = "mail-processing.db";
+    private const string DATABASE_FILE_NAME = "mail-processing.db";
     private readonly TimeProvider _timeProvider = timeProvider ?? TimeProvider.System;
 
     /// <summary>
@@ -19,7 +19,7 @@ internal sealed class SqliteRetentionCleaner(
     /// </summary>
     public void DeleteExpiredRecords()
     {
-        string databasePath = Path.Combine(batchOptions.LogDirectory, DatabaseFileName);
+        string databasePath = Path.Combine(batchOptions.LogDirectory, DATABASE_FILE_NAME);
         if (!File.Exists(databasePath))
         {
             return;
@@ -89,14 +89,14 @@ internal sealed class SqliteRetentionCleaner(
         // タイムスタンプ列追加前のDBでも、従来列を使って安全にクリーンアップする。
         if (!ColumnExists(connection, transaction, tableName, timestampColumnName))
         {
-            const string legacyFailureTimestampColumnName = "failed_at_utc";
+            const string LEGACY_FAILURE_TIMESTAMP_COLUMN_NAME = "failed_at_utc";
             if (tableName != "mail_move_failures"
-                || !ColumnExists(connection, transaction, tableName, legacyFailureTimestampColumnName))
+                || !ColumnExists(connection, transaction, tableName, LEGACY_FAILURE_TIMESTAMP_COLUMN_NAME))
             {
                 return 0;
             }
 
-            timestampColumnName = legacyFailureTimestampColumnName;
+            timestampColumnName = LEGACY_FAILURE_TIMESTAMP_COLUMN_NAME;
         }
 
         using SqliteCommand deleteCommand = connection.CreateCommand();

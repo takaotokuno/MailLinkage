@@ -5,6 +5,9 @@ namespace MailBatch.Console.Options;
 /// </summary>
 internal static class OptionValidation
 {
+    public const int MINIMUM_NETWORK_PORT = 1;
+    public const int MAXIMUM_NETWORK_PORT = 65_535;
+
     /// <summary>
     /// 文字列が未設定または空白のみでないことを検証します。
     /// </summary>

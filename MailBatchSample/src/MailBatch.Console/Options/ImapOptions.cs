@@ -7,14 +7,18 @@ namespace MailBatch.Console.Options;
 /// </summary>
 internal sealed class ImapOptions
 {
+    private const int DEFAULT_PORT = 993;
+    private const int DEFAULT_RETRY_COUNT = 3;
+    private const int DEFAULT_RETRY_DELAY_SECONDS = 2;
+
     public string Host { get; init; } = "";
-    public int Port { get; init; } = 993;
+    public int Port { get; init; } = DEFAULT_PORT;
     public SecureSocketOptions SocketOptions { get; init; } = SecureSocketOptions.SslOnConnect;
     public string UserName { get; init; } = "";
     public string Password { get; init; } = "";
     public string Mailbox { get; init; } = "INBOX";
-    public int RetryCount { get; init; } = 3;
-    public int RetryDelaySeconds { get; init; } = 2;
+    public int RetryCount { get; init; } = DEFAULT_RETRY_COUNT;
+    public int RetryDelaySeconds { get; init; } = DEFAULT_RETRY_DELAY_SECONDS;
 
     /// <summary>
     /// IMAP接続に必要な設定値を検証します。
@@ -22,7 +26,11 @@ internal sealed class ImapOptions
     public void Validate()
     {
         OptionValidation.Require(Host, "Imap:Host");
-        OptionValidation.RequireRange(Port, 1, 65535, "Imap:Port");
+        OptionValidation.RequireRange(
+            Port,
+            OptionValidation.MINIMUM_NETWORK_PORT,
+            OptionValidation.MAXIMUM_NETWORK_PORT,
+            "Imap:Port");
         OptionValidation.Require(UserName, "Imap:UserName");
         OptionValidation.Require(Password, "Imap:Password");
         OptionValidation.Require(Mailbox, "Imap:Mailbox");

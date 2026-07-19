@@ -2,6 +2,9 @@ namespace TestMailSender.Options;
 
 internal sealed class AppOptions
 {
+    private const int MINIMUM_NETWORK_PORT = 1;
+    private const int MAXIMUM_NETWORK_PORT = 65_535;
+
     public SmtpOptions Smtp { get; init; } = new();
     public MailOptions Mail { get; init; } = new();
 
@@ -11,9 +14,10 @@ internal sealed class AppOptions
     public void Validate()
     {
         Require(Smtp.Host, "Smtp:Host");
-        if (Smtp.Port is <= 0 or > 65535)
+        if (Smtp.Port is < MINIMUM_NETWORK_PORT or > MAXIMUM_NETWORK_PORT)
         {
-            throw new InvalidOperationException("Smtp:Port must be between 1 and 65535.");
+            throw new InvalidOperationException(
+                $"Smtp:Port must be between {MINIMUM_NETWORK_PORT} and {MAXIMUM_NETWORK_PORT}.");
         }
 
         if (!string.IsNullOrWhiteSpace(Smtp.UserName))

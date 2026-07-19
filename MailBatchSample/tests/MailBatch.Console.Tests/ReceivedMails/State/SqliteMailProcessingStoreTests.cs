@@ -69,7 +69,7 @@ public sealed class SqliteMailProcessingStoreTests : IDisposable
     {
         _ = Directory.CreateDirectory(_directory);
         string databasePath = Path.Combine(_directory, "mail-processing.db");
-        const string legacyTimestamp = "2026-07-01T01:02:03.0000000+00:00";
+        const string LEGACY_TIMESTAMP = "2026-07-01T01:02:03.0000000+00:00";
         await using (SqliteConnection connection = new($"Data Source={databasePath}"))
         {
             await connection.OpenAsync();
@@ -83,14 +83,14 @@ public sealed class SqliteMailProcessingStoreTests : IDisposable
                     PRIMARY KEY (uid, uid_validity, destination)
                 );
                 INSERT INTO mail_move_failures (uid, uid_validity, destination, failed_at_utc)
-                VALUES (50, 1000, 'Processed', '{legacyTimestamp}');
+                VALUES (50, 1000, 'Processed', '{LEGACY_TIMESTAMP}');
                 """;
             _ = await command.ExecuteNonQueryAsync();
         }
 
         MailMoveFailure failure = Assert.Single(await CreateStore().GetAllAsync());
 
-        DateTimeOffset expected = DateTimeOffset.Parse(legacyTimestamp);
+        DateTimeOffset expected = DateTimeOffset.Parse(LEGACY_TIMESTAMP);
         Assert.Equal(expected, failure.CreatedAtUtc);
         Assert.Equal(expected, failure.LastFailedAtUtc);
     }

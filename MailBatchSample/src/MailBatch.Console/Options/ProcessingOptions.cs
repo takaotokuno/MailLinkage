@@ -5,11 +5,13 @@ namespace MailBatch.Console.Options;
 /// </summary>
 internal sealed class ProcessingOptions
 {
+    private const int DEFAULT_REQUEST_QUEUE_CAPACITY = 100;
+
     public string ProcessedMailbox { get; init; } = "Processed";
 
     public string ErrorMailbox { get; init; } = "Error";
 
-    public int RequestQueueCapacity { get; init; } = 100;
+    public int RequestQueueCapacity { get; init; } = DEFAULT_REQUEST_QUEUE_CAPACITY;
 
     /// <summary>
     /// 必須項目を検証します。

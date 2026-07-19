@@ -16,7 +16,7 @@ internal interface IBatchRunHistoryStore
 /// </summary>
 internal sealed class SqliteBatchRunHistoryStore(BatchOptions batchOptions) : IBatchRunHistoryStore
 {
-    private const string DatabaseFileName = "mail-processing.db";
+    private const string DATABASE_FILE_NAME = "mail-processing.db";
     private readonly SemaphoreSlim _initializationLock = new(1, 1);
     private bool _initialized;
 
@@ -24,7 +24,7 @@ internal sealed class SqliteBatchRunHistoryStore(BatchOptions batchOptions) : IB
     {
         get
         {
-            return Path.Combine(batchOptions.LogDirectory, DatabaseFileName);
+            return Path.Combine(batchOptions.LogDirectory, DATABASE_FILE_NAME);
         }
     }
 
@@ -71,19 +71,29 @@ internal sealed class SqliteBatchRunHistoryStore(BatchOptions batchOptions) : IB
 
         List<BatchRunHistory> history = [];
         await using SqliteDataReader reader = await command.ExecuteReaderAsync(cancellationToken);
+        int runIdOrdinal = reader.GetOrdinal("run_id");
+        int startedAtOrdinal = reader.GetOrdinal("started_at_utc");
+        int endedAtOrdinal = reader.GetOrdinal("ended_at_utc");
+        int exitCodeOrdinal = reader.GetOrdinal("exit_code");
+        int totalCountOrdinal = reader.GetOrdinal("total_count");
+        int succeededCountOrdinal = reader.GetOrdinal("succeeded_count");
+        int invalidFormatCountOrdinal = reader.GetOrdinal("invalid_format_count");
+        int apiFailedCountOrdinal = reader.GetOrdinal("api_failed_count");
+        int fatalErrorCodeOrdinal = reader.GetOrdinal("fatal_error_code");
+        int fatalErrorStageOrdinal = reader.GetOrdinal("fatal_error_stage");
         while (await reader.ReadAsync(cancellationToken))
         {
             history.Add(new BatchRunHistory(
-                reader.GetString(0),
-                ParseTimestamp(reader.GetString(1)),
-                ParseTimestamp(reader.GetString(2)),
-                reader.GetInt32(3),
-                reader.GetInt32(4),
-                reader.GetInt32(5),
-                reader.GetInt32(6),
-                reader.GetInt32(7),
-                reader.IsDBNull(8) ? null : reader.GetString(8),
-                reader.IsDBNull(9) ? null : reader.GetString(9)));
+                reader.GetString(runIdOrdinal),
+                ParseTimestamp(reader.GetString(startedAtOrdinal)),
+                ParseTimestamp(reader.GetString(endedAtOrdinal)),
+                reader.GetInt32(exitCodeOrdinal),
+                reader.GetInt32(totalCountOrdinal),
+                reader.GetInt32(succeededCountOrdinal),
+                reader.GetInt32(invalidFormatCountOrdinal),
+                reader.GetInt32(apiFailedCountOrdinal),
+                reader.IsDBNull(fatalErrorCodeOrdinal) ? null : reader.GetString(fatalErrorCodeOrdinal),
+                reader.IsDBNull(fatalErrorStageOrdinal) ? null : reader.GetString(fatalErrorStageOrdinal)));
         }
 
         return history;

@@ -60,7 +60,7 @@ internal sealed class SqliteMailProcessingStore(
     BatchOptions batchOptions,
     ILogger<SqliteMailProcessingStore> logger) : IProcessedMailMoveFailureStore
 {
-    private const string DatabaseFileName = "mail-processing.db";
+    private const string DATABASE_FILE_NAME = "mail-processing.db";
     private readonly SemaphoreSlim _initializationLock = new(1, 1);
     private bool _initialized;
 
@@ -68,7 +68,7 @@ internal sealed class SqliteMailProcessingStore(
     {
         get
         {
-            return Path.Combine(batchOptions.LogDirectory, DatabaseFileName);
+            return Path.Combine(batchOptions.LogDirectory, DATABASE_FILE_NAME);
         }
     }
 
@@ -80,13 +80,20 @@ internal sealed class SqliteMailProcessingStore(
 
         List<MailMoveFailure> failures = [];
         await using SqliteDataReader reader = await command.ExecuteReaderAsync(cancellationToken);
+        int uidOrdinal = reader.GetOrdinal("uid");
+        int uidValidityOrdinal = reader.GetOrdinal("uid_validity");
+        int destinationOrdinal = reader.GetOrdinal("destination");
+        int createdAtOrdinal = reader.GetOrdinal("created_at_utc");
+        int lastFailedAtOrdinal = reader.GetOrdinal("last_failed_at_utc");
         while (await reader.ReadAsync(cancellationToken))
         {
             failures.Add(new MailMoveFailure(
-                new ReceivedMailId(ToUInt32(reader.GetInt64(0)), ToUInt32(reader.GetInt64(1))),
-                Enum.Parse<MailMoveFailureDestination>(reader.GetString(2), ignoreCase: true),
-                ParseTimestamp(reader.GetString(3)),
-                ParseTimestamp(reader.GetString(4))));
+                new ReceivedMailId(
+                    ToUInt32(reader.GetInt64(uidOrdinal)),
+                    ToUInt32(reader.GetInt64(uidValidityOrdinal))),
+                Enum.Parse<MailMoveFailureDestination>(reader.GetString(destinationOrdinal), ignoreCase: true),
+                ParseTimestamp(reader.GetString(createdAtOrdinal)),
+                ParseTimestamp(reader.GetString(lastFailedAtOrdinal))));
         }
 
         return failures;

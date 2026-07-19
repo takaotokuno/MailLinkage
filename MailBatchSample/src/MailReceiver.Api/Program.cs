@@ -6,9 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
-const int MessageIdMaxLength = 255;
-const int SenderMaxLength = 320;
-const int SubjectMaxLength = 500;
+const int SQLITE_CONSTRAINT_ERROR_CODE = 19;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -245,9 +243,9 @@ static Dictionary<string, string[]> Validate(
     string subject = request.Subject?.Trim() ?? string.Empty;
     string receivedAtText = request.ReceivedAt?.Trim() ?? string.Empty;
 
-    AddRequiredAndLengthErrors(errors, nameof(request.MessageId), messageId, MessageIdMaxLength);
-    AddRequiredAndLengthErrors(errors, nameof(request.Sender), sender, SenderMaxLength);
-    AddRequiredAndLengthErrors(errors, nameof(request.Subject), subject, SubjectMaxLength);
+    AddRequiredAndLengthErrors(errors, nameof(request.MessageId), messageId, ReceivedMail.MESSAGE_ID_MAX_LENGTH);
+    AddRequiredAndLengthErrors(errors, nameof(request.Sender), sender, ReceivedMail.SENDER_MAX_LENGTH);
+    AddRequiredAndLengthErrors(errors, nameof(request.Subject), subject, ReceivedMail.SUBJECT_MAX_LENGTH);
 
     if (!errors.ContainsKey(nameof(request.Sender)) && !IsPlausibleEmailAddress(sender))
     {
@@ -308,7 +306,7 @@ static bool IsPlausibleEmailAddress(string value)
 /// </summary>
 static bool IsUniqueConstraintViolation(DbUpdateException exception)
 {
-    return exception.InnerException is SqliteException { SqliteErrorCode: 19 };
+    return exception.InnerException is SqliteException { SqliteErrorCode: SQLITE_CONSTRAINT_ERROR_CODE };
 }
 
 /// <summary>
