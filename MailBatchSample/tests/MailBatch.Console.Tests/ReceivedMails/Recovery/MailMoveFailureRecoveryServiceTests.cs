@@ -2,7 +2,6 @@ using MailBatch.Console.NotificationMails;
 using MailBatch.Console.ReceivedMails;
 using MailBatch.Console.ReceivedMails.Processing;
 using MailBatch.Console.ReceivedMails.Recovery;
-using MailBatch.Console.ReceivedMails.Searching;
 using MailBatch.Console.ReceivedMails.State;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
@@ -16,7 +15,7 @@ public sealed class MailMoveFailureRecoveryServiceTests
     {
         ReceivedMailId processedMailId = new(10, 999);
         ReceivedMailId errorMailId = new(11, 999);
-        FakeReceivedMailSession session = new();
+        FakeReceivedMailMover session = new();
         FakeMoveFailureStore moveFailureStore = new();
         moveFailureStore.Failures.Add(CreateFailure(processedMailId, MailMoveFailureDestination.Processed));
         moveFailureStore.Failures.Add(CreateFailure(errorMailId, MailMoveFailureDestination.Error));
@@ -37,7 +36,7 @@ public sealed class MailMoveFailureRecoveryServiceTests
     public async Task RecoverAsync_WhenMoveFails_RecordsLatestFailureAndRetainsRecord()
     {
         ReceivedMailId mailId = new(12, 999);
-        FakeReceivedMailSession session = new()
+        FakeReceivedMailMover session = new()
         {
             FailProcessedMove = true
         };
@@ -61,7 +60,7 @@ public sealed class MailMoveFailureRecoveryServiceTests
     private static MailMoveFailure CreateFailure(ReceivedMailId mailId, MailMoveFailureDestination destination) =>
         new(mailId, destination, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow);
 
-    private sealed class FakeReceivedMailSession : IReceivedMailSession
+    private sealed class FakeReceivedMailMover : IReceivedMailMover
     {
         public bool FailProcessedMove
         {
@@ -72,13 +71,6 @@ public sealed class MailMoveFailureRecoveryServiceTests
 
         public List<ReceivedMailId> ErrorMailIds { get; } = [];
 
-        public Task ConnectAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
-
-        public Task DisconnectAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
-
-        public Task<IReadOnlyList<ReceivedMailId>> SearchTargetMessagesAsync(MailSearchCondition condition, int maxMessages, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-
-        public Task<ReceivedMail> CreateRequestAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
         public Task MoveToProcessedMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)
         {
@@ -96,8 +88,6 @@ public sealed class MailMoveFailureRecoveryServiceTests
             ErrorMailIds.Add(mailId);
             return Task.CompletedTask;
         }
-
-        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 
     private sealed class FakeMoveFailureStore : IMailMoveFailureStore

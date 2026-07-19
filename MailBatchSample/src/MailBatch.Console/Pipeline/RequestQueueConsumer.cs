@@ -26,7 +26,7 @@ internal interface IRequestQueueConsumer
 /// </summary>
 internal sealed class RequestQueueConsumer(
     ApiOptions apiOptions,
-    IReceivedMailSession receivedMailSession,
+    IReceivedMailMover receivedMailMover,
     IApiClient receivedMailApiClient,
     ChannelReader<MailLinkageRequest> reader,
     IProcessedMailStore processedMailStore,
@@ -269,10 +269,10 @@ internal sealed class RequestQueueConsumer(
     /// <summary>
     /// 処理済みメールを設定されたメールボックスへ移動します。
     /// </summary>
-    private async Task MoveToProcessedMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken) => await receivedMailSession.MoveToProcessedMailboxAsync(mailId, cancellationToken);
+    private async Task MoveToProcessedMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken) => await receivedMailMover.MoveToProcessedMailboxAsync(mailId, cancellationToken);
 
     /// <summary>
     /// API連携に失敗したメールを設定されたエラーメールボックスへ移動します。
     /// </summary>
-    private async Task MoveToErrorMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken) => await receivedMailSession.MoveToErrorMailboxAsync(mailId, cancellationToken);
+    private async Task MoveToErrorMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken) => await receivedMailMover.MoveToErrorMailboxAsync(mailId, cancellationToken);
 }

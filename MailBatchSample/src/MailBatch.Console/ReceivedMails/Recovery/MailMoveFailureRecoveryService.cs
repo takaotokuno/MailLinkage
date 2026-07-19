@@ -20,7 +20,7 @@ internal interface IMailMoveFailureRecoveryService
 /// メール移動失敗ストアの記録をもとにメール移動を再試行します。
 /// </summary>
 internal sealed class MailMoveFailureRecoveryService(
-    IReceivedMailSession receivedMailSession,
+    IReceivedMailMover receivedMailMover,
     IMailMoveFailureStore moveFailureStore,
     IStateMetricAlertMonitor metricAlertMonitor,
     ILogger<MailMoveFailureRecoveryService> logger) : IMailMoveFailureRecoveryService
@@ -79,10 +79,10 @@ internal sealed class MailMoveFailureRecoveryService(
     {
         if (failure.Destination == MailMoveFailureDestination.Processed)
         {
-            await receivedMailSession.MoveToProcessedMailboxAsync(failure.MailId, cancellationToken);
+            await receivedMailMover.MoveToProcessedMailboxAsync(failure.MailId, cancellationToken);
             return;
         }
 
-        await receivedMailSession.MoveToErrorMailboxAsync(failure.MailId, cancellationToken);
+        await receivedMailMover.MoveToErrorMailboxAsync(failure.MailId, cancellationToken);
     }
 }

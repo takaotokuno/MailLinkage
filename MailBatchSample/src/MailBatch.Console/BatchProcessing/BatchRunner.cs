@@ -23,6 +23,7 @@ internal sealed class BatchRunner(
     IReceivedMailPipeline receivedMailPipeline,
     IBatchRunCompletionService runCompletionService,
     IReceivedMailSession receivedMailSession,
+    IReceivedMailSearcher receivedMailSearcher,
     IMailMoveFailureRecoveryService mailMoveFailureRecoveryService,
     IJobExecutionLock jobExecutionLock)
 {
@@ -160,7 +161,7 @@ internal sealed class BatchRunner(
     private async Task<ProcessResult> RunUseCaseAsync(CancellationToken cancellationToken)
     {
         MailSearchCondition condition = MailSearchCondition.FromOptions(mailSearchOptions, DateTime.UtcNow);
-        IReadOnlyList<ReceivedMailId> targetMailIds = await receivedMailSession.SearchTargetMessagesAsync(
+        IReadOnlyList<ReceivedMailId> targetMailIds = await receivedMailSearcher.SearchTargetMessagesAsync(
             condition,
             mailSearchOptions.MaxMessages,
             cancellationToken);

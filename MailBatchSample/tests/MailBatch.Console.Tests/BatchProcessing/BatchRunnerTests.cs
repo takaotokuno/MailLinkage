@@ -35,6 +35,7 @@ public sealed class BatchRunnerTests
             pipeline,
             notifier,
             session,
+            session,
             new FakeMailMoveFailureRecoveryService(),
             new FakeJobExecutionLock(null));
 
@@ -75,6 +76,7 @@ public sealed class BatchRunnerTests
             new FakeReceivedMailPipeline(),
             notifier,
             new FakeReceivedMailSession(),
+            new FakeReceivedMailSession(),
             new FakeMailMoveFailureRecoveryService(),
             new FakeJobExecutionLock(null));
 
@@ -103,6 +105,7 @@ public sealed class BatchRunnerTests
             NullLogger<BatchRunner>.Instance,
             new FakeReceivedMailPipeline(),
             notifier,
+            session,
             session,
             new FakeMailMoveFailureRecoveryService(),
             new FakeJobExecutionLock(new JobExecutionLockHandle(new FakeLockRelease())));
@@ -141,6 +144,7 @@ public sealed class BatchRunnerTests
             pipeline,
             notifier,
             new FakeReceivedMailSession(mailIds: [new ReceivedMailId(1, 1)]),
+            new FakeReceivedMailSession(mailIds: [new ReceivedMailId(1, 1)]),
             new FakeMailMoveFailureRecoveryService(),
             new FakeJobExecutionLock(new JobExecutionLockHandle(new FakeLockRelease())));
 
@@ -177,6 +181,7 @@ public sealed class BatchRunnerTests
             NullLogger<BatchRunner>.Instance,
             new FakeReceivedMailPipeline(),
             notifier,
+            session,
             session,
             recoveryService,
             new FakeJobExecutionLock(new JobExecutionLockHandle(new FakeLockRelease())));
@@ -228,7 +233,7 @@ public sealed class BatchRunnerTests
         }
     }
 
-    private sealed class FakeReceivedMailSession(Exception? connectException = null, IReadOnlyList<ReceivedMailId>? mailIds = null) : IReceivedMailSession
+    private sealed class FakeReceivedMailSession(Exception? connectException = null, IReadOnlyList<ReceivedMailId>? mailIds = null) : IReceivedMailSession, IReceivedMailSearcher
     {
         private bool _recoveryCompleted;
 

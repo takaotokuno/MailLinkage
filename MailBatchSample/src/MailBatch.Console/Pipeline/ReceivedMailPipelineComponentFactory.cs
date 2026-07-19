@@ -31,6 +31,7 @@ internal interface IReceivedMailPipelineComponentFactory
 internal sealed class ReceivedMailPipelineComponentFactory(
     ApiOptions apiOptions,
     IReceivedMailSession receivedMailSession,
+    IReceivedMailMover receivedMailMover,
     IApiClient apiClient,
     IMailNotifier mailNotifier,
     MailNotificationFactory mailNotificationFactory,
@@ -47,6 +48,7 @@ internal sealed class ReceivedMailPipelineComponentFactory(
     {
         return new MailFetchQueueProducer(
             receivedMailSession,
+            receivedMailMover,
             writer,
             mailNotifier,
             mailNotificationFactory,
@@ -62,7 +64,7 @@ internal sealed class ReceivedMailPipelineComponentFactory(
     {
         return new RequestQueueConsumer(
             apiOptions,
-            receivedMailSession,
+            receivedMailMover,
             apiClient,
             reader,
             processedMailStore,

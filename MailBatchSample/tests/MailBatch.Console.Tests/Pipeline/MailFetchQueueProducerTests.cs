@@ -132,6 +132,7 @@ public sealed class MailFetchQueueProducerTests
         stateStore ??= new FakeMoveFailureStore();
         return new MailFetchQueueProducer(
             session,
+            session,
             writer ?? channel.Writer,
             new FakeMailNotifier(),
             new MailNotificationFactory(CreateNotificationOptions(), new BatchRunContext("test-run")),
@@ -169,11 +170,10 @@ public sealed class MailFetchQueueProducerTests
         };
     }
 
-    private sealed class FakeReceivedMailSession(Func<ReceivedMailId, ReceivedMail> mailFactory) : IReceivedMailSession
+    private sealed class FakeReceivedMailSession(Func<ReceivedMailId, ReceivedMail> mailFactory) : IReceivedMailSession, IReceivedMailMover
     {
         public Task ConnectAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task DisconnectAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task<IReadOnlyList<ReceivedMailId>> SearchTargetMessagesAsync(MailSearchCondition condition, int maxMessages, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<ReceivedMail> CreateRequestAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default) => Task.FromResult(mailFactory(mailId));
         public List<ReceivedMailId> ProcessedMailIds { get; } = [];
         public Task MoveToProcessedMailboxAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default)

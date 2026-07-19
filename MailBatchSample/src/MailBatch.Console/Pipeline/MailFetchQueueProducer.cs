@@ -25,6 +25,7 @@ internal interface IMailFetchQueueProducer
 /// </summary>
 internal sealed class MailFetchQueueProducer(
     IReceivedMailSession receivedMailSession,
+    IReceivedMailMover receivedMailMover,
     ChannelWriter<MailLinkageRequest> writer,
     IMailNotifier mailNotifier,
     MailNotificationFactory mailNotificationFactory,
@@ -145,7 +146,7 @@ internal sealed class MailFetchQueueProducer(
         try
         {
             await processedMailStore.RecordAsync(mailId, cancellationToken);
-            await receivedMailSession.MoveToProcessedMailboxAsync(mailId, cancellationToken);
+            await receivedMailMover.MoveToProcessedMailboxAsync(mailId, cancellationToken);
             await moveFailureStore.RemoveAsync(mailId, cancellationToken);
             logger.LogInformation(
                 "Moved invalid format message to processed mailbox. MailId={MailId}",

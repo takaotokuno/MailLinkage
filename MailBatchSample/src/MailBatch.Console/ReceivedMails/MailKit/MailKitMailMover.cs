@@ -1,14 +1,13 @@
 using MailBatch.Console.Options;
-using MailBatch.Console.ReceivedMails.MailKit;
 using MailKit;
 using Microsoft.Extensions.Logging;
 
-namespace MailBatch.Console.ReceivedMails.Folders;
+namespace MailBatch.Console.ReceivedMails.MailKit;
 
 /// <summary>
 /// 処理結果に応じてメールを処理済みまたはエラー用メールボックスへ移動します。
 /// </summary>
-internal interface IProcessedMailMover
+internal interface IMailKitMailMover
 {
     /// <summary>
     /// 指定されたメールを処理済みメールボックスへ移動します。
@@ -24,10 +23,10 @@ internal interface IProcessedMailMover
 /// <summary>
 /// 処理結果に応じたメール移動を実行します。
 /// </summary>
-internal sealed class ProcessedMailMover(
+internal sealed class MailKitMailMover(
     ProcessingOptions processingOptions,
     IMailFolderProvider mailFolderProvider,
-    ILogger<ProcessedMailMover> logger) : IProcessedMailMover
+    ILogger<MailKitMailMover> logger) : IMailKitMailMover
 {
     /// <summary>
     /// 指定されたメールを処理済みメールボックスへ移動します。
