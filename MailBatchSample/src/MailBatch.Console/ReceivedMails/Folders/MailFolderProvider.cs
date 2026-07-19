@@ -14,16 +14,19 @@ internal sealed class MailFolderProvider(
     IImapConnection imapConnection,
     ILogger<MailFolderProvider> logger) : IMailFolderProvider
 {
+    /// <summary>処理対象の受信メールフォルダーを取得します。</summary>
     public IMailFolder? ReceiveFolder
     {
         get; private set;
     }
 
+    /// <summary>正常処理したメールの移動先フォルダーを取得します。</summary>
     public IMailFolder? ProcessedFolder
     {
         get; private set;
     }
 
+    /// <summary>処理に失敗したメールの移動先フォルダーを取得します。</summary>
     public IMailFolder? ErrorFolder
     {
         get; private set;
