@@ -1,3 +1,4 @@
+using MailBatch.Console.NotificationMails;
 using MailBatch.Console.ReceivedMails.Processing;
 using MailBatch.Console.ReceivedMails.State;
 using Microsoft.Extensions.Logging;
@@ -21,22 +22,29 @@ internal interface IMailMoveFailureRecoveryService
 internal sealed class MailMoveFailureRecoveryService(
     IReceivedMailSession receivedMailSession,
     IProcessedMailMoveFailureStore moveFailureStore,
+    IMetricAlertMonitor metricAlertMonitor,
     ILogger<MailMoveFailureRecoveryService> logger) : IMailMoveFailureRecoveryService
 {
     /// <inheritdoc />
     public async Task RecoverAsync(CancellationToken cancellationToken)
     {
         IReadOnlyList<MailMoveFailure> failures = await moveFailureStore.GetAllAsync(cancellationToken);
+        List<MailMoveFailure> unrecoveredFailures = [];
         foreach (MailMoveFailure failure in failures)
         {
-            await RecoverMailboxMoveFailureAsync(failure, cancellationToken);
+            if (!await RecoverMailboxMoveFailureAsync(failure, cancellationToken))
+            {
+                unrecoveredFailures.Add(failure);
+            }
         }
+
+        _ = await metricAlertMonitor.TryCheckMailMoveStagnationAsync(unrecoveredFailures, cancellationToken);
     }
 
     /// <summary>
     /// メールボックス移動失敗レコード1件に対する再移動と記録削除を実行します。
     /// </summary>
-    private async Task RecoverMailboxMoveFailureAsync(MailMoveFailure failure, CancellationToken cancellationToken)
+    private async Task<bool> RecoverMailboxMoveFailureAsync(MailMoveFailure failure, CancellationToken cancellationToken)
     {
         try
         {
@@ -46,6 +54,7 @@ internal sealed class MailMoveFailureRecoveryService(
                 "Recovered mailbox move failure. MailId={MailId}, Destination={Destination}",
                 failure.MailId,
                 failure.Destination);
+            return true;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -59,6 +68,7 @@ internal sealed class MailMoveFailureRecoveryService(
                 "Failed to recover mailbox move failure. MailId={MailId}, Destination={Destination}",
                 failure.MailId,
                 failure.Destination);
+            return false;
         }
     }
 

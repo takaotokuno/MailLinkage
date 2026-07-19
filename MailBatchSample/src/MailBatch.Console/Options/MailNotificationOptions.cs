@@ -9,6 +9,7 @@ internal sealed class MailNotificationOptions
 {
     public const string RUN_STATUS_TEMPLATE_NAME = "RunStatus";
     public const string VALIDATION_ERROR_TEMPLATE_NAME = "ValidationError";
+    public const string METRIC_ALERT_TEMPLATE_NAME = "MetricAlert";
 
     public string SmtpHost { get; init; } = string.Empty;
     public int SmtpPort { get; init; } = 25;
@@ -46,6 +47,7 @@ internal sealed class MailNotificationOptions
 
         RequireTemplate(RUN_STATUS_TEMPLATE_NAME);
         RequireTemplate(VALIDATION_ERROR_TEMPLATE_NAME);
+        RequireTemplate(METRIC_ALERT_TEMPLATE_NAME);
     }
 
     /// <summary>

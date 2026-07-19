@@ -3,6 +3,7 @@ using MailBatch.Console.ReceivedMails.Processing;
 using MailBatch.Console.ReceivedMails.Recovery;
 using MailBatch.Console.ReceivedMails.Searching;
 using MailBatch.Console.ReceivedMails.State;
+using MailBatch.Console.NotificationMails;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
@@ -22,6 +23,7 @@ public sealed class MailMoveFailureRecoveryServiceTests
         MailMoveFailureRecoveryService service = new(
             session,
             moveFailureStore,
+            new FakeMetricAlertMonitor(),
             NullLogger<MailMoveFailureRecoveryService>.Instance);
 
         await service.RecoverAsync(CancellationToken.None);
@@ -39,15 +41,18 @@ public sealed class MailMoveFailureRecoveryServiceTests
         FakeMoveFailureStore moveFailureStore = new();
         MailMoveFailure failure = CreateFailure(mailId, MailMoveFailureDestination.Processed);
         moveFailureStore.Failures.Add(failure);
+        FakeMetricAlertMonitor notifier = new();
         MailMoveFailureRecoveryService service = new(
             session,
             moveFailureStore,
+            notifier,
             NullLogger<MailMoveFailureRecoveryService>.Instance);
 
         await service.RecoverAsync(CancellationToken.None);
 
         Assert.Equal(failure, Assert.Single(moveFailureStore.RecoveryFailures));
         Assert.Equal(failure, Assert.Single(moveFailureStore.Failures));
+        Assert.Equal(failure, Assert.Single(notifier.Failures));
     }
 
     private static MailMoveFailure CreateFailure(ReceivedMailId mailId, MailMoveFailureDestination destination) =>
@@ -116,5 +121,18 @@ public sealed class MailMoveFailureRecoveryServiceTests
         }
 
         public Task RemoveAsync(ReceivedMailId mailId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    }
+
+    private sealed class FakeMetricAlertMonitor : IMetricAlertMonitor
+    {
+        public List<MailMoveFailure> Failures { get; } = [];
+
+        public Task<bool> TryCheckMailMoveStagnationAsync(
+            IReadOnlyList<MailMoveFailure> failures,
+            CancellationToken cancellationToken = default)
+        {
+            Failures.AddRange(failures);
+            return Task.FromResult(true);
+        }
     }
 }
