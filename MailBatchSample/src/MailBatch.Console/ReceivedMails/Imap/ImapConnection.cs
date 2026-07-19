@@ -69,9 +69,9 @@ internal sealed class ImapConnection(
                 imapOptions.Port,
                 imapOptions.SocketOptions,
                 token);
-        }, cancellationToken);
 
-        await _imapClient.AuthenticateAsync(imapOptions.UserName, imapOptions.Password, cancellationToken);
+            await _imapClient.AuthenticateAsync(imapOptions.UserName, imapOptions.Password, token);
+        }, cancellationToken);
     }
 
     /// <summary>

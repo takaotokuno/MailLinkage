@@ -5,7 +5,7 @@ using Polly;
 namespace MailBatch.Console.ReceivedMails.Imap;
 
 /// <summary>
-/// IMAPサーバー接続時の一時的な失敗に対するリトライ方針を生成します。
+/// IMAPサーバー接続・認証時の一時的な失敗に対するリトライ方針を生成します。
 /// </summary>
 internal static class ImapRetryPolicyFactory
 {
@@ -13,7 +13,7 @@ internal static class ImapRetryPolicyFactory
     private const int RETRY_ATTEMPT_OFFSET = 1;
 
     /// <summary>
-    /// ソケット、I/O、タイムアウトの一時エラーを指数バックオフで再試行するポリシーを作成します。
+    /// 接続・認証中のソケット、I/O、タイムアウトの一時エラーを指数バックオフで再試行するポリシーを作成します。
     /// </summary>
     public static IAsyncPolicy Create(
         ImapOptions imapOptions,

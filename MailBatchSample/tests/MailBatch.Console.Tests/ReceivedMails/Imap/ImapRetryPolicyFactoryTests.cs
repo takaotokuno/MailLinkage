@@ -31,11 +31,11 @@ public sealed class ImapRetryPolicyFactoryTests
     }
 
     /// <summary>
-    /// 状態: リトライ回数が3回に設定されている。
-    /// 振る舞い: 認証エラーなどの非一時エラーは再試行しない。
+    /// 状態: リトライ回数が3回に設定され、認証情報が拒否されている。
+    /// 振る舞い: 認証情報のエラーは一時エラーではないため再試行しない。
     /// </summary>
     [Fact]
-    public async Task ExecuteAsync_DoesNotRetryNonTransientFailure()
+    public async Task ExecuteAsync_DoesNotRetryAuthenticationFailure()
     {
         ImapOptions options = new()
         {
@@ -46,10 +46,10 @@ public sealed class ImapRetryPolicyFactoryTests
 
         IAsyncPolicy policy = ImapRetryPolicyFactory.Create(options);
 
-        _ = await Assert.ThrowsAsync<InvalidOperationException>(() => policy.ExecuteAsync(() =>
+        _ = await Assert.ThrowsAsync<MailKit.Security.AuthenticationException>(() => policy.ExecuteAsync(() =>
         {
             attemptCount++;
-            throw new InvalidOperationException("Non-transient failure.");
+            throw new MailKit.Security.AuthenticationException("Invalid credentials.");
         }));
         Assert.Equal(1, attemptCount);
     }
