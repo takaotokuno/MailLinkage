@@ -187,7 +187,7 @@ sqlite3 MailBatchSample/logs/mail-processing.db \
 SQLite CLI を利用できる場合は次のように確認する。
 
 ```bash
-sqlite3 data/mailreceiver.db "select id, message_id, sender, subject, received_at, created_at from received_mails order by id;"
+sqlite3 data/mailreceiver.db "select id, key, message, created_at from received_mails order by id;"
 ```
 
 GET API で確認する場合は次のように確認する。
@@ -282,7 +282,7 @@ sqlite3 -header -column "${EVIDENCE_DIR}/mail-processing.db" \
    FROM mail_move_failures ORDER BY last_failed_at_utc;"
 
 sqlite3 -header -column "${EVIDENCE_DIR}/mailreceiver.db" \
-  "SELECT id, message_id, sender, subject, received_at, created_at
+  "SELECT id, key, message, created_at
    FROM received_mails
    WHERE created_at >= '2026-07-19T00:00:00Z'
      AND created_at <  '2026-07-20T00:00:00Z'
@@ -291,7 +291,7 @@ sqlite3 -header -column "${EVIDENCE_DIR}/mailreceiver.db" \
 
 `api_execution_results.saved_id` と `received_mails.id`、またはメールの Message-Id とログを
 突き合わせると、バッチ実行から API 保存までを追跡できる。メール本文が必要な場合だけ、対象 ID を
-限定して `SELECT id, body FROM received_mails WHERE id = <ID>;` を実行する。
+限定して `SELECT id, message FROM received_mails WHERE id = <ID>;` を実行する。
 
 ### 4. 共有用 CSV を出力する
 
@@ -305,12 +305,12 @@ sqlite3 -header -csv "${EVIDENCE_DIR}/mail-processing.db" \
   "SELECT * FROM api_execution_results ORDER BY started_at_utc;" \
   > "${EVIDENCE_DIR}/api-execution-results.csv"
 sqlite3 -header -csv "${EVIDENCE_DIR}/mailreceiver.db" \
-  "SELECT id, message_id, sender, subject, received_at, created_at
+  "SELECT id, key, message, created_at
    FROM received_mails ORDER BY created_at;" \
   > "${EVIDENCE_DIR}/received-mails.csv"
 ```
 
-`received_mails.body`、`sender`、`subject` および `api_execution_results.response_summary` には
+`received_mails.message` および `api_execution_results.response_summary` には
 個人情報・機微情報が含まれる可能性がある。共有先の権限と保存期限を確認し、不要な列や行を除外、
 またはマスキングしてから受け渡す。DB スナップショット自体も同じ機密区分で取り扱う。
 

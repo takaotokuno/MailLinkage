@@ -31,7 +31,7 @@ public sealed class ApiClientTests
             Endpoint = "/received-mails"
         });
 
-        ApiPostResult result = await client.PostReceivedMailAsync(new ApiRequest("linked message"));
+        ApiPostResult result = await client.PostReceivedMailAsync(new ApiRequest("ABC123", "linked message"));
 
         Assert.True(result.IsSuccess);
         Assert.Equal(201, result.StatusCode);
@@ -39,7 +39,7 @@ public sealed class ApiClientTests
         Assert.Equal(HttpMethod.Post, handler.Request?.Method);
         Assert.Equal(new Uri("https://api.example.local/received-mails"), handler.Request?.RequestUri);
         Assert.Equal("test-api-key", handler.ApiKey);
-        Assert.Equal(/*lang=json,strict*/ "{\"message\":\"linked message\"}", handler.RequestBody);
+        Assert.Equal(/*lang=json,strict*/ "{\"key\":\"ABC123\",\"message\":\"linked message\"}", handler.RequestBody);
     }
 
     /// <summary>
@@ -66,7 +66,7 @@ public sealed class ApiClientTests
             Endpoint = "/received-mails"
         });
 
-        ApiPostResult result = await client.PostReceivedMailAsync(new ApiRequest("linked message"));
+        ApiPostResult result = await client.PostReceivedMailAsync(new ApiRequest("ABC123", "linked message"));
 
         Assert.False(result.IsSuccess);
         Assert.Equal(400, result.StatusCode);

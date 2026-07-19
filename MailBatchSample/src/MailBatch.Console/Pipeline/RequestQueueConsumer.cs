@@ -114,7 +114,7 @@ internal sealed class RequestQueueConsumer(
         ApiPostResult result;
         try
         {
-            ApiRequest apiRequest = new(request.Message);
+            ApiRequest apiRequest = new(request.Key, request.Message);
             result = await PostMessageAsync(apiRequest, executionId, cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)

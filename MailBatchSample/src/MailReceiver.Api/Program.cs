@@ -176,28 +176,25 @@ static async Task<Results<CreatedAtRoute<ReceivedMailResponse>, ValidationProble
     CancellationToken cancellationToken)
 {
     ILogger logger = loggerFactory.CreateLogger("ReceivedMails");
-    Dictionary<string, string[]> validationErrors = Validate(request, out NormalizedCreateReceivedMailRequest? normalizedRequest, out DateTimeOffset receivedAt);
+    Dictionary<string, string[]> validationErrors = Validate(request, out NormalizedCreateReceivedMailRequest normalizedRequest);
     if (validationErrors.Count > 0)
     {
-        logger.LogWarning("Received mail request validation failed. MessageId: {MessageId}, ErrorFields: {ErrorFields}",
-            request.MessageId,
+        logger.LogWarning("Received mail request validation failed. Key: {Key}, ErrorFields: {ErrorFields}",
+            request.Key,
             validationErrors.Keys);
         return TypedResults.ValidationProblem(validationErrors);
     }
 
-    if (await dbContext.ReceivedMails.AnyAsync(mail => mail.MessageId == normalizedRequest.MessageId, cancellationToken))
+    if (await dbContext.ReceivedMails.AnyAsync(mail => mail.Key == normalizedRequest.Key, cancellationToken))
     {
-        logger.LogInformation("Duplicate received mail was rejected. MessageId: {MessageId}", normalizedRequest.MessageId);
-        return TypedResults.Conflict(CreateDuplicateProblemDetails(normalizedRequest.MessageId));
+        logger.LogInformation("Duplicate received mail was rejected. Key: {Key}", normalizedRequest.Key);
+        return TypedResults.Conflict(CreateDuplicateProblemDetails(normalizedRequest.Key));
     }
 
     ReceivedMail receivedMail = new()
     {
-        MessageId = normalizedRequest.MessageId,
-        Sender = normalizedRequest.Sender,
-        Subject = normalizedRequest.Subject,
-        Body = normalizedRequest.Body,
-        ReceivedAt = receivedAt,
+        Key = normalizedRequest.Key,
+        Message = normalizedRequest.Message,
         CreatedAt = DateTimeOffset.UtcNow
     };
 
@@ -209,16 +206,14 @@ static async Task<Results<CreatedAtRoute<ReceivedMailResponse>, ValidationProble
     }
     catch (DbUpdateException exception) when (IsUniqueConstraintViolation(exception))
     {
-        logger.LogInformation(exception, "Duplicate received mail was rejected by unique constraint. MessageId: {MessageId}", normalizedRequest.MessageId);
-        return TypedResults.Conflict(CreateDuplicateProblemDetails(normalizedRequest.MessageId));
+        logger.LogInformation(exception, "Duplicate received mail was rejected by unique constraint. Key: {Key}", normalizedRequest.Key);
+        return TypedResults.Conflict(CreateDuplicateProblemDetails(normalizedRequest.Key));
     }
 
     logger.LogInformation(
-        "Received mail was saved. Id: {ReceivedMailId}, MessageId: {MessageId}, Sender: {Sender}, ReceivedAt: {ReceivedAt}",
+        "Received mail was saved. Id: {ReceivedMailId}, Key: {Key}",
         receivedMail.Id,
-        receivedMail.MessageId,
-        receivedMail.Sender,
-        receivedMail.ReceivedAt);
+        receivedMail.Key);
 
     return TypedResults.CreatedAtRoute(
         ToResponse(receivedMail),
@@ -234,39 +229,16 @@ static async Task<Results<CreatedAtRoute<ReceivedMailResponse>, ValidationProble
 /// </summary>
 static Dictionary<string, string[]> Validate(
     CreateReceivedMailRequest request,
-    out NormalizedCreateReceivedMailRequest normalizedRequest,
-    out DateTimeOffset receivedAt)
+    out NormalizedCreateReceivedMailRequest normalizedRequest)
 {
     Dictionary<string, string[]> errors = new(StringComparer.OrdinalIgnoreCase);
-    string messageId = request.MessageId?.Trim() ?? string.Empty;
-    string sender = request.Sender?.Trim() ?? string.Empty;
-    string subject = request.Subject?.Trim() ?? string.Empty;
-    string receivedAtText = request.ReceivedAt?.Trim() ?? string.Empty;
+    string key = request.Key?.Trim() ?? string.Empty;
+    string message = request.Message?.Trim() ?? string.Empty;
 
-    AddRequiredAndLengthErrors(errors, nameof(request.MessageId), messageId, ReceivedMail.MESSAGE_ID_MAX_LENGTH);
-    AddRequiredAndLengthErrors(errors, nameof(request.Sender), sender, ReceivedMail.SENDER_MAX_LENGTH);
-    AddRequiredAndLengthErrors(errors, nameof(request.Subject), subject, ReceivedMail.SUBJECT_MAX_LENGTH);
+    AddRequiredAndLengthErrors(errors, nameof(request.Key), key, ReceivedMail.KEY_MAX_LENGTH);
+    AddRequiredAndLengthErrors(errors, nameof(request.Message), message, ReceivedMail.MESSAGE_MAX_LENGTH);
 
-    if (!errors.ContainsKey(nameof(request.Sender)) && !IsPlausibleEmailAddress(sender))
-    {
-        errors[nameof(request.Sender)] = ["The sender field must be an email-like address."];
-    }
-
-    if (string.IsNullOrWhiteSpace(receivedAtText))
-    {
-        errors[nameof(request.ReceivedAt)] = ["The receivedAt field is required."];
-        receivedAt = default;
-    }
-    else if (!DateTimeOffset.TryParse(receivedAtText, out receivedAt))
-    {
-        errors[nameof(request.ReceivedAt)] = ["The receivedAt field must be a valid date and time."];
-    }
-
-    normalizedRequest = new NormalizedCreateReceivedMailRequest(
-        messageId,
-        sender,
-        subject,
-        string.IsNullOrEmpty(request.Body) ? null : request.Body);
+    normalizedRequest = new NormalizedCreateReceivedMailRequest(key, message);
 
     return errors;
 }
@@ -293,15 +265,6 @@ static void AddRequiredAndLengthErrors(
 }
 
 /// <summary>
-/// 指定された文字列がメールアドレスらしい形式かどうかを判定します。
-/// </summary>
-static bool IsPlausibleEmailAddress(string value)
-{
-    int atSignIndex = value.IndexOf('@');
-    return atSignIndex > 0 && atSignIndex < value.Length - 1;
-}
-
-/// <summary>
 /// データベース更新例外がSQLiteの一意制約違反かどうかを判定します。
 /// </summary>
 static bool IsUniqueConstraintViolation(DbUpdateException exception)
@@ -310,14 +273,14 @@ static bool IsUniqueConstraintViolation(DbUpdateException exception)
 }
 
 /// <summary>
-/// messageId重複時に返すProblemDetailsを作成します。
+/// Key重複時に返すProblemDetailsを作成します。
 /// </summary>
-static ProblemDetails CreateDuplicateProblemDetails(string messageId)
+static ProblemDetails CreateDuplicateProblemDetails(string key)
 {
     return new()
     {
         Title = "Received mail already exists.",
-        Detail = $"A received mail with messageId '{messageId}' already exists.",
+        Detail = $"A received mail with key '{key}' already exists.",
         Status = StatusCodes.Status409Conflict
     };
 }
@@ -328,13 +291,10 @@ static ProblemDetails CreateDuplicateProblemDetails(string messageId)
 static ReceivedMailResponse ToResponse(ReceivedMail mail)
 {
     return new(
-    mail.Id,
-    mail.MessageId,
-    mail.Sender,
-    mail.Subject,
-    mail.Body,
-    mail.ReceivedAt,
-    mail.CreatedAt);
+        mail.Id,
+        mail.Key,
+        mail.Message,
+        mail.CreatedAt);
 }
 
 /// <summary>

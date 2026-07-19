@@ -13,20 +13,17 @@
 | カラム | 型 | 必須 | 内容 |
 | --- | --- | --- | --- |
 | `id` | INTEGER | Yes | 主キー。自動採番。 |
-| `message_id` | TEXT | Yes | メールの Message-Id。 |
-| `sender` | TEXT | Yes | 送信者。 |
-| `subject` | TEXT | Yes | 件名。 |
-| `body` | TEXT | No | 本文。 |
-| `received_at` | TEXT | Yes | メール受信日時。ISO 8601 形式を推奨。 |
+| `key` | TEXT | Yes | メール本文から抽出した連携キー。 |
+| `message` | TEXT | Yes | 件名と本文から生成した連携メッセージ。 |
 | `created_at` | TEXT | Yes | API が保存した日時。UTC の ISO 8601 形式を推奨。 |
 
 ## 重複データの扱い
 
-初期実装では、`message_id` にユニーク制約を設定する。重複 POST 時は検証用途で挙動が分かりやすいように `409 Conflict` を返す。
+初期実装では、`key` にユニーク制約を設定する。重複 POST 時は検証用途で挙動が分かりやすいように `409 Conflict` を返す。
 
 ## DB 初期化
 
-`MailReceiver.Api` は起動時に `ConnectionStrings:MailReceiver` の SQLite 接続文字列を読み込み、DB ファイルの親ディレクトリを作成したうえで Entity Framework Core の `EnsureCreated` により `received_mails` テーブルと `message_id` のユニークインデックスを作成する。
+`MailReceiver.Api` は起動時に `ConnectionStrings:MailReceiver` の SQLite 接続文字列を読み込み、DB ファイルの親ディレクトリを作成したうえで Entity Framework Core の `EnsureCreated` により `received_mails` テーブルと `key` のユニークインデックスを作成する。
 
 ローカル開発の既定値は `src/MailReceiver.Api/appsettings.json` の `Data Source=../../data/mailreceiver.db` である。Docker など実行ディレクトリが異なる環境では、環境変数 `ConnectionStrings__MailReceiver` で保存先を上書きする。
 
@@ -38,11 +35,8 @@
 
 ```json
 {
-  "messageId": "<202606110001@example.local>",
-  "sender": "sender@example.local",
-  "subject": "連携対象メール",
-  "body": "本文です。",
-  "receivedAt": "2026-06-11T10:00:00Z"
+  "key": "ABC123",
+  "message": "連携対象メール\n\n本文です。"
 }
 ```
 
@@ -50,33 +44,27 @@
 
 | 項目 | ルール |
 | --- | --- |
-| `messageId` | 必須。最大 255 文字。 |
-| `sender` | 必須。最大 320 文字。メールアドレス形式の厳密検証は初期スコープでは簡易でよい。 |
-| `subject` | 必須。最大 500 文字。 |
-| `body` | 任意。長文を許容する。 |
-| `receivedAt` | 必須。日時として解釈可能であること。 |
+| `key` | 必須。最大 255 文字。 |
+| `message` | 必須。最大 500 文字。 |
 
 ### Response: 201 Created
 
 ```json
 {
   "id": 1,
-  "messageId": "<202606110001@example.local>",
-  "sender": "sender@example.local",
-  "subject": "連携対象メール",
-  "body": "本文です。",
-  "receivedAt": "2026-06-11T10:00:00Z",
+  "key": "ABC123",
+  "message": "連携対象メール\n\n本文です。",
   "createdAt": "2026-06-11T10:01:00Z"
 }
 ```
 
 ### Response: 400 Bad Request
 
-入力値が不足している、または日時として解釈できない場合に返す。
+入力値が不足している、または最大文字数を超える場合に返す。
 
 ### Response: 409 Conflict
 
-同一 `messageId` のデータが既に保存されている場合に返す。
+同一 `key` のデータが既に保存されている場合に返す。
 
 ## GET API
 
@@ -94,4 +82,4 @@
 
 ## エラー応答
 
-API のエラー応答は ASP.NET Core 標準の `ProblemDetails` を基本とする。バッチ側は HTTP ステータスコード、レスポンス本文の要約、対象 `messageId` をログへ出力する。
+API のエラー応答は ASP.NET Core 標準の `ProblemDetails` を基本とする。バッチ側は HTTP ステータスコード、レスポンス本文の要約、対象メール ID をログへ出力する。

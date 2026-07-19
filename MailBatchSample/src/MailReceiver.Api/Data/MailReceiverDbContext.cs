@@ -23,24 +23,16 @@ public sealed class MailReceiverDbContext(DbContextOptions<MailReceiverDbContext
         _ = receivedMail.ToTable("received_mails");
         _ = receivedMail.HasKey(mail => mail.Id);
         _ = receivedMail.Property(mail => mail.Id).HasColumnName("id");
-        _ = receivedMail.Property(mail => mail.MessageId)
-            .HasColumnName("message_id")
-            .HasMaxLength(ReceivedMail.MESSAGE_ID_MAX_LENGTH)
+        _ = receivedMail.Property(mail => mail.Key)
+            .HasColumnName("key")
+            .HasMaxLength(ReceivedMail.KEY_MAX_LENGTH)
             .IsRequired();
-        _ = receivedMail.HasIndex(mail => mail.MessageId)
+        _ = receivedMail.HasIndex(mail => mail.Key)
             .IsUnique()
-            .HasDatabaseName("ux_received_mails_message_id");
-        _ = receivedMail.Property(mail => mail.Sender)
-            .HasColumnName("sender")
-            .HasMaxLength(ReceivedMail.SENDER_MAX_LENGTH)
-            .IsRequired();
-        _ = receivedMail.Property(mail => mail.Subject)
-            .HasColumnName("subject")
-            .HasMaxLength(ReceivedMail.SUBJECT_MAX_LENGTH)
-            .IsRequired();
-        _ = receivedMail.Property(mail => mail.Body).HasColumnName("body");
-        _ = receivedMail.Property(mail => mail.ReceivedAt)
-            .HasColumnName("received_at")
+            .HasDatabaseName("ux_received_mails_key");
+        _ = receivedMail.Property(mail => mail.Message)
+            .HasColumnName("message")
+            .HasMaxLength(ReceivedMail.MESSAGE_MAX_LENGTH)
             .IsRequired();
         _ = receivedMail.Property(mail => mail.CreatedAt)
             .HasColumnName("created_at")
