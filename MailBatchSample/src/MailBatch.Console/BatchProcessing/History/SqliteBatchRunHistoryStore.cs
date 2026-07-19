@@ -20,7 +20,13 @@ internal sealed class SqliteBatchRunHistoryStore(BatchOptions batchOptions) : IB
     private readonly SemaphoreSlim _initializationLock = new(1, 1);
     private bool _initialized;
 
-    private string DatabasePath => Path.Combine(batchOptions.LogDirectory, DatabaseFileName);
+    private string DatabasePath
+    {
+        get
+        {
+            return Path.Combine(batchOptions.LogDirectory, DatabaseFileName);
+        }
+    }
 
     public async Task AddAsync(BatchRunHistory history, CancellationToken cancellationToken = default)
     {

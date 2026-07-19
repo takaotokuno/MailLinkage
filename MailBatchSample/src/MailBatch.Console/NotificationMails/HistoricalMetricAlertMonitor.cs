@@ -25,7 +25,10 @@ internal sealed class HistoricalMetricAlertMonitor(
             return true;
         }
 
-        int exceededCount = history.Count(run => run.Duration > DurationThreshold);
+        int exceededCount = history.Count(run =>
+        {
+            return run.Duration > DurationThreshold;
+        });
         if (exceededCount * 2 <= RUN_COUNT)
         {
             return true;

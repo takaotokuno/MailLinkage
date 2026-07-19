@@ -1,7 +1,7 @@
 using MailBatch.Console.Api;
 using MailBatch.Console.BatchProcessing;
-using MailBatch.Console.BatchProcessing.Locking;
 using MailBatch.Console.BatchProcessing.History;
+using MailBatch.Console.BatchProcessing.Locking;
 using MailBatch.Console.NotificationMails;
 using MailBatch.Console.Options;
 using MailBatch.Console.Pipeline;

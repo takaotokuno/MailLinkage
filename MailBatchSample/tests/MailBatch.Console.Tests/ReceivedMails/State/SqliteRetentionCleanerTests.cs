@@ -83,11 +83,4 @@ public sealed class SqliteRetentionCleanerTests : IDisposable
         command.CommandText = commandText;
         return Convert.ToInt64(command.ExecuteScalar());
     }
-
-    private static string ExecuteStringScalar(SqliteConnection connection, string commandText)
-    {
-        using SqliteCommand command = connection.CreateCommand();
-        command.CommandText = commandText;
-        return Convert.ToString(command.ExecuteScalar())!;
-    }
 }

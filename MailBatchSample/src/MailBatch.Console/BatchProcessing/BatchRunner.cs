@@ -1,6 +1,5 @@
 using MailBatch.Console.BatchProcessing.Locking;
 using MailBatch.Console.BatchProcessing.Result;
-using MailBatch.Console.NotificationMails;
 using MailBatch.Console.Options;
 using MailBatch.Console.Pipeline;
 using MailBatch.Console.ReceivedMails;

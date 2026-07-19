@@ -39,7 +39,13 @@ internal sealed class SqliteApiExecutionResultStore(
     private readonly SemaphoreSlim _initializationLock = new(1, 1);
     private bool _initialized;
 
-    private string DatabasePath => Path.Combine(batchOptions.LogDirectory, DatabaseFileName);
+    private string DatabasePath
+    {
+        get
+        {
+            return Path.Combine(batchOptions.LogDirectory, DatabaseFileName);
+        }
+    }
 
     public async Task RecordAsync(ApiExecutionResult result, CancellationToken cancellationToken = default)
     {

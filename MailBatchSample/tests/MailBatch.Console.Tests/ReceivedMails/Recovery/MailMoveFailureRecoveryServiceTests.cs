@@ -1,9 +1,9 @@
+using MailBatch.Console.NotificationMails;
 using MailBatch.Console.ReceivedMails;
 using MailBatch.Console.ReceivedMails.Processing;
 using MailBatch.Console.ReceivedMails.Recovery;
 using MailBatch.Console.ReceivedMails.Searching;
 using MailBatch.Console.ReceivedMails.State;
-using MailBatch.Console.NotificationMails;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
@@ -37,7 +37,10 @@ public sealed class MailMoveFailureRecoveryServiceTests
     public async Task RecoverAsync_WhenMoveFails_RecordsLatestFailureAndRetainsRecord()
     {
         ReceivedMailId mailId = new(12, 999);
-        FakeReceivedMailSession session = new() { FailProcessedMove = true };
+        FakeReceivedMailSession session = new()
+        {
+            FailProcessedMove = true
+        };
         FakeMoveFailureStore moveFailureStore = new();
         MailMoveFailure failure = CreateFailure(mailId, MailMoveFailureDestination.Processed);
         moveFailureStore.Failures.Add(failure);
@@ -60,7 +63,10 @@ public sealed class MailMoveFailureRecoveryServiceTests
 
     private sealed class FakeReceivedMailSession : IReceivedMailSession
     {
-        public bool FailProcessedMove { get; init; }
+        public bool FailProcessedMove
+        {
+            get; init;
+        }
 
         public List<ReceivedMailId> ProcessedMailIds { get; } = [];
 

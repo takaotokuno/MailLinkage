@@ -1,5 +1,7 @@
+using MailKit.Security;
 using MailBatch.Console.Options;
 using MailBatch.Console.ReceivedMails.Imap;
+using Polly;
 using Xunit;
 
 namespace MailBatch.Console.Tests.ReceivedMails.Imap;
@@ -22,11 +24,14 @@ public sealed class ImapRetryPolicyFactoryTests
 
         IAsyncPolicy policy = ImapRetryPolicyFactory.Create(options);
 
-        _ = await Assert.ThrowsAsync<IOException>(() => policy.ExecuteAsync(() =>
+        _ = await Assert.ThrowsAsync<IOException>(() =>
         {
-            attemptCount++;
-            throw new IOException("Temporary IMAP connection failure.");
-        }));
+            return policy.ExecuteAsync(() =>
+                    {
+                        attemptCount++;
+                        throw new IOException("Temporary IMAP connection failure.");
+                    });
+        });
         Assert.Equal(4, attemptCount);
     }
 
@@ -46,11 +51,14 @@ public sealed class ImapRetryPolicyFactoryTests
 
         IAsyncPolicy policy = ImapRetryPolicyFactory.Create(options);
 
-        _ = await Assert.ThrowsAsync<MailKit.Security.AuthenticationException>(() => policy.ExecuteAsync(() =>
+        _ = await Assert.ThrowsAsync<AuthenticationException>(() =>
         {
-            attemptCount++;
-            throw new MailKit.Security.AuthenticationException("Invalid credentials.");
-        }));
+            return policy.ExecuteAsync(() =>
+                    {
+                        attemptCount++;
+                        throw new AuthenticationException("Invalid credentials.");
+                    });
+        });
         Assert.Equal(1, attemptCount);
     }
 }

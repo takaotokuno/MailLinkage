@@ -1,4 +1,3 @@
-using MailBatch.Console.BatchProcessing;
 using MailBatch.Console.BatchProcessing.History;
 using MailBatch.Console.NotificationMails;
 using MailBatch.Console.ReceivedMails;

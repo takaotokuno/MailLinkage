@@ -1,4 +1,5 @@
 using MailBatch.Console.Options;
+using MailBatch.Console.ReceivedMails;
 using MailBatch.Console.ReceivedMails.State;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging.Abstractions;

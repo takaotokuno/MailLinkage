@@ -17,7 +17,13 @@ internal sealed record BatchRunHistory(
     string? FatalErrorCode,
     string? FatalErrorStage)
 {
-    public TimeSpan Duration => EndedAt - StartedAt;
+    public TimeSpan Duration
+    {
+        get
+        {
+            return EndedAt - StartedAt;
+        }
+    }
 
     public static BatchRunHistory From(string runId, BatchRunResult result, int exitCode) => new(
         runId,
