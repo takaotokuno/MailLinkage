@@ -87,6 +87,12 @@ internal sealed class MailFetchQueueProducer(
                 return;
             }
 
+            if (await moveFailureStore.IsProcessedAsync(mailId, cancellationToken))
+            {
+                logger.LogWarning("Skipped message because it already exists in the processed mail ledger. MailId={MailId}", mailId);
+                return;
+            }
+
             ReceivedMail mail = await receivedMailSession.CreateRequestAsync(mailId, cancellationToken);
 
             ExtractedMailItem item = await ValidateAndExtractAsync(mail, cancellationToken);
@@ -137,6 +143,7 @@ internal sealed class MailFetchQueueProducer(
 
         try
         {
+            await moveFailureStore.RecordProcessedAsync(mailId, cancellationToken);
             await receivedMailSession.MoveToProcessedMailboxAsync(mailId, cancellationToken);
             await moveFailureStore.RemoveAsync(mailId, cancellationToken);
             logger.LogInformation(

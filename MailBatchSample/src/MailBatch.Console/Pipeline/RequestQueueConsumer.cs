@@ -79,6 +79,7 @@ internal sealed class RequestQueueConsumer(
             return;
         }
 
+        await moveFailureStore.RecordProcessedAsync(mailId, cancellationToken);
         if (await TryMoveToProcessedMailboxAsync(mailId, cancellationToken))
         {
             result.IncrementSuccess();
