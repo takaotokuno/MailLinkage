@@ -8,15 +8,23 @@ namespace MailBatch.Console.ReceivedMails.Searching;
 internal sealed record MailSearchCondition(
     string? SubjectContains,
     string? From,
-    DateTime? DeliveredAfter)
+    DateTimeOffset? DeliveredAfter)
 {
     /// <summary>
     /// 検索オプションからメール検索条件を作成します。
     /// </summary>
-    public static MailSearchCondition FromOptions(MailSearchOptions options, DateTime utcNow)
+    public static MailSearchCondition FromOptions(MailSearchOptions options, DateTimeOffset utcNow)
     {
-        DateTime utcDate = utcNow.ToUniversalTime().Date;
-        DateTime? deliveredAfter = options.SinceDays is > 0
+        DateTimeOffset utc = utcNow.ToUniversalTime();
+        DateTimeOffset utcDate = new(
+            utc.Year,
+            utc.Month,
+            utc.Day,
+            0,
+            0,
+            0,
+            TimeSpan.Zero);
+        DateTimeOffset? deliveredAfter = options.SinceDays is > 0
             ? utcDate.AddDays(-options.SinceDays.Value)
             : null;
 

@@ -25,9 +25,9 @@ internal static class MailKitSearchQueryMapper
             AddFilter(SearchQuery.FromContains(condition.From));
         }
 
-        if (condition.DeliveredAfter is DateTime deliveredAfter)
+        if (condition.DeliveredAfter is DateTimeOffset deliveredAfter)
         {
-            AddFilter(SearchQuery.DeliveredAfter(deliveredAfter));
+            AddFilter(SearchQuery.DeliveredAfter(deliveredAfter.UtcDateTime));
         }
 
         return query ?? SearchQuery.All;
