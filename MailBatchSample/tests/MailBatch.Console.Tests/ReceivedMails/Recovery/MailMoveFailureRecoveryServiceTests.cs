@@ -75,7 +75,11 @@ public sealed class MailMoveFailureRecoveryServiceTests
     }
 
     private static MailMoveFailure CreateFailure(ReceivedMailId mailId, MailMoveFailureDestination destination) =>
-        new(mailId, destination, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow);
+        new(
+            mailId,
+            destination,
+            new DateTimeOffset(2026, 8, 1, 12, 0, 0, TimeSpan.Zero),
+            new DateTimeOffset(2026, 8, 1, 12, 0, 0, TimeSpan.Zero));
 
     private sealed class FakeReceivedMailMover : IReceivedMailMover
     {

@@ -9,10 +9,12 @@ namespace MailBatch.Console.BatchProcessing.Locking;
 internal sealed class FileJobExecutionLock(
     BatchOptions batchOptions,
     BatchRunContext runContext,
-    ILogger<FileJobExecutionLock> logger)
+    ILogger<FileJobExecutionLock> logger,
+    TimeProvider? timeProvider = null)
      : IJobExecutionLock
 {
     private const string LOCK_FILE_NAME = "MailBatch.Console.lock";
+    private readonly TimeProvider _timeProvider = timeProvider ?? TimeProvider.System;
 
     /// <summary>
     /// バッチ実行ロックの取得を試行します。
@@ -37,7 +39,7 @@ internal sealed class FileJobExecutionLock(
             using StreamWriter writer = new(lockFileStream, leaveOpen: true);
             writer.WriteLine($"RunId={runContext.RunId}");
             writer.WriteLine($"ProcessId={Environment.ProcessId}");
-            writer.WriteLine($"StartedAt={DateTimeOffset.UtcNow:O}");
+            writer.WriteLine($"StartedAt={_timeProvider.GetUtcNow():O}");
             writer.Flush();
             lockFileStream.Flush();
             lockFileStream.Position = 0;
@@ -55,4 +57,3 @@ internal sealed class FileJobExecutionLock(
         }
     }
 }
-

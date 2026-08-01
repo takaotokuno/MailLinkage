@@ -10,8 +10,11 @@ namespace MailBatch.Console.NotificationMails;
 /// </summary>
 internal sealed class SmtpMailNotifier(
     MailNotificationOptions notificationOptions,
-    ILogger<SmtpMailNotifier> logger) : IMailNotifier
+    ILogger<SmtpMailNotifier> logger,
+    TimeProvider? timeProvider = null) : IMailNotifier
 {
+    private readonly TimeProvider _timeProvider = timeProvider ?? TimeProvider.System;
+
     /// <summary>
     /// SMTPサーバー経由で、指定された宛先へ通知メールを送信します。
     /// </summary>
@@ -67,7 +70,7 @@ internal sealed class SmtpMailNotifier(
         message.To.Add(MailboxAddress.Parse(notification.To));
         message.Subject = notification.Subject;
         message.Body = new TextPart("plain") { Text = notification.Body };
-        message.Date = DateTimeOffset.UtcNow;
+        message.Date = _timeProvider.GetUtcNow();
 
         return message;
     }

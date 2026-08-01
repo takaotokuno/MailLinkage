@@ -69,10 +69,12 @@ internal enum MailMoveFailureDestination
 /// </summary>
 internal sealed class SqliteMailProcessingStore(
     BatchOptions batchOptions,
-    ILogger<SqliteMailProcessingStore> logger) : IProcessedMailStore, IMailMoveFailureStore
+    ILogger<SqliteMailProcessingStore> logger,
+    TimeProvider? timeProvider = null) : IProcessedMailStore, IMailMoveFailureStore
 {
     private const string DATABASE_FILE_NAME = "mail-processing.db";
     private readonly SemaphoreSlim _initializationLock = new(1, 1);
+    private readonly TimeProvider _timeProvider = timeProvider ?? TimeProvider.System;
     private bool _initialized;
 
     private string DatabasePath
@@ -159,7 +161,7 @@ internal sealed class SqliteMailProcessingStore(
             VALUES ($uid, $uidValidity, $processedAtUtc)
             ON CONFLICT(uid, uid_validity) DO NOTHING;
             """, mailId);
-        _ = command.Parameters.AddWithValue("$processedAtUtc", DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture));
+        _ = command.Parameters.AddWithValue("$processedAtUtc", _timeProvider.GetUtcNow().ToString("O", CultureInfo.InvariantCulture));
         _ = await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
@@ -183,7 +185,7 @@ internal sealed class SqliteMailProcessingStore(
                 last_failed_at_utc = excluded.last_failed_at_utc;
             """, mailId);
         _ = command.Parameters.AddWithValue("$destination", destination.ToString());
-        _ = command.Parameters.AddWithValue("$failedAtUtc", DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture));
+        _ = command.Parameters.AddWithValue("$failedAtUtc", _timeProvider.GetUtcNow().ToString("O", CultureInfo.InvariantCulture));
         _ = await command.ExecuteNonQueryAsync(cancellationToken);
         logger.LogWarning("Recorded mailbox move failure. MailId={MailId}, Destination={Destination}", mailId, destination);
     }
@@ -197,7 +199,7 @@ internal sealed class SqliteMailProcessingStore(
             WHERE uid = $uid AND uid_validity = $uidValidity AND destination = $destination;
             """, failure.MailId);
         _ = command.Parameters.AddWithValue("$destination", failure.Destination.ToString());
-        _ = command.Parameters.AddWithValue("$failedAtUtc", DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture));
+        _ = command.Parameters.AddWithValue("$failedAtUtc", _timeProvider.GetUtcNow().ToString("O", CultureInfo.InvariantCulture));
         _ = await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
