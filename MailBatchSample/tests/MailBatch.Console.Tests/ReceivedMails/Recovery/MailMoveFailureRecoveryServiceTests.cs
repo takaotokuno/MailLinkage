@@ -10,6 +10,11 @@ namespace MailBatch.Console.Tests.ReceivedMails.Recovery;
 
 public sealed class MailMoveFailureRecoveryServiceTests
 {
+
+    // 目的: 保存済みの移動失敗を復旧して記録を消せることを確認する。
+    // 前提・入力: 処理済み移動とエラー移動の失敗記録を各1件渡す。
+    // 期待結果: 各メールが対応するフォルダーへ移動され、失敗記録がすべて削除される。
+    // 検知したい異常: 移動先の取り違えまたは復旧済み記録の残存。
     [Fact]
     public async Task RecoverAsync_WhenMoveFailureRecordsExist_MovesMailsAndRemovesRecords()
     {
@@ -32,6 +37,10 @@ public sealed class MailMoveFailureRecoveryServiceTests
         Assert.Empty(moveFailureStore.Failures);
     }
 
+    // 目的: 移動の再失敗時に記録を保持して日時を更新することを確認する。
+    // 前提・入力: 移動時に例外を送出するメール移動サービスと既存失敗記録を渡す。
+    // 期待結果: 失敗記録は削除されず、最終失敗日時が更新される。
+    // 検知したい異常: 再失敗した記録を削除して復旧対象を失う不具合。
     [Fact]
     public async Task RecoverAsync_WhenMoveFails_RecordsLatestFailureAndRetainsRecord()
     {

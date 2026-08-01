@@ -22,6 +22,10 @@ public sealed class MailLinkageWorkflowTests : IDisposable
 {
     private readonly string _workDirectory = Path.Combine(Path.GetTempPath(), $"mail-batch-workflow-{Guid.NewGuid():N}");
 
+    // 目的: 正常メールが一度だけAPI連携され再処理されないことを確認する。
+    // 前提・入力: 有効なKey行を持つ未処理メールを受信箱に配置してバッチを2回実行する。
+    // 期待結果: API送信は初回の1件のみで、メールは処理済みへ移動し、2回目には再送信されない。
+    // 検知したい異常: 処理済みメールの重複連携または移動漏れ。
     [Fact]
     public async Task ValidTargetMail_IsPostedOnceAndCannotBeLinkedAgain()
     {
@@ -42,6 +46,10 @@ public sealed class MailLinkageWorkflowTests : IDisposable
         Assert.True(await workflow.ProcessedStore.ContainsAsync(mailId));
     }
 
+    // 目的: 業務形式不正メールをAPIへ送らず受信箱から除外することを確認する。
+    // 前提・入力: Key行を持たないメールを受信箱に配置する。
+    // 期待結果: API送信は0件で、対象メールはエラーフォルダーへ移動する。
+    // 検知したい異常: 不正メールの誤送信または受信箱への滞留。
     [Fact]
     public async Task InvalidBusinessMail_IsNotSentAndIsRemovedFromTheInbox()
     {
@@ -62,6 +70,10 @@ public sealed class MailLinkageWorkflowTests : IDisposable
         Assert.Contains("A key line in the format 'Key: alphanumeric-value' was not found.", notification.Body);
     }
 
+    // 目的: API拒否後のメールを次回実行で再試行できることを確認する。
+    // 前提・入力: 初回は拒否し次回は成功するAPIと、有効な対象メールを用意する。
+    // 期待結果: 初回はエラーへ移動し、次回は同じメールを再送信して処理済みへ移動する。
+    // 検知したい異常: API拒否メールが再試行不能になる、または成功後もエラーに残る不具合。
     [Fact]
     public async Task RejectedApiRequest_IsMovedToErrorAndMayBeRetriedOnANewBatchRun()
     {
