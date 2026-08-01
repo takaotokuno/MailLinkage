@@ -39,7 +39,8 @@ internal sealed class ReceivedMailPipelineComponentFactory(
     ILogger<MailLinkageRequest> consumerLogger,
     IProcessedMailStore processedMailStore,
     IMailMoveFailureStore moveFailureStore,
-    IApiExecutionResultStore apiExecutionResultStore) : IReceivedMailPipelineComponentFactory
+    IApiExecutionResultStore apiExecutionResultStore,
+    TimeProvider timeProvider) : IReceivedMailPipelineComponentFactory
 {
     /// <summary>
     /// 指定されたキューWriterを使用するProducerを作成します。
@@ -70,6 +71,7 @@ internal sealed class ReceivedMailPipelineComponentFactory(
             processedMailStore,
             moveFailureStore,
             apiExecutionResultStore,
-            consumerLogger);
+            consumerLogger,
+            timeProvider);
     }
 }

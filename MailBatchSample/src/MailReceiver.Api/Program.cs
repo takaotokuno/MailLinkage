@@ -36,6 +36,7 @@ static void ConfigureLogging(ILoggingBuilder logging)
 static void ConfigureServices(IServiceCollection services, IConfiguration configuration)
 {
     _ = services.AddProblemDetails();
+    _ = services.AddSingleton(TimeProvider.System);
     _ = services.AddDbContext<MailReceiverDbContext>(options =>
     {
         ConfigureSqlite(options, configuration);
@@ -173,6 +174,7 @@ static async Task<Results<CreatedAtRoute<ReceivedMailResponse>, ValidationProble
     CreateReceivedMailRequest request,
     MailReceiverDbContext dbContext,
     ILoggerFactory loggerFactory,
+    TimeProvider timeProvider,
     CancellationToken cancellationToken)
 {
     ILogger logger = loggerFactory.CreateLogger("ReceivedMails");
@@ -195,7 +197,7 @@ static async Task<Results<CreatedAtRoute<ReceivedMailResponse>, ValidationProble
     {
         Key = normalizedRequest.Key,
         Message = normalizedRequest.Message,
-        CreatedAt = DateTimeOffset.UtcNow
+        CreatedAt = timeProvider.GetUtcNow()
     };
 
     _ = dbContext.ReceivedMails.Add(receivedMail);

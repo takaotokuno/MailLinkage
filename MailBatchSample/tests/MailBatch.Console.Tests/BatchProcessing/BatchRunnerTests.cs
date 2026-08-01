@@ -8,6 +8,7 @@ using MailBatch.Console.ReceivedMails.Processing;
 using MailBatch.Console.ReceivedMails.Recovery;
 using MailBatch.Console.ReceivedMails.Searching;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Time.Testing;
 using Xunit;
 
 namespace MailBatch.Console.Tests.BatchProcessing;
@@ -26,7 +27,8 @@ public sealed class BatchRunnerTests
     [Fact]
     public async Task RunAsync_WhenExecutionLockIsAlreadyHeld_SendsFatalErrorNotificationAndReturnsExitCode1()
     {
-        DateTimeOffset beforeRun = DateTimeOffset.UtcNow;
+        DateTimeOffset utcNow = new(2026, 8, 1, 12, 0, 0, TimeSpan.Zero);
+        FakeTimeProvider timeProvider = new(utcNow);
         FakeBatchRunCompletionService notifier = new();
         FakeReceivedMailSession session = new();
         FakeReceivedMailPipeline pipeline = new();
@@ -42,7 +44,8 @@ public sealed class BatchRunnerTests
             session,
             session,
             new FakeMailMoveFailureRecoveryService(),
-            new FakeJobExecutionLock(null));
+            new FakeJobExecutionLock(null),
+            timeProvider);
 
         int exitCode = await runner.RunAsync();
 
@@ -56,11 +59,8 @@ public sealed class BatchRunnerTests
             Message: "Another mail batch instance is already running.",
             Stage: "Startup"), notifier.Notifications[0].Result.FatalError);
         Assert.Equal(1, notifier.Notifications[0].ExitCode);
-        Assert.InRange(notifier.Notifications[0].Result.StartedAt, beforeRun, DateTimeOffset.UtcNow);
-        Assert.InRange(
-            notifier.Notifications[0].Result.EndedAt,
-            notifier.Notifications[0].Result.StartedAt,
-            DateTimeOffset.UtcNow);
+        Assert.Equal(utcNow, notifier.Notifications[0].Result.StartedAt);
+        Assert.Equal(utcNow, notifier.Notifications[0].Result.EndedAt);
     }
 
     /// <summary>
