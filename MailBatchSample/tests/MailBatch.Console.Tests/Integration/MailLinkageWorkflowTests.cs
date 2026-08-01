@@ -109,6 +109,9 @@ public sealed class MailLinkageWorkflowTests : IDisposable
         Assert.False(await workflow.ProcessedStore.ContainsAsync(mailId));
     }
 
+    /// <summary>
+    /// テスト用のメールセッションとAPIハンドラーを使用して業務フローを構築する。
+    /// </summary>
     private Workflow CreateWorkflow(RecordingMailSession mailSession, RecordingApiHandler api)
     {
         BatchOptions batchOptions = new()
@@ -148,6 +151,9 @@ public sealed class MailLinkageWorkflowTests : IDisposable
         return new Workflow(pipeline, stateStore, notifier, httpClient);
     }
 
+    /// <summary>
+    /// Integrationテストで使用するメール通知設定を作成する。
+    /// </summary>
     private static MailNotificationOptions CreateNotificationOptions() => new()
     {
         AdminAddress = "admin@example.com",
