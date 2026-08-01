@@ -10,6 +10,14 @@ public sealed class MetricAlertMonitorTests
 {
     private static readonly DateTimeOffset s_now = new(2026, 7, 19, 0, 0, 0, TimeSpan.Zero);
 
+    /// <summary>
+    /// 未復旧のメール移動失敗に対する停滞アラートを確認する。
+    /// </summary>
+    /// <remarks>
+    /// 前提・入力: 7日前に発生し未復旧のメール移動失敗を1件渡す。<br/>
+    /// 期待結果: 通知処理が成功し、タイトル「Stalled mail moves」とメールIDを含むアラートが1件送信される。<br/>
+    /// 検知したい異常: 長期間未復旧でも停滞アラートが送信されない不具合。
+    /// </remarks>
     [Fact]
     public async Task StateMonitor_WhenUnrecoveredForSevenDays_SendsAlert()
     {
@@ -29,6 +37,14 @@ public sealed class MetricAlertMonitorTests
         Assert.Contains("999:123", message);
     }
 
+    /// <summary>
+    /// 発生から7日未満の移動失敗が通知対象外であることを確認する。
+    /// </summary>
+    /// <remarks>
+    /// 前提・入力: 6日前に発生したメール移動失敗を1件渡す。<br/>
+    /// 期待結果: 監視処理は成功し、アラートは1件も送信されない。<br/>
+    /// 検知したい異常: 通知期限前の移動失敗に誤ってアラートを送る不具合。
+    /// </remarks>
     [Fact]
     public async Task StateMonitor_WhenFailureIsNewerThanSevenDays_DoesNotSendAlert()
     {
@@ -46,6 +62,14 @@ public sealed class MetricAlertMonitorTests
         Assert.Empty(notifier.Alerts);
     }
 
+    /// <summary>
+    /// 処理時間の悪化を履歴から検知できることを確認する。
+    /// </summary>
+    /// <remarks>
+    /// 前提・入力: 直近10件中6件の実行時間が1時間を超える履歴を渡す。<br/>
+    /// 期待結果: タイトル「Batch processing duration degradation」と「6/10」を含むアラートが1件送信される。<br/>
+    /// 検知したい異常: 過半数の長時間実行を性能劣化として通知できない不具合。
+    /// </remarks>
     [Fact]
     public async Task HistoricalMonitor_WhenSixOfLastTenRunsExceedOneHour_SendsAlert()
     {
@@ -62,6 +86,14 @@ public sealed class MetricAlertMonitorTests
         Assert.Contains("6/10", message);
     }
 
+    /// <summary>
+    /// バッチ失敗率の悪化を履歴から検知できることを確認する。
+    /// </summary>
+    /// <remarks>
+    /// 前提・入力: 直近10件中6件が失敗した履歴を渡す。<br/>
+    /// 期待結果: タイトル「Batch failure rate degradation」と「6/10」を含むアラートが1件送信される。<br/>
+    /// 検知したい異常: 過半数の失敗を失敗率悪化として通知できない不具合。
+    /// </remarks>
     [Fact]
     public async Task HistoricalMonitor_WhenSixOfLastTenRunsFail_SendsAlert()
     {
@@ -78,6 +110,14 @@ public sealed class MetricAlertMonitorTests
         Assert.Contains("6/10", message);
     }
 
+    /// <summary>
+    /// 失敗が直近実行の半数以下なら通知しないことを確認する。
+    /// </summary>
+    /// <remarks>
+    /// 前提・入力: 直近10件中の失敗件数として0件または5件を渡す。<br/>
+    /// 期待結果: 監視処理は成功し、失敗率アラートは1件も送信されない。<br/>
+    /// 検知したい異常: 閾値以下の失敗率で不要なアラートを送る不具合。
+    /// </remarks>
     [Theory]
     [InlineData(5)]
     [InlineData(0)]
@@ -94,6 +134,14 @@ public sealed class MetricAlertMonitorTests
         Assert.Empty(notifier.Alerts);
     }
 
+    /// <summary>
+    /// 長時間実行が直近実行の半数以下なら通知しないことを確認する。
+    /// </summary>
+    /// <remarks>
+    /// 前提・入力: 直近10件中の1時間超過件数として0件または5件を渡す。<br/>
+    /// 期待結果: 監視処理は成功し、処理時間アラートは1件も送信されない。<br/>
+    /// 検知したい異常: 閾値以下の長時間実行数で不要なアラートを送る不具合。
+    /// </remarks>
     [Theory]
     [InlineData(5)]
     [InlineData(0)]
@@ -110,6 +158,14 @@ public sealed class MetricAlertMonitorTests
         Assert.Empty(notifier.Alerts);
     }
 
+    /// <summary>
+    /// 履歴不足時に傾向判定を行わないことを確認する。
+    /// </summary>
+    /// <remarks>
+    /// 前提・入力: 実行履歴を9件だけ渡す。<br/>
+    /// 期待結果: 監視処理は成功し、アラートは1件も送信されない。<br/>
+    /// 検知したい異常: 必要件数未満の履歴から誤って劣化を通知する不具合。
+    /// </remarks>
     [Fact]
     public async Task HistoricalMonitor_WhenFewerThanTenRunsExist_DoesNotSendAlert()
     {

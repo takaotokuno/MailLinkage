@@ -10,6 +10,15 @@ namespace MailBatch.Console.Tests.ReceivedMails.Recovery;
 
 public sealed class MailMoveFailureRecoveryServiceTests
 {
+
+    /// <summary>
+    /// 保存済みの移動失敗を復旧して記録を消せることを確認する。
+    /// </summary>
+    /// <remarks>
+    /// 前提・入力: 処理済み移動とエラー移動の失敗記録を各1件渡す。<br/>
+    /// 期待結果: 各メールが対応するフォルダーへ移動され、失敗記録がすべて削除される。<br/>
+    /// 検知したい異常: 移動先の取り違えまたは復旧済み記録の残存。
+    /// </remarks>
     [Fact]
     public async Task RecoverAsync_WhenMoveFailureRecordsExist_MovesMailsAndRemovesRecords()
     {
@@ -32,6 +41,14 @@ public sealed class MailMoveFailureRecoveryServiceTests
         Assert.Empty(moveFailureStore.Failures);
     }
 
+    /// <summary>
+    /// 移動の再失敗時に記録を保持して日時を更新することを確認する。
+    /// </summary>
+    /// <remarks>
+    /// 前提・入力: 移動時に例外を送出するメール移動サービスと既存失敗記録を渡す。<br/>
+    /// 期待結果: 失敗記録は削除されず、最終失敗日時が更新される。<br/>
+    /// 検知したい異常: 再失敗した記録を削除して復旧対象を失う不具合。
+    /// </remarks>
     [Fact]
     public async Task RecoverAsync_WhenMoveFails_RecordsLatestFailureAndRetainsRecord()
     {
@@ -58,7 +75,11 @@ public sealed class MailMoveFailureRecoveryServiceTests
     }
 
     private static MailMoveFailure CreateFailure(ReceivedMailId mailId, MailMoveFailureDestination destination) =>
-        new(mailId, destination, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow);
+        new(
+            mailId,
+            destination,
+            new DateTimeOffset(2026, 8, 1, 12, 0, 0, TimeSpan.Zero),
+            new DateTimeOffset(2026, 8, 1, 12, 0, 0, TimeSpan.Zero));
 
     private sealed class FakeReceivedMailMover : IReceivedMailMover
     {

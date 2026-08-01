@@ -57,6 +57,21 @@ public sealed class MailMessageFactoryTests
     }
 
     /// <summary>
+    /// 状態: 固定日時を返すTimeProviderを指定する。
+    /// 振る舞い: メールの送信日時にその日時を設定する。
+    /// </summary>
+    [Fact]
+    public void Create_UsesUtcNowFromTimeProvider()
+    {
+        DateTimeOffset utcNow = new(2026, 8, 1, 12, 0, 0, TimeSpan.Zero);
+        AppOptions options = CreateOptions("target");
+
+        MimeKit.MimeMessage message = MailMessageFactory.Create(options, new FixedTimeProvider(utcNow));
+
+        Assert.Equal(utcNow, message.Date);
+    }
+
+    /// <summary>
     /// 状態: custom モードで件名が未設定の場合に設定不備として例外を投げる。
     /// 振る舞い: 期待される結果を返す。
     /// </summary>
@@ -87,4 +102,9 @@ public sealed class MailMessageFactoryTests
             DuplicateMessageId = "duplicate-message-id@example.com"
         }
     };
+
+    private sealed class FixedTimeProvider(DateTimeOffset utcNow) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => utcNow;
+    }
 }

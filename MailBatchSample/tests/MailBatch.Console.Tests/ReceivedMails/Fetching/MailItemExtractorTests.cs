@@ -6,10 +6,15 @@ namespace MailBatch.Console.Tests.ReceivedMails.Fetching;
 
 public sealed class MailItemExtractorTests
 {
+
     /// <summary>
-    /// 状態: 本文に Key 行が 1 件だけある場合に連携対象のキーを抽出できる。
-    /// 振る舞い: 期待される結果を返す。
+    /// 本文の単一Key行から連携項目を抽出できることを確認する。
     /// </summary>
+    /// <remarks>
+    /// 前提・入力: 本文中に「Key: ABC123」を1行だけ含むメールを渡す。<br/>
+    /// 期待結果: 抽出結果のKeyが「ABC123」となり、元メールの識別情報が維持される。<br/>
+    /// 検知したい異常: Key値の切り出し失敗またはメール識別情報の欠落。
+    /// </remarks>
     [Fact]
     public void Extract_ReturnsMailItemWhenBodyContainsSingleKeyLine()
     {
@@ -22,9 +27,13 @@ public sealed class MailItemExtractorTests
     }
 
     /// <summary>
-    /// 状態: 本文が空の場合に抽出エラーになる。
-    /// 振る舞い: 期待される結果を返す。
+    /// 空本文を抽出不能として拒否することを確認する。
     /// </summary>
+    /// <remarks>
+    /// 前提・入力: 本文が空文字列のメールを渡す。<br/>
+    /// 期待結果: 本文が空であることを示すMailExtractionExceptionが送出される。<br/>
+    /// 検知したい異常: 空本文を正常データとして連携する不具合。
+    /// </remarks>
     [Fact]
     public void Extract_ThrowsWhenBodyIsEmpty()
     {
@@ -39,9 +48,13 @@ public sealed class MailItemExtractorTests
     }
 
     /// <summary>
-    /// 状態: Key 行がない場合に抽出エラーになる。
-    /// 振る舞い: 期待される結果を返す。
+    /// Key行のない本文を抽出不能として拒否することを確認する。
     /// </summary>
+    /// <remarks>
+    /// 前提・入力: 通常文だけでKey行を含まないメールを渡す。<br/>
+    /// 期待結果: Key行が見つからないことを示すMailExtractionExceptionが送出される。<br/>
+    /// 検知したい異常: 連携キーなしのメールを正常データとして扱う不具合。
+    /// </remarks>
     [Fact]
     public void Extract_ThrowsWhenKeyLineIsMissing()
     {
@@ -56,9 +69,13 @@ public sealed class MailItemExtractorTests
     }
 
     /// <summary>
-    /// 状態: Key 行が複数ある場合に抽出エラーになる。
-    /// 振る舞い: 期待される結果を返す。
+    /// 複数Key行を曖昧な入力として拒否することを確認する。
     /// </summary>
+    /// <remarks>
+    /// 前提・入力: 異なるKey値の行を2件含むメールを渡す。<br/>
+    /// 期待結果: Key行が複数あることを示すMailExtractionExceptionが送出される。<br/>
+    /// 検知したい異常: 複数候補から任意のKeyを選んで誤連携する不具合。
+    /// </remarks>
     [Fact]
     public void Extract_ThrowsWhenMultipleKeyLinesAreFound()
     {

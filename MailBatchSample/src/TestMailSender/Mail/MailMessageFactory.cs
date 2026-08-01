@@ -9,8 +9,9 @@ internal static class MailMessageFactory
     /// <summary>
     /// 指定されたメール送信オプションに基づいて、検証用メールメッセージを作成します。
     /// </summary>
-    public static MimeMessage Create(AppOptions options)
+    public static MimeMessage Create(AppOptions options, TimeProvider? timeProvider = null)
     {
+        timeProvider ??= TimeProvider.System;
         string mode = options.Mail.Mode.Trim().ToLowerInvariant();
         string subject = mode switch
         {
@@ -25,7 +26,7 @@ internal static class MailMessageFactory
         message.To.Add(MailboxAddress.Parse(options.Mail.To));
         message.Subject = subject;
         message.Body = new TextPart("plain") { Text = options.Mail.Body };
-        message.Date = DateTimeOffset.UtcNow;
+        message.Date = timeProvider.GetUtcNow();
         message.MessageId = mode == "duplicate"
             ? options.Mail.DuplicateMessageId
             : MimeUtils.GenerateMessageId("example.local");

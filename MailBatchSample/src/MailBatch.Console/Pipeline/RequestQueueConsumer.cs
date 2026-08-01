@@ -32,8 +32,11 @@ internal sealed class RequestQueueConsumer(
     IProcessedMailStore processedMailStore,
     IMailMoveFailureStore moveFailureStore,
     IApiExecutionResultStore apiExecutionResultStore,
-    ILogger<MailLinkageRequest> logger) : IRequestQueueConsumer
+    ILogger<MailLinkageRequest> logger,
+    TimeProvider? timeProvider = null) : IRequestQueueConsumer
 {
+    private readonly TimeProvider _timeProvider = timeProvider ?? TimeProvider.System;
+
     /// <summary>
     /// 内部キューからAPI送信用データを順次取り出し、APIへPOSTします。
     /// </summary>
@@ -108,7 +111,7 @@ internal sealed class RequestQueueConsumer(
     private async Task<(bool Succeeded, string ExecutionId)> PostAndHandleResultAsync(MailLinkageRequest request, CancellationToken cancellationToken)
     {
         string executionId = Guid.NewGuid().ToString("N");
-        DateTimeOffset startedAtUtc = DateTimeOffset.UtcNow;
+        DateTimeOffset startedAtUtc = _timeProvider.GetUtcNow();
         Stopwatch stopwatch = Stopwatch.StartNew();
         ApiPostResult result;
         try
@@ -122,7 +125,7 @@ internal sealed class RequestQueueConsumer(
         }
         catch (Exception ex)
         {
-            DateTimeOffset completedAtUtc = DateTimeOffset.UtcNow;
+            DateTimeOffset completedAtUtc = _timeProvider.GetUtcNow();
             await apiExecutionResultStore.RecordAsync(new ApiExecutionResult(
                 executionId,
                 request.MailId,
@@ -145,7 +148,7 @@ internal sealed class RequestQueueConsumer(
             return (false, executionId);
         }
 
-        DateTimeOffset resultCompletedAtUtc = DateTimeOffset.UtcNow;
+        DateTimeOffset resultCompletedAtUtc = _timeProvider.GetUtcNow();
         await apiExecutionResultStore.RecordAsync(new ApiExecutionResult(
             executionId,
             request.MailId,

@@ -25,14 +25,17 @@ internal sealed class BatchRunner(
     IReceivedMailSession receivedMailSession,
     IReceivedMailSearcher receivedMailSearcher,
     IMailMoveFailureRecoveryService mailMoveFailureRecoveryService,
-    IJobExecutionLock jobExecutionLock)
+    IJobExecutionLock jobExecutionLock,
+    TimeProvider? timeProvider = null)
 {
+    private readonly TimeProvider _timeProvider = timeProvider ?? TimeProvider.System;
+
     /// <summary>
     /// メール取得からAPI送信までのバッチ処理全体を実行し、終了コードを返します。
     /// </summary>
     public async Task<int> RunAsync(CancellationToken cancellationToken = default)
     {
-        DateTimeOffset startedAt = DateTimeOffset.UtcNow;
+        DateTimeOffset startedAt = _timeProvider.GetUtcNow();
         LogStart();
 
         using JobExecutionLockHandle? executionLock = jobExecutionLock.TryAcquire();
@@ -42,7 +45,7 @@ internal sealed class BatchRunner(
         }
 
         ProcessResult processResult = await ExecuteLockedRunAsync(startedAt, cancellationToken);
-        BatchRunResult runResult = new(processResult, startedAt, DateTimeOffset.UtcNow);
+        BatchRunResult runResult = new(processResult, startedAt, _timeProvider.GetUtcNow());
         return await CompleteRunAsync(runResult, cancellationToken);
     }
 
@@ -117,7 +120,7 @@ internal sealed class BatchRunner(
         BatchRunResult result = new(
             new ProcessResult(Total: 0),
             startedAt,
-            DateTimeOffset.UtcNow,
+            _timeProvider.GetUtcNow(),
             new FatalBatchError(
                 Code: "DuplicateRun",
                 Message: "Another mail batch instance is already running.",
@@ -140,7 +143,7 @@ internal sealed class BatchRunner(
     /// <summary>
     /// 例外情報から致命的なバッチ実行結果を作成します。
     /// </summary>
-    private static BatchRunResult CreateFatalRunResult(
+    private BatchRunResult CreateFatalRunResult(
         Exception exception,
         string stage,
         DateTimeOffset startedAt)
@@ -148,7 +151,7 @@ internal sealed class BatchRunner(
         return new BatchRunResult(
             new ProcessResult(Total: 0),
             startedAt,
-            DateTimeOffset.UtcNow,
+            _timeProvider.GetUtcNow(),
             new FatalBatchError(
                 Code: exception.GetType().Name,
                 Message: exception.Message,
@@ -160,7 +163,7 @@ internal sealed class BatchRunner(
     /// </summary>
     private async Task<ProcessResult> RunUseCaseAsync(CancellationToken cancellationToken)
     {
-        MailSearchCondition condition = MailSearchCondition.FromOptions(mailSearchOptions, DateTime.UtcNow);
+        MailSearchCondition condition = MailSearchCondition.FromOptions(mailSearchOptions, _timeProvider.GetUtcNow());
         IReadOnlyList<ReceivedMailId> targetMailIds = await receivedMailSearcher.SearchTargetMessagesAsync(
             condition,
             mailSearchOptions.MaxMessages,

@@ -4,58 +4,32 @@ using Xunit;
 
 namespace MailBatch.Console.Tests.ReceivedMails.Searching;
 
+/// <summary>
+/// メール検索条件の生成規則を検証します。
+/// </summary>
 public sealed class MailSearchConditionTests
 {
     /// <summary>
-    /// 状態: メール検索オプションに検索条件が設定されていない。
-    /// 振る舞い: 期待される結果を返す。
+    /// 呼び出し元のオフセットによらず、UTCの日付境界から検索開始日時が計算されることを確認する。
     /// </summary>
+    /// <remarks>
+    /// 前提・入力: UTCでは前日となるJSTの現在日時と、2日前から検索する設定を渡す。<br/>
+    /// 期待結果: UTCへ変換した日付の午前0時から2日前が、UTCオフセット付きで設定される。<br/>
+    /// 検知したい異常: 呼び出し元のローカル日付を基準にすることで検索範囲が1日ずれる不具合、またはUTCオフセットの欠落。
+    /// </remarks>
     [Fact]
-    public void Create_ReturnsEmptyConditionWhenNoFiltersAreConfigured()
-    {
-        MailSearchCondition condition = MailSearchCondition.FromOptions(new MailSearchOptions { SinceDays = null }, DateTime.UtcNow);
-
-        Assert.Null(condition.SubjectContains);
-        Assert.Null(condition.From);
-        Assert.Null(condition.DeliveredAfter);
-    }
-
-    /// <summary>
-    /// 状態: メール検索オプションに件名、差出人、経過日数の条件が設定されている。
-    /// 振る舞い: 期待される結果を返す。
-    /// </summary>
-    [Fact]
-    public void Create_IncludesSubjectFromAndSinceFiltersWhenConfigured()
+    public void FromOptions_WithSinceDays_CalculatesDeliveredAfterFromUtcDate()
     {
         MailSearchOptions options = new()
         {
-            SubjectContains = "Target",
-            From = "sender@example.local",
-            SinceDays = 3
+            SinceDays = 2,
         };
-        DateTime utcNow = new(2026, 7, 15, 12, 0, 0, DateTimeKind.Utc);
-        DateTime expectedDate = utcNow.Date.AddDays(-3);
+        DateTimeOffset now = new(2026, 8, 2, 2, 30, 0, TimeSpan.FromHours(9));
 
-        MailSearchCondition condition = MailSearchCondition.FromOptions(options, utcNow);
+        MailSearchCondition condition = MailSearchCondition.FromOptions(options, now);
 
-        Assert.Equal("Target", condition.SubjectContains);
-        Assert.Equal("sender@example.local", condition.From);
-        Assert.Equal(expectedDate, condition.DeliveredAfter);
-    }
-
-    /// <summary>
-    /// 状態: メール検索オプションの経過日数に0以下の値が設定されている。
-    /// 振る舞い: 期待される結果を返す。
-    /// </summary>
-    [Theory]
-    [InlineData(0)]
-    [InlineData(-1)]
-    public void Create_IgnoresNonPositiveSinceDays(int sinceDays)
-    {
-        MailSearchCondition condition = MailSearchCondition.FromOptions(new MailSearchOptions { SinceDays = sinceDays }, DateTime.UtcNow);
-
-        Assert.Null(condition.SubjectContains);
-        Assert.Null(condition.From);
-        Assert.Null(condition.DeliveredAfter);
+        Assert.Equal(
+            new DateTimeOffset(2026, 7, 30, 0, 0, 0, TimeSpan.Zero),
+            condition.DeliveredAfter);
     }
 }

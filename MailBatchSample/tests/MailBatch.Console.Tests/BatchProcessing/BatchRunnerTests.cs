@@ -8,20 +8,27 @@ using MailBatch.Console.ReceivedMails.Processing;
 using MailBatch.Console.ReceivedMails.Recovery;
 using MailBatch.Console.ReceivedMails.Searching;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Time.Testing;
 using Xunit;
 
 namespace MailBatch.Console.Tests.BatchProcessing;
 
 public sealed class BatchRunnerTests
 {
+
     /// <summary>
-    /// 状態: 実行ロックを取得できず、多重起動が検知される。
-    /// 振る舞い: IMAP接続やパイプライン処理を行わず、致命的エラー通知を送信して終了コード1を返す。
+    /// 多重起動を安全に終了できることを確認する。
     /// </summary>
+    /// <remarks>
+    /// 前提・入力: 取得済みの実行ロックを返すロックサービスでバッチを起動する。<br/>
+    /// 期待結果: IMAP接続とパイプラインを実行せず、致命的エラーを通知して終了コード1を返す。<br/>
+    /// 検知したい異常: ロック競合時にもメール処理を開始する、または成功終了する不具合。
+    /// </remarks>
     [Fact]
     public async Task RunAsync_WhenExecutionLockIsAlreadyHeld_SendsFatalErrorNotificationAndReturnsExitCode1()
     {
-        DateTimeOffset beforeRun = DateTimeOffset.UtcNow;
+        DateTimeOffset utcNow = new(2026, 8, 1, 12, 0, 0, TimeSpan.Zero);
+        FakeTimeProvider timeProvider = new(utcNow);
         FakeBatchRunCompletionService notifier = new();
         FakeReceivedMailSession session = new();
         FakeReceivedMailPipeline pipeline = new();
@@ -37,7 +44,8 @@ public sealed class BatchRunnerTests
             session,
             session,
             new FakeMailMoveFailureRecoveryService(),
-            new FakeJobExecutionLock(null));
+            new FakeJobExecutionLock(null),
+            timeProvider);
 
         int exitCode = await runner.RunAsync();
 
@@ -51,45 +59,18 @@ public sealed class BatchRunnerTests
             Message: "Another mail batch instance is already running.",
             Stage: "Startup"), notifier.Notifications[0].Result.FatalError);
         Assert.Equal(1, notifier.Notifications[0].ExitCode);
-        Assert.InRange(notifier.Notifications[0].Result.StartedAt, beforeRun, DateTimeOffset.UtcNow);
-        Assert.InRange(
-            notifier.Notifications[0].Result.EndedAt,
-            notifier.Notifications[0].Result.StartedAt,
-            DateTimeOffset.UtcNow);
+        Assert.Equal(utcNow, notifier.Notifications[0].Result.StartedAt);
+        Assert.Equal(utcNow, notifier.Notifications[0].Result.EndedAt);
     }
 
     /// <summary>
-    /// 状態: 実行ロックを取得できず、多重起動が検知される。
-    /// 振る舞い: 完了処理を実行し、多重起動の終了コード1を返す。
+    /// IMAP接続失敗を通知して呼び出し元へ伝播することを確認する。
     /// </summary>
-    [Fact]
-    public async Task RunAsync_WhenDuplicateRunIsDetected_ReturnsOriginalExitCode()
-    {
-        FakeBatchRunCompletionService notifier = new();
-        BatchRunner runner = new(
-            new ImapOptions(),
-            new ApiOptions(),
-            new BatchOptions(),
-            new MailSearchOptions(),
-            new BatchRunContext("run-duplicate"),
-            NullLogger<BatchRunner>.Instance,
-            new FakeReceivedMailPipeline(),
-            notifier,
-            new FakeReceivedMailSession(),
-            new FakeReceivedMailSession(),
-            new FakeMailMoveFailureRecoveryService(),
-            new FakeJobExecutionLock(null));
-
-        int exitCode = await runner.RunAsync();
-
-        Assert.Equal(1, exitCode);
-        _ = Assert.Single(notifier.Notifications);
-    }
-
-    /// <summary>
-    /// 状態: IMAP接続時に例外が発生する。
-    /// 振る舞い: 致命的エラー通知を送信してから例外を再スローする。
-    /// </summary>
+    /// <remarks>
+    /// 前提・入力: IMAP接続時に認証例外を送出するセッションでバッチを起動する。<br/>
+    /// 期待結果: Connection段階の致命的エラーを1件通知し、同じ例外を再送出する。<br/>
+    /// 検知したい異常: 接続例外が握り潰される、または段階を誤って通知する不具合。
+    /// </remarks>
     [Fact]
     public async Task RunAsync_WhenConnectThrows_SendsFatalErrorNotificationAndRethrows()
     {
@@ -125,9 +106,13 @@ public sealed class BatchRunnerTests
     }
 
     /// <summary>
-    /// 状態: メール検索やProducer/Consumerを含む処理中に例外が発生する。
-    /// 振る舞い: Processing段階の致命的エラーとして通知してから例外を再スローする。
+    /// メール処理中の例外を通知して呼び出し元へ伝播することを確認する。
     /// </summary>
+    /// <remarks>
+    /// 前提・入力: パイプライン実行時にApplicationExceptionを送出させる。<br/>
+    /// 期待結果: Processing段階の致命的エラーを1件通知し、同じ例外を再送出する。<br/>
+    /// 検知したい異常: 処理例外が握り潰される、またはエラー内容が通知から欠落する不具合。
+    /// </remarks>
     [Fact]
     public async Task RunAsync_WhenUseCaseThrows_SendsFatalErrorNotificationAndRethrows()
     {
@@ -163,7 +148,14 @@ public sealed class BatchRunnerTests
             Stage: "Processing"), notifier.Notifications[0].Result.FatalError);
     }
 
-
+    /// <summary>
+    /// 通常検索より先に前回の移動失敗を復旧することを確認する。
+    /// </summary>
+    /// <remarks>
+    /// 前提・入力: 処理済み移動とエラー移動の失敗記録がある状態でバッチを起動する。<br/>
+    /// 期待結果: 両メールの移動復旧が検索開始前に実行される。<br/>
+    /// 検知したい異常: 未復旧メールを残したまま新規メール検索を開始する不具合。
+    /// </remarks>
     [Fact]
     public async Task RunAsync_WhenMoveFailureRecordsExist_RecoversBeforeSearchingMessages()
     {

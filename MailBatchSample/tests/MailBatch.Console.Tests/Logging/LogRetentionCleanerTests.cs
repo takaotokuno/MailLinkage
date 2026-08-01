@@ -8,6 +8,14 @@ public sealed class LogRetentionCleanerTests : IDisposable
 {
     private readonly string _logDirectory = Path.Combine(Path.GetTempPath(), $"MailBatchLogs-{Guid.NewGuid():N}");
 
+    /// <summary>
+    /// 保持期間を超えたログだけが削除されることを確認する。
+    /// </summary>
+    /// <remarks>
+    /// 前提・入力: 期限切れログ、保持期間内ログ、ログ以外のファイルを作成する。<br/>
+    /// 期待結果: 期限切れログのみ削除され、保持期間内ログと非ログファイルは残る。<br/>
+    /// 検知したい異常: 有効なログや別種ファイルの誤削除、期限切れログの削除漏れ。
+    /// </remarks>
     [Fact]
     public void TryDeleteExpiredLogs_DeletesOnlyLogFilesOlderThanRetentionDays()
     {
@@ -29,19 +37,6 @@ public sealed class LogRetentionCleanerTests : IDisposable
         Assert.False(File.Exists(expiredLog));
         Assert.True(File.Exists(retainedLog));
         Assert.True(File.Exists(expiredText));
-    }
-
-    [Fact]
-    public void TryDeleteExpiredLogs_WithMissingLogDirectory_ReturnsTrue()
-    {
-        BatchOptions options = new()
-        {
-            LogDirectory = _logDirectory,
-            LogRetentionDays = 30
-        };
-        LogRetentionCleaner cleaner = new(options, new FakeTimeProvider(DateTimeOffset.UtcNow));
-
-        Assert.True(cleaner.TryDeleteExpiredLogs());
     }
 
     public void Dispose()

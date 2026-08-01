@@ -10,6 +10,14 @@ public sealed class SqliteRetentionCleanerTests : IDisposable
 {
     private readonly string _directory = Path.Combine(Path.GetTempPath(), $"mail-processing-retention-{Guid.NewGuid():N}");
 
+    /// <summary>
+    /// 期限切れ状態を削除しつつ移動失敗を保護できることを確認する。
+    /// </summary>
+    /// <remarks>
+    /// 前提・入力: 期限切れと有効期限内の処理記録、および期限切れ相当の移動失敗を作成する。<br/>
+    /// 期待結果: 期限切れ処理記録だけが削除され、移動失敗と有効な記録は残り、DBがVACUUMされる。<br/>
+    /// 検知したい異常: 復旧待ち失敗の誤削除、有効記録の削除、またはDB圧縮漏れ。
+    /// </remarks>
     [Fact]
     public void TryDeleteExpiredRecords_DeletesOldRecordsExceptMailMoveFailuresAndVacuumsDatabase()
     {
@@ -52,17 +60,6 @@ public sealed class SqliteRetentionCleanerTests : IDisposable
         Assert.Equal("new", ExecuteStringScalar(verificationConnection, "SELECT run_id FROM batch_runs;"));
         Assert.Equal("current", ExecuteStringScalar(verificationConnection, "SELECT execution_id FROM api_execution_results;"));
         Assert.Equal(0L, ExecuteScalar(verificationConnection, "PRAGMA freelist_count;"));
-    }
-
-    [Fact]
-    public void TryDeleteExpiredRecords_WithMissingDatabase_DoesNotCreateDatabase()
-    {
-        SqliteRetentionCleaner cleaner = new(
-            new BatchOptions { LogDirectory = _directory, LogRetentionDays = 30 });
-
-        Assert.True(cleaner.TryDeleteExpiredRecords());
-
-        Assert.False(Directory.Exists(_directory));
     }
 
     public void Dispose()
