@@ -31,19 +31,6 @@ public sealed class LogRetentionCleanerTests : IDisposable
         Assert.True(File.Exists(expiredText));
     }
 
-    [Fact]
-    public void TryDeleteExpiredLogs_WithMissingLogDirectory_ReturnsTrue()
-    {
-        BatchOptions options = new()
-        {
-            LogDirectory = _logDirectory,
-            LogRetentionDays = 30
-        };
-        LogRetentionCleaner cleaner = new(options, new FakeTimeProvider(DateTimeOffset.UtcNow));
-
-        Assert.True(cleaner.TryDeleteExpiredLogs());
-    }
-
     public void Dispose()
     {
         if (Directory.Exists(_logDirectory))

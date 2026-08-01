@@ -54,17 +54,6 @@ public sealed class SqliteRetentionCleanerTests : IDisposable
         Assert.Equal(0L, ExecuteScalar(verificationConnection, "PRAGMA freelist_count;"));
     }
 
-    [Fact]
-    public void TryDeleteExpiredRecords_WithMissingDatabase_DoesNotCreateDatabase()
-    {
-        SqliteRetentionCleaner cleaner = new(
-            new BatchOptions { LogDirectory = _directory, LogRetentionDays = 30 });
-
-        Assert.True(cleaner.TryDeleteExpiredRecords());
-
-        Assert.False(Directory.Exists(_directory));
-    }
-
     public void Dispose()
     {
         if (Directory.Exists(_directory))

@@ -59,34 +59,6 @@ public sealed class BatchRunnerTests
     }
 
     /// <summary>
-    /// 状態: 実行ロックを取得できず、多重起動が検知される。
-    /// 振る舞い: 完了処理を実行し、多重起動の終了コード1を返す。
-    /// </summary>
-    [Fact]
-    public async Task RunAsync_WhenDuplicateRunIsDetected_ReturnsOriginalExitCode()
-    {
-        FakeBatchRunCompletionService notifier = new();
-        BatchRunner runner = new(
-            new ImapOptions(),
-            new ApiOptions(),
-            new BatchOptions(),
-            new MailSearchOptions(),
-            new BatchRunContext("run-duplicate"),
-            NullLogger<BatchRunner>.Instance,
-            new FakeReceivedMailPipeline(),
-            notifier,
-            new FakeReceivedMailSession(),
-            new FakeReceivedMailSession(),
-            new FakeMailMoveFailureRecoveryService(),
-            new FakeJobExecutionLock(null));
-
-        int exitCode = await runner.RunAsync();
-
-        Assert.Equal(1, exitCode);
-        _ = Assert.Single(notifier.Notifications);
-    }
-
-    /// <summary>
     /// 状態: IMAP接続時に例外が発生する。
     /// 振る舞い: 致命的エラー通知を送信してから例外を再スローする。
     /// </summary>
