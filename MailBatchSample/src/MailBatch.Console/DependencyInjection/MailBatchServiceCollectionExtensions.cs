@@ -2,6 +2,7 @@ using MailBatch.Console.Api;
 using MailBatch.Console.BatchProcessing;
 using MailBatch.Console.BatchProcessing.History;
 using MailBatch.Console.BatchProcessing.Locking;
+using MailBatch.Console.Logging;
 using MailBatch.Console.NotificationMails;
 using MailBatch.Console.Options;
 using MailBatch.Console.Pipeline;
@@ -132,6 +133,9 @@ internal static class BatchServiceCollectionExtensions
     /// </summary>
     private static IServiceCollection AddRunStatusServices(this IServiceCollection services) => services
         .AddTransient<IRunStatusNotifier, RunStatusNotifier>()
+        .AddTransient<LogRetentionCleaner>()
+        .AddTransient<SqliteRetentionCleaner>()
+        .AddTransient<IBatchDataRetentionService, BatchDataRetentionService>()
         .AddTransient<IBatchRunCompletionService, BatchRunCompletionService>();
 
     /// <summary>
