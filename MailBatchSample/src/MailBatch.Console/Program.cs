@@ -2,9 +2,7 @@ using MailBatch.Console.BatchProcessing;
 using MailBatch.Console.BatchProcessing.Result;
 using MailBatch.Console.Configuration;
 using MailBatch.Console.DependencyInjection;
-using MailBatch.Console.Logging;
 using MailBatch.Console.Options;
-using MailBatch.Console.ReceivedMails.State;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 
@@ -27,8 +25,6 @@ try
 {
     LoadedConfiguration loadedConfiguration = AppConfiguration.Load(args);
     AppOptions options = loadedConfiguration.Options;
-    BatchOptions batchOptions = options.Batch;
-
     await Log.CloseAndFlushAsync();
     Log.Logger = SerilogLoggerFactory.Create(loadedConfiguration, runId);
 
@@ -38,10 +34,6 @@ try
 
     BatchRunner runner = serviceProvider.GetRequiredService<BatchRunner>();
     exitCode = await runner.RunAsync(cancellationTokenSource.Token);
-
-    // 正常にバッチ処理を完了した場合のみ、保持期間を過ぎたデータを削除する。
-    _ = new LogRetentionCleaner(batchOptions).TryDeleteExpiredLogs();
-    _ = new SqliteRetentionCleaner(batchOptions).TryDeleteExpiredRecords();
 }
 catch (OperationCanceledException) when (cancellationTokenSource.IsCancellationRequested)
 {

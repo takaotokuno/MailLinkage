@@ -5,21 +5,22 @@ using Microsoft.Extensions.Logging;
 
 namespace MailBatch.Console.BatchProcessing;
 
-/// <summary>バッチ実行終了後の履歴保存と通知を完了させます。</summary>
+/// <summary>バッチ実行終了後の履歴保存、通知、保持期間整理を完了させます。</summary>
 internal interface IBatchRunCompletionService
 {
-    /// <summary>実行結果を保存し、必要なアラートと完了通知を送信します。</summary>
+    /// <summary>実行結果を保存し、必要な通知と正常完了後の保持期間整理を実行します。</summary>
     Task CompleteAsync(BatchRunResult result, int exitCode, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
-/// 実行履歴の保存、履歴アラートの評価、実行結果通知を順に実行します。
+/// 実行履歴の保存、履歴アラートの評価、実行結果通知、保持期間整理を順に実行します。
 /// </summary>
 internal sealed class BatchRunCompletionService(
     BatchRunContext runContext,
     IBatchRunHistoryStore historyStore,
     IHistoricalMetricAlertMonitor historicalMetricAlertMonitor,
     IRunStatusNotifier runStatusNotifier,
+    IBatchDataRetentionService dataRetentionService,
     ILogger<BatchRunCompletionService> logger) : IBatchRunCompletionService
 {
     /// <inheritdoc />
@@ -57,5 +58,11 @@ internal sealed class BatchRunCompletionService(
         }
 
         _ = await runStatusNotifier.TryNotifyAsync(result, exitCode, cancellationToken);
+
+        // 致命的エラーで中断した実行では、完了後の保持期間整理を行わない。
+        if (result.FatalError is null)
+        {
+            dataRetentionService.TryDeleteExpiredData();
+        }
     }
 }
