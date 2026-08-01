@@ -57,6 +57,9 @@ public sealed class MailLinkageWorkflowTests : IDisposable
         Assert.Equal(mailId, mailSession.Processed.Single());
         Assert.Empty(mailSession.Errors);
         Assert.True(await workflow.ProcessedStore.ContainsAsync(mailId));
+        MailNotification notification = Assert.Single(workflow.Notifier.Notifications);
+        Assert.Equal("owner@example.com", notification.To);
+        Assert.Contains("A key line in the format 'Key: alphanumeric-value' was not found.", notification.Body);
     }
 
     [Fact]
@@ -67,11 +70,14 @@ public sealed class MailLinkageWorkflowTests : IDisposable
         RecordingApiHandler api = new(HttpStatusCode.ServiceUnavailable, "temporarily unavailable");
         await using Workflow workflow = CreateWorkflow(mailSession, api);
 
-        ProcessResult result = await workflow.Pipeline.ProcessAsync([mailId]);
+        ProcessResult firstRun = await workflow.Pipeline.ProcessAsync([mailId]);
+        ProcessResult secondRun = await workflow.Pipeline.ProcessAsync([mailId]);
 
-        Assert.Equal(new ProcessResult(Total: 1, ApiFailed: 1), result);
-        Assert.Single(api.Requests);
-        Assert.Equal(mailId, mailSession.Errors.Single());
+        Assert.Equal(new ProcessResult(Total: 1, ApiFailed: 1), firstRun);
+        Assert.Equal(new ProcessResult(Total: 1, ApiFailed: 1), secondRun);
+        Assert.Equal(2, api.Requests.Count);
+        Assert.All(mailSession.Errors, movedMailId => Assert.Equal(mailId, movedMailId));
+        Assert.Equal(2, mailSession.Errors.Count);
         Assert.Empty(mailSession.Processed);
         Assert.False(await workflow.ProcessedStore.ContainsAsync(mailId));
     }
@@ -84,13 +90,14 @@ public sealed class MailLinkageWorkflowTests : IDisposable
         ApiOptions apiOptions = new() { Endpoint = "/api/received-mails", ApiKey = "secret" };
         HttpClient httpClient = new(api) { BaseAddress = new Uri("http://api.test") };
         ApiClient apiClient = new(httpClient, apiOptions);
+        RecordingMailNotifier notifier = new();
         MailNotificationFactory notificationFactory = new(CreateNotificationOptions(), new BatchRunContext("integration-run"));
         ReceivedMailPipelineComponentFactory components = new(
             apiOptions,
             mailSession,
             mailSession,
             apiClient,
-            new NullMailNotifier(),
+            notifier,
             notificationFactory,
             NullLogger<MailFetchQueueProducer>.Instance,
             NullLogger<MailLinkageRequest>.Instance,
@@ -101,7 +108,7 @@ public sealed class MailLinkageWorkflowTests : IDisposable
             new ReceivedMailQueueFactory(new ProcessingOptions { RequestQueueCapacity = 2 }),
             components,
             NullLogger<ReceivedMailPipeline>.Instance);
-        return new Workflow(pipeline, stateStore, httpClient);
+        return new Workflow(pipeline, stateStore, notifier, httpClient);
     }
 
     private static MailNotificationOptions CreateNotificationOptions() => new()
@@ -123,7 +130,11 @@ public sealed class MailLinkageWorkflowTests : IDisposable
         }
     }
 
-    private sealed record Workflow(ReceivedMailPipeline Pipeline, IProcessedMailStore ProcessedStore, IDisposable Resource) : IAsyncDisposable
+    private sealed record Workflow(
+        ReceivedMailPipeline Pipeline,
+        IProcessedMailStore ProcessedStore,
+        RecordingMailNotifier Notifier,
+        IDisposable Resource) : IAsyncDisposable
     {
         public ValueTask DisposeAsync()
         {
@@ -170,9 +181,20 @@ public sealed class MailLinkageWorkflowTests : IDisposable
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 
-    private sealed class NullMailNotifier : IMailNotifier
+    private sealed class RecordingMailNotifier : IMailNotifier
     {
-        public Task SendAsync(MailNotification notification, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task SendAsync(IReadOnlyCollection<MailNotification> notifications, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public List<MailNotification> Notifications { get; } = [];
+
+        public Task SendAsync(MailNotification notification, CancellationToken cancellationToken = default)
+        {
+            Notifications.Add(notification);
+            return Task.CompletedTask;
+        }
+
+        public Task SendAsync(IReadOnlyCollection<MailNotification> notifications, CancellationToken cancellationToken = default)
+        {
+            Notifications.AddRange(notifications);
+            return Task.CompletedTask;
+        }
     }
 }
