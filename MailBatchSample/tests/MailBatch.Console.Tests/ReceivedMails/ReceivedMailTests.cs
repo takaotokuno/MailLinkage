@@ -6,10 +6,14 @@ namespace MailBatch.Console.Tests.ReceivedMails;
 public sealed class ReceivedMailTests
 {
 
-    // 目的: 件名と本文の最大長境界を有効として扱うことを確認する。
-    // 前提・入力: 件名と本文をそれぞれ定義済み最大長ちょうどで作成する。
-    // 期待結果: Validateを実行しても例外が送出されない。
-    // 検知したい異常: 最大長ちょうどの正常メールを長さ超過として拒否する不具合。
+    /// <summary>
+    /// 件名と本文の最大長境界を有効として扱うことを確認する。
+    /// </summary>
+    /// <remarks>
+    /// 前提・入力: 件名と本文をそれぞれ定義済み最大長ちょうどで作成する。<br/>
+    /// 期待結果: Validateを実行しても例外が送出されない。<br/>
+    /// 検知したい異常: 最大長ちょうどの正常メールを長さ超過として拒否する不具合。
+    /// </remarks>
     [Fact]
     public void Validate_DoesNotThrowWhenSubjectAndBodyAreWithinLimits()
     {
@@ -22,10 +26,14 @@ public sealed class ReceivedMailTests
         Assert.Null(exception);
     }
 
-    // 目的: 件名と本文の長さ超過を同時に報告できることを確認する。
-    // 前提・入力: 件名と本文をそれぞれ最大長より1文字長くして作成する。
-    // 期待結果: 検証例外が送出され、件名と本文それぞれの上限超過メッセージを含む。
-    // 検知したい異常: 長さ超過を見逃す、または一方のエラーだけを報告する不具合。
+    /// <summary>
+    /// 件名と本文の長さ超過を同時に報告できることを確認する。
+    /// </summary>
+    /// <remarks>
+    /// 前提・入力: 件名と本文をそれぞれ最大長より1文字長くして作成する。<br/>
+    /// 期待結果: 検証例外が送出され、件名と本文それぞれの上限超過メッセージを含む。<br/>
+    /// 検知したい異常: 長さ超過を見逃す、または一方のエラーだけを報告する不具合。
+    /// </remarks>
     [Fact]
     public void Validate_ThrowsErrorMessagesWhenSubjectAndBodyExceedLimits()
     {
