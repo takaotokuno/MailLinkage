@@ -8,10 +8,14 @@ public sealed class SqliteBatchRunHistoryStoreTests : IDisposable
 {
     private readonly string _directory = Path.Combine(Path.GetTempPath(), $"batch-run-history-{Guid.NewGuid():N}");
 
-    // 目的: バッチ実行履歴の保存内容と新しい順の取得を確認する。
-    // 前提・入力: 結果の異なる新旧2件の実行履歴をSQLiteへ保存する。
-    // 期待結果: 取得上限内の履歴が新しい順で返り、各終了コードと集計値が保存値に一致する。
-    // 検知したい異常: 履歴の並び順または実行結果の永続化が崩れる不具合。
+    /// <summary>
+    /// バッチ実行履歴の保存内容と新しい順の取得を確認する。
+    /// </summary>
+    /// <remarks>
+    /// 前提・入力: 結果の異なる新旧2件の実行履歴をSQLiteへ保存する。<br/>
+    /// 期待結果: 取得上限内の履歴が新しい順で返り、各終了コードと集計値が保存値に一致する。<br/>
+    /// 検知したい異常: 履歴の並び順または実行結果の永続化が崩れる不具合。
+    /// </remarks>
     [Fact]
     public async Task AddAsync_ThenGetRecentAsync_ReturnsNewestRunsWithResults()
     {
