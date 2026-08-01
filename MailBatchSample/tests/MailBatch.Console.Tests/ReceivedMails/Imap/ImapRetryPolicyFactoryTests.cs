@@ -8,10 +8,11 @@ namespace MailBatch.Console.Tests.ReceivedMails.Imap;
 
 public sealed class ImapRetryPolicyFactoryTests
 {
-    /// <summary>
-    /// 状態: リトライ回数が3回、待機時間が0秒に設定されている。
-    /// 振る舞い: 一時的なI/Oエラーが継続すると、初回を含めて合計4回実行する。
-    /// </summary>
+
+    // 目的: 一時的なI/O障害を設定回数だけ再試行することを確認する。
+    // 前提・入力: リトライ3回・待機0秒のポリシーへ常にIOExceptionを送出する処理を渡す。
+    // 期待結果: IOExceptionを再送出するまでに初回を含め合計4回実行する。
+    // 検知したい異常: I/O障害を再試行しない、または設定回数を超えて実行する不具合。
     [Fact]
     public async Task ExecuteAsync_RetriesIoFailureThreeTimes()
     {
@@ -35,10 +36,10 @@ public sealed class ImapRetryPolicyFactoryTests
         Assert.Equal(4, attemptCount);
     }
 
-    /// <summary>
-    /// 状態: リトライ回数が3回に設定され、認証情報が拒否されている。
-    /// 振る舞い: 認証情報のエラーは一時エラーではないため再試行しない。
-    /// </summary>
+    // 目的: 認証失敗を再試行対象にしないことを確認する。
+    // 前提・入力: リトライ3回のポリシーへAuthenticationExceptionを送出する処理を渡す。
+    // 期待結果: AuthenticationExceptionを初回で再送出し、実行回数は1回になる。
+    // 検知したい異常: 恒久的な認証エラーを無駄に再試行する不具合。
     [Fact]
     public async Task ExecuteAsync_DoesNotRetryAuthenticationFailure()
     {

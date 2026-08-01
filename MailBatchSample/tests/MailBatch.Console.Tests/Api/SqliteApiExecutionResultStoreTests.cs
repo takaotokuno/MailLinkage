@@ -11,6 +11,10 @@ public sealed class SqliteApiExecutionResultStoreTests : IDisposable
 {
     private readonly string _directory = Path.Combine(Path.GetTempPath(), $"api-results-{Guid.NewGuid():N}");
 
+    // 目的: API実行結果を本文なしで検索可能に保存できることを確認する。
+    // 前提・入力: リクエスト本文とレスポンス本文を含むAPI実行結果をSQLiteへ記録する。
+    // 期待結果: 検索用の状態・HTTP情報は取得でき、機密になり得る要求・応答本文はDBに保存されない。
+    // 検知したい異常: 監査情報の欠落またはペイロードの不要な永続化。
     [Fact]
     public async Task RecordAsync_PersistsSearchableResultWithoutPayload()
     {

@@ -10,6 +10,10 @@ public sealed class SqliteRetentionCleanerTests : IDisposable
 {
     private readonly string _directory = Path.Combine(Path.GetTempPath(), $"mail-processing-retention-{Guid.NewGuid():N}");
 
+    // 目的: 期限切れ状態を削除しつつ移動失敗を保護できることを確認する。
+    // 前提・入力: 期限切れと有効期限内の処理記録、および期限切れ相当の移動失敗を作成する。
+    // 期待結果: 期限切れ処理記録だけが削除され、移動失敗と有効な記録は残り、DBがVACUUMされる。
+    // 検知したい異常: 復旧待ち失敗の誤削除、有効記録の削除、またはDB圧縮漏れ。
     [Fact]
     public void TryDeleteExpiredRecords_DeletesOldRecordsExceptMailMoveFailuresAndVacuumsDatabase()
     {
