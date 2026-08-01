@@ -1,5 +1,6 @@
 using MailBatch.Console.Options;
 using MailBatch.Console.ReceivedMails.Searching;
+using Xunit;
 
 namespace MailBatch.Console.Tests.ReceivedMails.Searching;
 

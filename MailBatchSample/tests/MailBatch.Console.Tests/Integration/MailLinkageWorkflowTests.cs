@@ -143,7 +143,8 @@ public sealed class MailLinkageWorkflowTests : IDisposable
             NullLogger<MailLinkageRequest>.Instance,
             stateStore,
             stateStore,
-            resultStore);
+            resultStore,
+            TimeProvider.System);
         ReceivedMailPipeline pipeline = new(
             new ReceivedMailQueueFactory(new ProcessingOptions { RequestQueueCapacity = 2 }),
             components,
