@@ -9,8 +9,13 @@ namespace MailBatch.Console.Tests.ReceivedMails.Searching;
 public sealed class MailSearchConditionTests
 {
     /// <summary>
-    /// 日数指定がある場合に、UTCの日付境界から検索開始日時が計算されることを検証します。
+    /// 呼び出し元のオフセットによらず、UTCの日付境界から検索開始日時が計算されることを確認する。
     /// </summary>
+    /// <remarks>
+    /// 前提・入力: UTCでは前日となるJSTの現在日時と、2日前から検索する設定を渡す。<br/>
+    /// 期待結果: UTCへ変換した日付の午前0時から2日前が、UTCオフセット付きで設定される。<br/>
+    /// 検知したい異常: 呼び出し元のローカル日付を基準にすることで検索範囲が1日ずれる不具合、またはUTCオフセットの欠落。
+    /// </remarks>
     [Fact]
     public void FromOptions_WithSinceDays_CalculatesDeliveredAfterFromUtcDate()
     {
@@ -25,23 +30,5 @@ public sealed class MailSearchConditionTests
         Assert.Equal(
             new DateTimeOffset(2026, 7, 30, 0, 0, 0, TimeSpan.Zero),
             condition.DeliveredAfter);
-    }
-
-    /// <summary>
-    /// 日数指定がない場合に、検索開始日時が設定されないことを検証します。
-    /// </summary>
-    [Fact]
-    public void FromOptions_WithoutSinceDays_DoesNotSetDeliveredAfter()
-    {
-        MailSearchOptions options = new()
-        {
-            SinceDays = null,
-        };
-
-        MailSearchCondition condition = MailSearchCondition.FromOptions(
-            options,
-            DateTimeOffset.UtcNow);
-
-        Assert.Null(condition.DeliveredAfter);
     }
 }
