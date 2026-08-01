@@ -4,4 +4,5 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         sqlite3 \
         netcat-openbsd \
+        cloc \
     && rm -rf /var/lib/apt/lists/*

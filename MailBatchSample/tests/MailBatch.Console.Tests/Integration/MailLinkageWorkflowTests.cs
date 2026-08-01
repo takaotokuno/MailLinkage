@@ -30,7 +30,7 @@ public sealed class MailLinkageWorkflowTests : IDisposable
     public async Task ValidTargetMail_IsPostedOnceAndCannotBeLinkedAgain()
     {
         ReceivedMailId mailId = new(10, 20);
-        RecordingMailSession mailSession = new(new ReceivedMail(mailId, "owner@example.com", "連携対象", "Key: ORDER-001\n商品を出荷してください"));
+        RecordingMailSession mailSession = new(new ReceivedMail(mailId, "owner@example.com", "連携対象", "Key: ORDER001\n商品を出荷してください"));
         RecordingApiHandler api = new(HttpStatusCode.Created, /*lang=json,strict*/ "{\"id\":42}");
         await using Workflow workflow = CreateWorkflow(mailSession, api);
 
@@ -39,8 +39,8 @@ public sealed class MailLinkageWorkflowTests : IDisposable
 
         Assert.Equal(new ProcessResult(Total: 1, Succeeded: 1), firstRun);
         Assert.Equal(new ProcessResult(Total: 1), secondRun);
-        Assert.Equal("ORDER-001", Assert.Single(api.Requests).Key);
-        Assert.Equal("商品を出荷してください", api.Requests[0].Message);
+        Assert.Equal("ORDER001", Assert.Single(api.Requests).Key);
+        Assert.Equal("連携対象\n\nKey: ORDER001\n商品を出荷してください", api.Requests[0].Message);
         Assert.Equal("secret", api.ApiKeys.Single());
         Assert.Equal(mailId, mailSession.Processed.Single());
         Assert.True(await workflow.ProcessedStore.ContainsAsync(mailId));
@@ -78,7 +78,7 @@ public sealed class MailLinkageWorkflowTests : IDisposable
     public async Task RejectedApiRequest_IsMovedToErrorAndMayBeRetriedOnANewBatchRun()
     {
         ReceivedMailId mailId = new(12, 20);
-        RecordingMailSession mailSession = new(new ReceivedMail(mailId, "owner@example.com", "連携対象", "Key: ORDER-002\n再送対象"));
+        RecordingMailSession mailSession = new(new ReceivedMail(mailId, "owner@example.com", "連携対象", "Key: ORDER002\n再送対象"));
         RecordingApiHandler api = new(HttpStatusCode.ServiceUnavailable, "temporarily unavailable");
         await using Workflow workflow = CreateWorkflow(mailSession, api);
 
@@ -88,7 +88,10 @@ public sealed class MailLinkageWorkflowTests : IDisposable
         Assert.Equal(new ProcessResult(Total: 1, ApiFailed: 1), firstRun);
         Assert.Equal(new ProcessResult(Total: 1, ApiFailed: 1), secondRun);
         Assert.Equal(2, api.Requests.Count);
-        Assert.All(mailSession.Errors, movedMailId => Assert.Equal(mailId, movedMailId));
+        Assert.All(mailSession.Errors, movedMailId =>
+        {
+            Assert.Equal(mailId, movedMailId);
+        });
         Assert.Equal(2, mailSession.Errors.Count);
         Assert.Empty(mailSession.Processed);
         Assert.False(await workflow.ProcessedStore.ContainsAsync(mailId));
@@ -96,11 +99,21 @@ public sealed class MailLinkageWorkflowTests : IDisposable
 
     private Workflow CreateWorkflow(RecordingMailSession mailSession, RecordingApiHandler api)
     {
-        BatchOptions batchOptions = new() { LogDirectory = _workDirectory };
+        BatchOptions batchOptions = new()
+        {
+            LogDirectory = _workDirectory
+        };
         SqliteMailProcessingStore stateStore = new(batchOptions, NullLogger<SqliteMailProcessingStore>.Instance);
         SqliteApiExecutionResultStore resultStore = new(batchOptions, new BatchRunContext("integration-run"));
-        ApiOptions apiOptions = new() { Endpoint = "/api/received-mails", ApiKey = "secret" };
-        HttpClient httpClient = new(api) { BaseAddress = new Uri("http://api.test") };
+        ApiOptions apiOptions = new()
+        {
+            Endpoint = "/api/received-mails",
+            ApiKey = "secret"
+        };
+        HttpClient httpClient = new(api)
+        {
+            BaseAddress = new Uri("http://api.test")
+        };
         ApiClient apiClient = new(httpClient, apiOptions);
         RecordingMailNotifier notifier = new();
         MailNotificationFactory notificationFactory = new(CreateNotificationOptions(), new BatchRunContext("integration-run"));
